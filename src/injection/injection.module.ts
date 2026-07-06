@@ -5,8 +5,8 @@ import { InjectionController } from './injection.controller';
 import { InjectionService } from './injection.service';
 
 @Module({
-  imports: [PluginsModule, EnvelopeModule],
-  controllers: [InjectionController],
-  providers: [InjectionService],
+    imports: [PluginsModule, EnvelopeModule],
+    controllers: [InjectionController],
+    providers: [InjectionService],
 })
 export class InjectionModule {}

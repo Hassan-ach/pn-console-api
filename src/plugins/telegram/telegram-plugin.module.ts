@@ -8,22 +8,22 @@ import { TelegramSessionStore } from './telegram-session.store';
 import { PendingAuthStore } from './pending-auth.store';
 
 @Module({
-  imports: [PluginsModule],
-  providers: [
-    TelegramClientFactory,
-    TelegramAuthService,
-    TelegramSessionStore,
-    PendingAuthStore,
-    TelegramPluginService,
-  ],
+    imports: [PluginsModule],
+    providers: [
+        TelegramClientFactory,
+        TelegramAuthService,
+        TelegramSessionStore,
+        PendingAuthStore,
+        TelegramPluginService,
+    ],
 })
 export class TelegramPluginModule implements OnModuleInit {
-  constructor(
-    private readonly pluginManager: PluginManagerService,
-    private readonly telegramPlugin: TelegramPluginService,
-  ) {}
+    constructor(
+        private readonly pluginManager: PluginManagerService,
+        private readonly telegramPlugin: TelegramPluginService,
+    ) {}
 
-  onModuleInit() {
-    this.pluginManager.register(this.telegramPlugin);
-  }
+    onModuleInit() {
+        this.pluginManager.register(this.telegramPlugin);
+    }
 }

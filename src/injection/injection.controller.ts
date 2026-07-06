@@ -4,21 +4,21 @@ import { IsInt, IsString } from 'class-validator';
 import { InjectionService } from './injection.service';
 
 class BackfillDto {
-  @IsString()
-  plugin: string;
+    @IsString()
+    plugin: string;
 
-  @IsInt()
-  limit: number;
+    @IsInt()
+    limit: number;
 }
 
 @ApiTags('Injection')
 @Controller('injection')
 export class InjectionController {
-  constructor(private readonly injectionService: InjectionService) {}
+    constructor(private readonly injectionService: InjectionService) {}
 
-  @Post('backfill')
-  @ApiOperation({ summary: 'Backfill historical data from a plugin' })
-  async backfill(@Body() dto: BackfillDto) {
-    return this.injectionService.ingest(dto.plugin, dto.limit);
-  }
+    @Post('backfill')
+    @ApiOperation({ summary: 'Backfill historical data from a plugin' })
+    async backfill(@Body() dto: BackfillDto) {
+        return this.injectionService.ingest(dto.plugin, dto.limit);
+    }
 }
