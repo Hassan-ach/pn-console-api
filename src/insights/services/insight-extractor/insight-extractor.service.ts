@@ -1,12 +1,12 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Runnable } from '@langchain/core/runnables';
 import { InsightExtractionResult, InsightResultSchema } from './insight-schema';
-import InsightExtractionPrompt from './insight-extraction-prompt';
+import InsightExtractionPrompt from './insight-extractor-prompt';
 import { InputInsight, InputMessage } from '../../types';
 import { LlmService } from '../../../llm/llm.service';
 
 @Injectable()
-export class InsightExtractionService implements OnModuleInit {
+export class InsightExtractorService implements OnModuleInit {
   private chain: Runnable;
 
   constructor(private readonly llmService: LlmService) {}

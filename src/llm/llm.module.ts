@@ -1,9 +1,8 @@
-import { Module } from '@nestjs/common'
-import { LlmFactoryService } from './llm-factory.service'
+import { Module } from '@nestjs/common';
 import { LlmService } from './llm.service';
 
 @Module({
-  providers: [LlmFactoryService, LlmService],
-  exports: [LlmFactoryService],
+  providers: [LlmService, LlmService],
+  exports: [LlmService],
 })
 export class LlmModule {}
