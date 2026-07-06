@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EnvelopeType {
+  message
+}
+
+enum IngestionStatus {
+  pending
+  ready
+  failed
+}
+
+enum MessagePayloadType {
+  direct
+  email
+}
+
+model MessagePayload {
+  id         String             @id @default(uuid()) @db.Uuid
+  type       MessagePayloadType
+  content    String
+  groupId    String?            @map("group_id")
+  replyTo    String?            @map("reply_to")
+  reactions  Json               @default("{}")
+  pinned     Boolean            @default(false)
+  editedDate DateTime?          @map("edited_date") @db.Timestamptz
+  entities   Json?
+  rawPayload Json               @map("raw_payload")
+  envelopes  Envelope[]
+
+  @@map("message_payload")
+}
+
+model Envelope {
+  id             String          @id @default(uuid()) @db.Uuid
+  sourcePlugin   String          @map("source_plugin")
+  sourceId       String          @map("source_id")
+  type           EnvelopeType
+  payloadRef     String          @map("payload_ref") @db.Uuid
+  hasAttachment  Boolean         @default(false) @map("has_attachment")
+  authorRef      String?         @map("author_ref")
+  organizationId String?         @map("organization_id")
+  occurredAt     DateTime        @map("occurred_at") @db.Timestamptz
+  ingestedAt     DateTime        @default(now()) @map("ingested_at") @db.Timestamptz
+  status         IngestionStatus @default(pending)
+  permissions    Json            @default("{}")
+  payload        MessagePayload  @relation(fields: [payloadRef], references: [id])
+
+  @@unique([sourcePlugin, sourceId])
+  @@map("envelope")
+}
