@@ -1,2 +1,9 @@
 allowBuilds:
-  unrs-resolver: set this to true or false
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  bufferutil: true
+  es5-ext: true
+  prisma: true
+  unrs-resolver: true
+  utf-8-validate: true
