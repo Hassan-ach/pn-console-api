@@ -104,9 +104,7 @@ export class TelegramPluginService implements IPlugin {
         await this.auth.logout(this.config.userId);
     }
 
-    async *backfill(
-        limit: number,
-    ): AsyncIterable<EnvelopeWithPayload[]> {
+    async *backfill(limit: number): AsyncIterable<EnvelopeWithPayload[]> {
         if (!this.config) throw new Error('Plugin not initialized');
 
         const { client } = await this.auth.loadSession(
@@ -117,9 +115,7 @@ export class TelegramPluginService implements IPlugin {
 
         try {
             for (const chatId of this.config.chats) {
-                this.logger.log(
-                    `Backfilling chat ${chatId} limit ${limit}`,
-                );
+                this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
 
                 const chat = await client.getEntity(chatId);
                 let offsetId = 0;

@@ -8,14 +8,14 @@ import { InjectionModule } from './injection/injection.module';
 import { AppController } from './app.controller';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule,
-    EnvelopeModule,
-    PluginsModule,
-    TelegramPluginModule,
-    InjectionModule,
-  ],
-  controllers: [AppController],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        PrismaModule,
+        EnvelopeModule,
+        PluginsModule,
+        TelegramPluginModule,
+        InjectionModule,
+    ],
+    controllers: [AppController],
 })
 export class AppModule {}

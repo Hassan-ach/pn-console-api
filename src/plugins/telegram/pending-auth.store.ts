@@ -6,14 +6,14 @@ import type { PendingAuth } from './telegram.types';
 
 @Injectable()
 export class PendingAuthStore extends JsonStore<PendingAuth> {
-  constructor() {
-    const filePath = path.join(
-      os.homedir(),
-      '.pn-console',
-      'plugins',
-      'telegram',
-      'pending-auth.json',
-    );
-    super(filePath);
-  }
+    constructor() {
+        const filePath = path.join(
+            os.homedir(),
+            '.pn-console',
+            'plugins',
+            'telegram',
+            'pending-auth.json',
+        );
+        super(filePath);
+    }
 }
