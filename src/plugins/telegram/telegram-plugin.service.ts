@@ -4,6 +4,7 @@ import { EnvelopeWithPayload } from '../interfaces/plugin.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramAuthService } from './telegram-auth.service';
 import { normalizeTelegramMessage } from './normalizer';
+import { resolveEntities } from './entity-resolver';
 import type { TelegramMessageRaw } from './telegram.types';
 
 interface TelegramConfig {
@@ -28,7 +29,7 @@ export class TelegramPluginService implements IPlugin {
     async initialize(config: Record<string, unknown>): Promise<void> {
         this.config = config as unknown as TelegramConfig;
         this.logger.log(
-            `Telegram plugin initialized for user ${this.config.userId}`,
+            `Telegram plugin initialized for user ${this.config?.userId}`,
         );
     }
 
@@ -138,23 +139,44 @@ export class TelegramPluginService implements IPlugin {
                             msg.date instanceof Date
                                 ? msg.date
                                 : new Date((msg.date as number) * 1000);
+
+                        // Resolve channel_id from peer_id
+                        let channelId: string | null = null;
+                        if (raw.peer_id?.Channel?.channel_id) {
+                            channelId = raw.peer_id.Channel.channel_id.toString();
+                        }
+
+                        // Resolve author_id from from_id
+                        let authorId: string | null = null;
+                        if (raw.from_id?.User?.user_id) {
+                            authorId = raw.from_id.User.user_id.toString();
+                        }
+
+                        // Resolve entities
+                        const msgText = (msg.text ?? msg.message ?? '') as string;
+                        const resolvedEntities = resolveEntities(
+                            msgText,
+                            raw.entities ?? [],
+                        );
+
                         chunk.push({
                             id: msg.id as number,
-                            chatId,
-                            text: (msg.text ?? msg.message ?? '') as string,
+                            channel_id: channelId,
+                            text: msgText,
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
                                     | number
                                     | undefined) ?? null,
-                            author:
-                                (msg.sender?.username as string | undefined) ??
-                                null,
+                            author_id: authorId,
                             hasAttachment: !!msg.media,
                             reactions: raw.reactions ?? {},
                             pinned: !!msg.pinned,
                             editedDate: msg.editDate ?? null,
-                            entities: msg.entities ?? null,
+                            resolved_entities:
+                                resolvedEntities.length > 0
+                                    ? resolvedEntities
+                                    : null,
                             raw,
                         });
                     }

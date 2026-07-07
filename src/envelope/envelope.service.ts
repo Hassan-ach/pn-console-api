@@ -37,6 +37,7 @@ export class EnvelopeService {
                     type: item.payload.type,
                     content: item.payload.content,
                     groupId: item.payload.group_id,
+                    channelId: item.payload.channel_id,
                     replyTo: item.payload.reply_to,
                     reactions: toJson(item.payload.reactions),
                     pinned: item.payload.pinned,
@@ -57,7 +58,7 @@ export class EnvelopeService {
                     type: item.envelope.type,
                     payloadRef: payload.id,
                     hasAttachment: item.envelope.has_attachment,
-                    authorRef: item.envelope.author_ref,
+                    authorId: item.envelope.author_id,
                     occurredAt: new Date(item.envelope.occurred_at),
                 },
             });
