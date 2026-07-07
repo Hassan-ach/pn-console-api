@@ -6,16 +6,18 @@ import { PluginsModule } from './plugins/plugins.module';
 import { TelegramPluginModule } from './plugins/telegram/telegram-plugin.module';
 import { InjectionModule } from './injection/injection.module';
 import { AppController } from './app.controller';
+import { InsightsModule } from './insights/insights.module';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-        PrismaModule,
-        EnvelopeModule,
-        PluginsModule,
-        TelegramPluginModule,
-        InjectionModule,
-    ],
-    controllers: [AppController],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    EnvelopeModule,
+    PluginsModule,
+    TelegramPluginModule,
+    InjectionModule,
+    InsightsModule,
+  ],
+  controllers: [AppController],
 })
 export class AppModule {}
