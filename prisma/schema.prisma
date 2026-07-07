@@ -27,6 +27,7 @@ model MessagePayload {
   type       MessagePayloadType
   content    String
   groupId    String?            @map("group_id")
+  channelId  String?            @map("channel_id")
   replyTo    String?            @map("reply_to")
   reactions  Json               @default("{}")
   pinned     Boolean            @default(false)
@@ -45,7 +46,7 @@ model Envelope {
   type           EnvelopeType
   payloadRef     String          @map("payload_ref") @db.Uuid
   hasAttachment  Boolean         @default(false) @map("has_attachment")
-  authorRef      String?         @map("author_ref")
+  authorId       String?         @map("author_id")
   organizationId String?         @map("organization_id")
   occurredAt     DateTime        @map("occurred_at") @db.Timestamptz
   ingestedAt     DateTime        @default(now()) @map("ingested_at") @db.Timestamptz

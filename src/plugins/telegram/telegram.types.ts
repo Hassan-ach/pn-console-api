@@ -1,15 +1,21 @@
+export interface ResolvedEntity {
+    type: string;
+    value: string | number | null;
+    raw: Record<string, unknown>;
+}
+
 export interface TelegramMessageRaw {
     id: number;
-    chatId: string;
+    channel_id: string | null;
     text: string;
     date: Date;
     replyTo: number | null;
-    author: string | null;
+    author_id: string | null;
     hasAttachment: boolean;
     reactions: Record<string, unknown>;
     pinned: boolean;
     editedDate: string | null;
-    entities: Record<string, unknown> | null;
+    resolved_entities: ResolvedEntity[] | null;
     raw: Record<string, unknown>;
 }
 
