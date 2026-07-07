@@ -30,7 +30,7 @@ export class EnvelopeDataDto {
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
     @IsString()
-    author_ref: string | null;
+    author_id: string | null;
 
     @ApiProperty()
     @IsDateString()
@@ -50,6 +50,11 @@ export class MessagePayloadDataDto {
     @IsOptional()
     @IsString()
     group_id: string | null;
+
+    @ApiProperty({ required: false, nullable: true })
+    @IsOptional()
+    @IsString()
+    channel_id: string | null;
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
