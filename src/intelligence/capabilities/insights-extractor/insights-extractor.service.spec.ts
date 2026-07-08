@@ -33,7 +33,7 @@ const sampleMessages: InputMessage[] = [
 
 const sampleResult = {
   updatedInsights: [
-    { id: 1, type: 'INFO', content: 'Q3 budget report was sent to finance.' },
+    { id: '1', type: 'INFO', content: 'Q3 budget report was sent to finance.', owners: ['owner-1'] },
   ],
   newInsights: [],
 };
