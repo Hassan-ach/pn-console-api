@@ -2,14 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { EnvelopeModule } from './envelope/envelope.module';
-import { PluginsModule } from './plugins/plugins.module';
-import { TelegramPluginModule } from './plugins/telegram/telegram-plugin.module';
-import { InjectionModule } from './injection/injection.module';
-import { AppController } from './app.controller';
-import { InsightsModule } from './insights/insights.module';
+import { PluginsModule } from './ingestion/plugins/plugins.module';
+import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
 import { AppDbModule } from './prisma/app-db/app-db.module';
 import { IntelligenceModule } from './intelligence/.module';
-
+import { IngestionModule } from './ingestion/ingestion.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -18,10 +16,9 @@ import { IntelligenceModule } from './intelligence/.module';
     EnvelopeModule,
     PluginsModule,
     TelegramPluginModule,
-    InjectionModule,
-    InsightsModule,
     AppDbModule,
-    IntelligenceModule
+    IngestionModule,
+    IntelligenceModule,
   ],
   controllers: [AppController],
 })
