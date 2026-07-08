@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { RawDbService } from '../prisma/raw-db/raw-db.service';
+import { Prisma } from 'generated/raw-db-client';
 import type { CreateEnvelopeDto } from './dto/create-envelope.dto';
 import type { EnvelopeQueryDto } from './dto/envelope-query.dto';
 
@@ -14,7 +14,7 @@ export interface BulkCreateResult {
 
 @Injectable()
 export class EnvelopeService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: RawDbService) {}
 
     async bulkCreate(items: CreateEnvelopeDto[]): Promise<BulkCreateResult> {
         let inserted = 0;

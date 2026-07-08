@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
-import { InjectionService } from './injection.service';
+import { IngestionService } from './ingestion.service';
 
 class BackfillDto {
     @IsString()
@@ -11,14 +11,14 @@ class BackfillDto {
     limit: number;
 }
 
-@ApiTags('Injection')
-@Controller('injection')
-export class InjectionController {
-    constructor(private readonly injectionService: InjectionService) {}
+@ApiTags('Ingestion')
+@Controller('ingestion')
+export class IngestionController {
+    constructor(private readonly ingestionService: IngestionService) {}
 
     @Post('backfill')
     @ApiOperation({ summary: 'Backfill historical data from a plugin' })
     async backfill(@Body() dto: BackfillDto) {
-        return this.injectionService.ingest(dto.plugin, dto.limit);
+        return this.ingestionService.ingest(dto.plugin, dto.limit);
     }
 }
