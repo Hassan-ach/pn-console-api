@@ -16,10 +16,3 @@ export interface InputMessage {
   edited_date: string | null;
   entities: Record<string, unknown> | null;
 }
-
-export interface Insight {
-  id: string | null;
-  type: InsightType;
-  content: string;
-  owners: string[];
-}

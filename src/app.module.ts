@@ -4,7 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { EnvelopeModule } from './envelope/envelope.module';
 import { PluginsModule } from './ingestion/plugins/plugins.module';
 import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
-import { InsightsModule } from './insights/insights.module';
+import { AppDbModule } from './prisma/app-db/app-db.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AppController } from './app.controller';
@@ -16,9 +16,9 @@ import { AppController } from './app.controller';
         EnvelopeModule,
         PluginsModule,
         TelegramPluginModule,
-        InsightsModule,
         IngestionModule,
         IntelligenceModule,
+        AppDbModule,
     ],
     controllers: [AppController],
 })
