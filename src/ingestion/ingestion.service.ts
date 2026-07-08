@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PluginManagerService } from '../plugins/plugin-manager.service';
+import { PluginManagerService } from './plugins/plugin-manager.service';
 import { EnvelopeService } from '../envelope/envelope.service';
 
 @Injectable()
-export class InjectionService {
-    private readonly logger = new Logger(InjectionService.name);
+export class IngestionService {
+    private readonly logger = new Logger(IngestionService.name);
 
     constructor(
         private readonly pluginManager: PluginManagerService,
