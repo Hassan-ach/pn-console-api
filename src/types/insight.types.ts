@@ -5,4 +5,6 @@ export interface Insight {
   type: InsightType;
   content: string;
   owners: string[];
+  version?: number;
+  createdAt?: Date;
 }
