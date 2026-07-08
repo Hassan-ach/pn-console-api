@@ -39,29 +39,32 @@ export class LlmService {
       ...providerFields,
     });
   }
-
   async createToolModel(tools: StructuredTool[]): Promise<Runnable> {
     const llm = await this.createLLM();
 
     if (!llm.bindTools) {
-      throw new Error('The configured LLM provider does not support tool calling');
+      throw new Error(
+        'The configured LLM provider does not support tool calling',
+      );
     }
 
     return llm.bindTools(tools);
   }
 
-  async createToolChain(config: ToolCallingChainConfig): Promise<Runnable<ToolChainInput, unknown>> {
+  async createToolChain(
+    config: ToolCallingChainConfig,
+  ): Promise<Runnable<ToolChainInput, unknown>> {
     const llm = await this.createLLM();
 
     if (!llm.bindTools) {
-      throw new Error('The configured LLM provider does not support tool calling');
+      throw new Error(
+        'The configured LLM provider does not support tool calling',
+      );
     }
 
     const toolModel = llm.bindTools(config.tools);
 
-    const toolMap = Object.fromEntries(
-      config.tools.map(t => [t.name, t]),
-    );
+    const toolMap = Object.fromEntries(config.tools.map((t) => [t.name, t]));
 
     const chain = RunnableLambda.from(async (input: ToolChainInput) => {
       let messages = [...input.messages];
@@ -77,8 +80,15 @@ export class LlmService {
         for (const call of response.tool_calls) {
           const tool = toolMap[call.name];
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
-          const result = await tool.invoke(call.args as Record<string, unknown>);
-          messages.push(new ToolMessage({ content: JSON.stringify(result), tool_call_id: call.id! }));
+          const result = await tool.invoke(
+            call.args as Record<string, unknown>,
+          );
+          messages.push(
+            new ToolMessage({
+              content: JSON.stringify(result),
+              tool_call_id: call.id!,
+            }),
+          );
         }
       }
       throw new Error('Tool calling exceeded max iterations');
