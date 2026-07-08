@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IPlugin, PluginLoginResult } from '../interfaces/plugin.interface';
-import { EnvelopeWithPayload } from '../interfaces/plugin.types';
+import { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramAuthService } from './telegram-auth.service';
 import { normalizeTelegramMessage } from './normalizer';
