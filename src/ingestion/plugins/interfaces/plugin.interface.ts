@@ -1,4 +1,4 @@
-import { EnvelopeWithPayload, Payload } from './plugin.types';
+import { EnvelopeWithPayload, Payload } from '../../../types/envelope.types';
 
 export type PluginLoginResult =
     | { status: 'ok' }

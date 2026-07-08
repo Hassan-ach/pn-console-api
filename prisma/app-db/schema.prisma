@@ -9,10 +9,12 @@ datasource db {
 }
 
 model Insight {
-  id        String           @id @default(uuid()) @db.Uuid
-  updatedAt DateTime         @updatedAt @map("updated_at")
-  versions  InsightVersion[]
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String?          @map("organization_id")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  versions       InsightVersion[]
 
+  @@index([organizationId])
   @@map("insights")
 }
 
