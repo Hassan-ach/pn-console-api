@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+  output = "../../generated/app-db-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("APP_DATABASE_URL")
+}
+
+model Insight {
+  id        String           @id @default(uuid()) @db.Uuid
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  versions  InsightVersion[]
+
+  @@map("insights")
+}
+
+model InsightVersion {
+  id        String      @id @default(uuid()) @db.Uuid
+  insightId String      @db.Uuid
+  version   Int
+  type      InsightType
+  content   String
+  owners    String[]    @db.Uuid
+  createdAt DateTime    @default(now()) @map("created_at")
+  insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@unique([insightId, version])
+  @@index([insightId])
+  @@map("insight_versions")
+}
+
+enum InsightType {
+  TASK
+  INFO
+  URGENCY
+  DECISION
+}
