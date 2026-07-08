@@ -25,13 +25,17 @@ const sampleHistory: Insight[] = [
 
 const sampleMessages: InputMessage[] = [
   {
-    id: '1',
+    envolopId: '1',
     type: 'direct',
     content: 'Q3 budget report has been sent to finance, all done.',
-    reply_to: null,
+    groupId: null,
+    channelId: null,
+    authorId: null,
+    hasAttachment: false,
+    replyTo: null,
     reactions: {},
     pinned: false,
-    edited_date: null,
+    editedDate: null,
     entities: null,
   },
 ];
