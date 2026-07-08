@@ -4,6 +4,8 @@ import { Prisma } from 'generated/raw-db-client';
 import type { CreateEnvelopeDto } from './dto/create-envelope.dto';
 import type { EnvelopeQueryDto } from './dto/envelope-query.dto';
 
+const CHUNK_SIZE = 500;
+
 function toJson(value: unknown): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value));
 }
@@ -16,57 +18,101 @@ export interface BulkCreateResult {
 export class EnvelopeService {
     constructor(private readonly prisma: RawDbService) {}
 
-    async bulkCreate(items: CreateEnvelopeDto[]): Promise<BulkCreateResult> {
-        let inserted = 0;
+    async bulkCreate(
+        items: CreateEnvelopeDto[],
+        options?: { organizationId?: string },
+    ): Promise<BulkCreateResult> {
+        if (items.length === 0) return { inserted: 0 };
 
-        for (const item of items) {
-            const existing = await this.prisma.envelope.findUnique({
-                where: {
-                    sourcePlugin_sourceId: {
-                        sourcePlugin: item.envelope.source_plugin,
-                        sourceId: item.envelope.source_id,
-                    },
-                },
-                select: { id: true },
-            });
+        let totalInserted = 0;
 
-            if (existing) continue;
-
-            const payload = await this.prisma.messagePayload.create({
-                data: {
-                    type: item.payload.type,
-                    content: item.payload.content,
-                    groupId: item.payload.group_id,
-                    channelId: item.payload.channel_id,
-                    replyTo: item.payload.reply_to,
-                    reactions: toJson(item.payload.reactions),
-                    pinned: item.payload.pinned,
-                    editedDate: item.payload.edited_date
-                        ? new Date(item.payload.edited_date)
-                        : null,
-                    entities: item.payload.entities
-                        ? toJson(item.payload.entities)
-                        : Prisma.DbNull,
-                    rawPayload: toJson(item.payload.raw_payload),
-                },
-            });
-
-            await this.prisma.envelope.create({
-                data: {
-                    sourcePlugin: item.envelope.source_plugin,
-                    sourceId: item.envelope.source_id,
-                    type: item.envelope.type,
-                    payloadRef: payload.id,
-                    hasAttachment: item.envelope.has_attachment,
-                    authorId: item.envelope.author_id,
-                    occurredAt: new Date(item.envelope.occurred_at),
-                },
-            });
-
-            inserted++;
+        for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+            const chunk = items.slice(i, i + CHUNK_SIZE);
+            totalInserted += await this.insertChunk(chunk, options?.organizationId);
         }
 
-        return { inserted };
+        return { inserted: totalInserted };
+    }
+
+    private async insertChunk(
+        items: CreateEnvelopeDto[],
+        organizationId?: string,
+    ): Promise<number> {
+        let inserted = 0;
+
+        await this.prisma.$transaction(async (tx) => {
+            for (const item of items) {
+                try {
+                    const payload = await tx.messagePayload.create({
+                        data: {
+                            type: item.payload.type,
+                            content: item.payload.content,
+                            groupId: item.payload.group_id,
+                            channelId: item.payload.channel_id,
+                            replyTo: item.payload.reply_to,
+                            reactions: item.payload.reactions
+                                ? toJson(item.payload.reactions)
+                                : Prisma.JsonNull,
+                            pinned: item.payload.pinned,
+                            editedDate: item.payload.edited_date
+                                ? new Date(item.payload.edited_date)
+                                : null,
+                            entities: item.payload.entities
+                                ? toJson(item.payload.entities)
+                                : Prisma.JsonNull,
+                            rawPayload: item.payload.raw_payload
+                                ? toJson(item.payload.raw_payload)
+                                : Prisma.JsonNull,
+                        },
+                    });
+
+                    await tx.envelope.create({
+                        data: {
+                            sourcePlugin: item.envelope.source_plugin,
+                            sourceId: item.envelope.source_id,
+                            type: item.envelope.type,
+                            payloadRef: payload.id,
+                            hasAttachment: item.envelope.has_attachment,
+                            authorId: item.envelope.author_id,
+                            organizationId:
+                                item.envelope.organization_id ??
+                                organizationId ??
+                                null,
+                            status: this.parseStatus(item.envelope.status),
+                            permissions: item.envelope.permissions
+                                ? toJson(item.envelope.permissions)
+                                : Prisma.JsonNull,
+                            occurredAt: new Date(item.envelope.occurred_at),
+                        },
+                    });
+
+                    inserted++;
+                } catch (error) {
+                    if (
+                        error instanceof Prisma.PrismaClientKnownRequestError &&
+                        error.code === 'P2002'
+                    ) {
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+        });
+
+        return inserted;
+    }
+
+    private parseStatus(
+        status: string | undefined,
+    ): 'pending' | 'ready' | 'failed' {
+        if (
+            status === 'pending' ||
+            status === 'ready' ||
+            status === 'failed'
+        ) {
+            return status;
+        }
+        return 'pending';
     }
 
     async findAll(query: EnvelopeQueryDto) {
