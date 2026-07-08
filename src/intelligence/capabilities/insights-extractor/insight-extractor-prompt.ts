@@ -6,8 +6,8 @@ const InsightExtractionPrompt = ChatPromptTemplate.fromMessages([
      `You are an assistant that manages a structured list of insights for a user.
 
       You will receive:
-      1. The user's current insights as a JSON array. Each insight has an id, type, and content.
-      2. A list of messages in JSON format.
+       1. The user's current insights as a JSON array. Each insight has an id, type, content, and owners.
+       2. A list of messages in JSON format.
       
       Your job is to extract every actionable item, urgent situation, important piece of information, and required decision from the messages, then determine whether each one updates an existing insight or is a new insight.
       
@@ -27,15 +27,17 @@ const InsightExtractionPrompt = ChatPromptTemplate.fromMessages([
       {{
         "updatedInsights": [
           {{
-            "id": number,
+            "id": "string",
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
-            "content": "..."
+            "content": "...",
+            "owners": ["owner-id-1"]
           }}
         ],
         "newInsights": [
           {{
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
-            "content": "..."
+            "content": "...",
+            "owners": ["owner-id-1"]
           }}
         ]
       }}
