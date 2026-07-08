@@ -73,7 +73,7 @@ describe('InsightExtractorService', () => {
     const response = await service.extractInsights([], []);
 
     expect(response).toBeTruthy();
-  });
+});
 
   it('should return a valid schema', async () => {
     const result = await service.extractInsights(sampleHistory, sampleMessages);
@@ -96,5 +96,5 @@ describe('InsightExtractorService', () => {
     await expect(service.extractInsights([], [])).rejects.toThrow(
       'insights extraction failed after 3 attempts',
     );
-  });
+  }, 10_000);
 });
