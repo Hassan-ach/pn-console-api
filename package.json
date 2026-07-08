@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "prisma:generate": "prisma generate --schema=prisma/raw-db/schema.prisma && prisma generate --schema=prisma/app-db/schema.prisma",
+    "prisma:push": "prisma db push --schema=prisma/raw-db/schema.prisma && prisma db push --schema=prisma/app-db/schema.prisma"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.5.1",
