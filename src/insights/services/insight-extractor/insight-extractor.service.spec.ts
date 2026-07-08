@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RunnableLambda } from '@langchain/core/runnables';
 import { InsightExtractorService } from './insight-extractor.service';
-import { LlmService } from '../../../llm/llm.service';
+import { LlmService } from '../../../intelligence/llm/llm.service';
 import { InsightResultSchema } from './insight-schema';
 import { InputInsight, InputMessage } from 'src/types';
 
