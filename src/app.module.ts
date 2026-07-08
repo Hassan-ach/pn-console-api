@@ -7,8 +7,9 @@ import { TelegramPluginModule } from './plugins/telegram/telegram-plugin.module'
 import { InjectionModule } from './injection/injection.module';
 import { AppController } from './app.controller';
 import { InsightsModule } from './insights/insights.module';
-import { InsightPersistenceService } from './insights/services/insight-persistence/insight-persistence.service';
 import { AppDbModule } from './prisma/app-db/app-db.module';
+import { IntelligenceModule } from './intelligence/.module';
+
 
 @Module({
   imports: [
@@ -19,9 +20,9 @@ import { AppDbModule } from './prisma/app-db/app-db.module';
     TelegramPluginModule,
     InjectionModule,
     InsightsModule,
-    AppDbModule
+    AppDbModule,
+    IntelligenceModule
   ],
   controllers: [AppController],
-  providers: [InsightPersistenceService],
 })
 export class AppModule {}

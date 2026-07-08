@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RunnableLambda } from '@langchain/core/runnables';
-import { InsightExtractorService } from './insight-extractor.service';
-import { LlmService } from '../../../llm/llm.service';
-import { InsightResultSchema } from './insight-schema';
-import { InputInsight, InputMessage } from 'src/types';
+import { InsightExtractorService } from '../capabilities/insights-extractor/insights-extractor.service';
+import { LlmService } from '../llm/llm.service';
+import { InsightResultSchema } from '../capabilities/insights-extractor/insight-schema';
+import {
+  InputInsight,
+  InputMessage,
+} from '../capabilities/insights-extractor/types';
 
 const sampleHistory: InputInsight[] = [
   {
