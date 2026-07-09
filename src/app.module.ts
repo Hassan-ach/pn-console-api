@@ -9,15 +9,15 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AppController } from './app.controller';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule,
-    EnvelopeModule,
-    PluginsModule,
-    TelegramPluginModule,
-    IngestionModule,
-    IntelligenceModule,
-  ],
-  controllers: [AppController],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        PrismaModule,
+        EnvelopeModule,
+        PluginsModule,
+        TelegramPluginModule,
+        IngestionModule,
+        IntelligenceModule,
+    ],
+    controllers: [AppController],
 })
 export class AppModule {}
