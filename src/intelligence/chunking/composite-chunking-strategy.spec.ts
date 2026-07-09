@@ -7,31 +7,33 @@ import type { EnvelopeWithPayload } from '../../types/envelope.types';
 import type { DataChunk } from './types/data-chunk.type';
 
 function makeEnvelope(overrides?: {
-    source_plugin?: string;
-    group_id?: string | null;
-    channel_id?: string | null;
-    occurred_at?: string;
+    sourcePlugin?: string;
+    groupId?: string | null;
+    channelId?: string | null;
+    occurredAt?: Date;
 }): EnvelopeWithPayload {
     return {
         envelope: {
-            source_plugin: overrides?.source_plugin ?? 'telegram',
-            source_id: `${Date.now()}_${Math.random()}`,
+            id: `${Date.now()}_${Math.random()}`,
+            sourcePlugin: overrides?.sourcePlugin ?? 'telegram',
+            sourceId: `${Date.now()}_${Math.random()}`,
             type: 'message',
-            has_attachment: false,
-            author_id: 'user_1',
-            occurred_at: overrides?.occurred_at ?? new Date().toISOString(),
+            hasAttachment: false,
+            authorId: 'user_1',
+            occurredAt: overrides?.occurredAt ?? new Date(),
         },
         payload: {
+            id: `${Date.now()}_${Math.random()}`,
             type: 'direct',
             content: 'test message',
-            group_id: overrides?.group_id ?? null,
-            channel_id: overrides?.channel_id ?? null,
-            reply_to: null,
+            groupId: overrides?.groupId ?? null,
+            channelId: overrides?.channelId ?? null,
+            replyTo: null,
             reactions: {},
             pinned: false,
-            edited_date: null,
+            editedDate: null,
             entities: null,
-            raw_payload: {},
+            rawPayload: {},
         },
     };
 }
@@ -55,12 +57,12 @@ describe('CompositeChunkingStrategy', () => {
     });
 
     describe('partitioning', () => {
-        it('groups by source_plugin correctly', async () => {
+        it('groups by sourcePlugin correctly', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram' }),
-                makeEnvelope({ source_plugin: 'telegram' }),
-                makeEnvelope({ source_plugin: 'discord' }),
-                makeEnvelope({ source_plugin: 'discord' }),
+                makeEnvelope({ sourcePlugin: 'telegram' }),
+                makeEnvelope({ sourcePlugin: 'telegram' }),
+                makeEnvelope({ sourcePlugin: 'discord' }),
+                makeEnvelope({ sourcePlugin: 'discord' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -73,12 +75,12 @@ describe('CompositeChunkingStrategy', () => {
             expect(chunks[1].envelopes).toHaveLength(2);
         });
 
-        it('groups by group_id within the same source', async () => {
+        it('groups by groupId within the same source', async () => {
             const batch = [
-                makeEnvelope({ group_id: 'chat_a' }),
-                makeEnvelope({ group_id: 'chat_a' }),
-                makeEnvelope({ group_id: 'chat_b' }),
-                makeEnvelope({ group_id: 'chat_b' }),
+                makeEnvelope({ groupId: 'chat_a' }),
+                makeEnvelope({ groupId: 'chat_a' }),
+                makeEnvelope({ groupId: 'chat_b' }),
+                makeEnvelope({ groupId: 'chat_b' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -88,19 +90,19 @@ describe('CompositeChunkingStrategy', () => {
 
             expect(chunks).toHaveLength(2);
             for (const c of chunks) {
-                const groupId = c.envelopes[0].payload.group_id;
+                const groupId = c.envelopes[0].payload.groupId;
                 expect(
-                    c.envelopes.every((e) => e.payload.group_id === groupId),
+                    c.envelopes.every((e) => e.payload.groupId === groupId),
                 ).toBe(true);
             }
         });
 
-        it('groups by channel_id within the same source and group', async () => {
+        it('groups by channelId within the same source and group', async () => {
             const batch = [
-                makeEnvelope({ group_id: 'chat_a', channel_id: 'chan_1' }),
-                makeEnvelope({ group_id: 'chat_a', channel_id: 'chan_1' }),
-                makeEnvelope({ group_id: 'chat_a', channel_id: 'chan_2' }),
-                makeEnvelope({ group_id: 'chat_a', channel_id: 'chan_2' }),
+                makeEnvelope({ groupId: 'chat_a', channelId: 'chan_1' }),
+                makeEnvelope({ groupId: 'chat_a', channelId: 'chan_1' }),
+                makeEnvelope({ groupId: 'chat_a', channelId: 'chan_2' }),
+                makeEnvelope({ groupId: 'chat_a', channelId: 'chan_2' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -110,10 +112,10 @@ describe('CompositeChunkingStrategy', () => {
 
             expect(chunks).toHaveLength(2);
             for (const c of chunks) {
-                const channelId = c.envelopes[0].payload.channel_id;
+                const channelId = c.envelopes[0].payload.channelId;
                 expect(
                     c.envelopes.every(
-                        (e) => e.payload.channel_id === channelId,
+                        (e) => e.payload.channelId === channelId,
                     ),
                 ).toBe(true);
             }
@@ -124,14 +126,14 @@ describe('CompositeChunkingStrategy', () => {
         it('builds correct deep fingerprint path', async () => {
             const batch = [
                 makeEnvelope({
-                    source_plugin: 'telegram',
-                    group_id: 'chat_99',
-                    channel_id: 'chan_1',
+                    sourcePlugin: 'telegram',
+                    groupId: 'chat_99',
+                    channelId: 'chan_1',
                 }),
                 makeEnvelope({
-                    source_plugin: 'telegram',
-                    group_id: 'chat_99',
-                    channel_id: 'chan_1',
+                    sourcePlugin: 'telegram',
+                    groupId: 'chat_99',
+                    channelId: 'chan_1',
                 }),
             ];
 
@@ -148,7 +150,7 @@ describe('CompositeChunkingStrategy', () => {
 
         it('uses /minimal suffix for groups below minMessages', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -164,8 +166,8 @@ describe('CompositeChunkingStrategy', () => {
 
         it('uses /start:timestamp for chunker-produced chunks', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -181,8 +183,8 @@ describe('CompositeChunkingStrategy', () => {
     describe('minMessages', () => {
         it('yields minimal chunks for groups below threshold instead of dropping them', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_b' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_b' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -200,8 +202,8 @@ describe('CompositeChunkingStrategy', () => {
 
         it('passes groups at or above threshold to the inner chunker', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -216,9 +218,9 @@ describe('CompositeChunkingStrategy', () => {
 
         it('preserves all envelopes regardless of group size', async () => {
             const batch = [
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_a' }),
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_b' }),
-                makeEnvelope({ source_plugin: 'telegram', group_id: 'chat_c' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_b' }),
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_c' }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -255,11 +257,11 @@ describe('CompositeChunkingStrategy', () => {
             expect(chunks[0].envelopes).toHaveLength(1);
         });
 
-        it('groups null group_id under __null__ key', async () => {
+        it('groups null groupId under __null__ key', async () => {
             const batch = [
-                makeEnvelope({ group_id: null }),
-                makeEnvelope({ group_id: 'chat_a' }),
-                makeEnvelope({ group_id: null }),
+                makeEnvelope({ groupId: null }),
+                makeEnvelope({ groupId: 'chat_a' }),
+                makeEnvelope({ groupId: null }),
             ];
 
             const chunks: DataChunk[] = [];
@@ -268,23 +270,23 @@ describe('CompositeChunkingStrategy', () => {
             }
 
             expect(chunks).toHaveLength(2);
-            const nullChunk = chunks.find((c) => c.id.includes('__null__'));
+            const nullChunk = chunks.find((c) => c.id.includes('__null__'))!;
             expect(nullChunk).toBeDefined();
             expect(nullChunk.envelopes).toHaveLength(2);
         });
 
         it('handles envelopes with same timestamp', async () => {
-            const now = new Date().toISOString();
+            const now = new Date();
             const batch = [
                 makeEnvelope({
-                    source_plugin: 'telegram',
-                    group_id: 'chat_a',
-                    occurred_at: now,
+                    sourcePlugin: 'telegram',
+                    groupId: 'chat_a',
+                    occurredAt: now,
                 }),
                 makeEnvelope({
-                    source_plugin: 'telegram',
-                    group_id: 'chat_a',
-                    occurred_at: now,
+                    sourcePlugin: 'telegram',
+                    groupId: 'chat_a',
+                    occurredAt: now,
                 }),
             ];
 

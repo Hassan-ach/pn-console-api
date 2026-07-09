@@ -61,7 +61,7 @@ export class CompositeChunkingStrategy implements ChunkingStrategy {
 
     private buildMinimalChunk(group: GroupWithFingerprint): DataChunk {
         const times = group.envelopes
-            .map((e) => new Date(e.envelope.occurred_at).getTime())
+            .map((e) => e.envelope.occurredAt.getTime())
             .sort((a, b) => a - b);
         return {
             id: `${group.fingerprint}/minimal`,

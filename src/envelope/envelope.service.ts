@@ -47,42 +47,40 @@ export class EnvelopeService {
                         data: {
                             type: item.payload.type,
                             content: item.payload.content,
-                            groupId: item.payload.group_id,
-                            channelId: item.payload.channel_id,
-                            replyTo: item.payload.reply_to,
+                            groupId: item.payload.groupId,
+                            channelId: item.payload.channelId,
+                            replyTo: item.payload.replyTo,
                             reactions: item.payload.reactions
                                 ? toJson(item.payload.reactions)
                                 : Prisma.JsonNull,
                             pinned: item.payload.pinned,
-                            editedDate: item.payload.edited_date
-                                ? new Date(item.payload.edited_date)
-                                : null,
+                            editedDate: item.payload.editedDate,
                             entities: item.payload.entities
                                 ? toJson(item.payload.entities)
                                 : Prisma.JsonNull,
-                            rawPayload: item.payload.raw_payload
-                                ? toJson(item.payload.raw_payload)
+                            rawPayload: item.payload.rawPayload
+                                ? toJson(item.payload.rawPayload)
                                 : Prisma.JsonNull,
                         },
                     });
 
                     await tx.envelope.create({
                         data: {
-                            sourcePlugin: item.envelope.source_plugin,
-                            sourceId: item.envelope.source_id,
+                            sourcePlugin: item.envelope.sourcePlugin,
+                            sourceId: item.envelope.sourceId,
                             type: item.envelope.type,
                             payloadRef: payload.id,
-                            hasAttachment: item.envelope.has_attachment,
-                            authorId: item.envelope.author_id,
+                            hasAttachment: item.envelope.hasAttachment,
+                            authorId: item.envelope.authorId,
                             organizationId:
-                                item.envelope.organization_id ??
+                                item.envelope.organizationId ??
                                 organizationId ??
                                 null,
                             status: this.parseStatus(item.envelope.status),
                             permissions: item.envelope.permissions
                                 ? toJson(item.envelope.permissions)
                                 : Prisma.JsonNull,
-                            occurredAt: new Date(item.envelope.occurred_at),
+                            occurredAt: item.envelope.occurredAt,
                         },
                     });
 
@@ -118,7 +116,7 @@ export class EnvelopeService {
     async findAll(query: EnvelopeQueryDto) {
         const where: Record<string, unknown> = {};
 
-        if (query.source_plugin) where.sourcePlugin = query.source_plugin;
+        if (query.sourcePlugin) where.sourcePlugin = query.sourcePlugin;
         if (query.status) where.status = query.status;
 
         const page = query.page ?? 1;
@@ -146,9 +144,9 @@ export class EnvelopeService {
         });
     }
 
-    async count(source_plugin?: string) {
+    async count(sourcePlugin?: string) {
         const where: Record<string, unknown> = {};
-        if (source_plugin) where.sourcePlugin = source_plugin;
+        if (sourcePlugin) where.sourcePlugin = sourcePlugin;
         return this.prisma.envelope.count({ where });
     }
 }
