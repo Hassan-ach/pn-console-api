@@ -33,6 +33,26 @@ model InsightVersion {
   @@map("insight_versions")
 }
 
+enum ProviderType {
+  EMAIL
+  GOOGLE
+  MICROSOFT
+  SSO
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  firstName    String       @map("first_name")
+  lastName     String?      @map("last_name")
+  email        String       @unique
+  passwordHash String       @map("password_hash")
+  providerType ProviderType @default(EMAIL) @map("provider_type")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
 enum InsightType {
   TASK
   INFO
