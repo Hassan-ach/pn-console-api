@@ -6,13 +6,13 @@ import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
 
 @Module({
-    providers: [
-        {
-            provide: EnterpriseContextBuilder,
-            useClass: InMemoryEnterpriseContextBuilder,
-        },
-    ],
-    imports: [LlmModule, CapabilitiesModule, StoreModule],
-    exports: [EnterpriseContextBuilder],
+  providers: [
+    {
+      provide: EnterpriseContextBuilder,
+      useClass: InMemoryEnterpriseContextBuilder,
+    },
+  ],
+  imports: [LlmModule, CapabilitiesModule, StoreModule],
+  exports: [EnterpriseContextBuilder, StoreModule],
 })
 export class IntelligenceModule {}

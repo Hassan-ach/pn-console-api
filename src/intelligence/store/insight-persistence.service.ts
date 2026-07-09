@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
-import { Insight } from 'src/types/insight';
+import { Insight } from 'src/types/insight.types';
 
 @Injectable()
 export class InsightPersistenceService {
