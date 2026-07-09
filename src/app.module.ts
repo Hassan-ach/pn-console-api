@@ -6,6 +6,7 @@ import { PluginsModule } from './ingestion/plugins/plugins.module';
 import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
+import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -17,6 +18,7 @@ import { AppController } from './app.controller';
         TelegramPluginModule,
         IngestionModule,
         IntelligenceModule,
+        AuthModule,
     ],
     controllers: [AppController],
 })
