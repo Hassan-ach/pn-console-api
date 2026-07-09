@@ -79,7 +79,21 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
 
         const rows = await this.rawDb.envelope.findMany({
             where,
-            include: { payload: true },
+            include: {
+                payload: {
+                    select: {
+                        type: true,
+                        content: true,
+                        groupId: true,
+                        channelId: true,
+                        replyTo: true,
+                        reactions: true,
+                        pinned: true,
+                        editedDate: true,
+                        entities: true,
+                    },
+                },
+            },
             orderBy: [
                 { sourcePlugin: 'asc' },
                 { payload: { channelId: 'asc' } },
@@ -111,10 +125,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                         string,
                         unknown
                     > | null,
-                    raw_payload: env.payload.rawPayload as Record<
-                        string,
-                        unknown
-                    >,
+                    raw_payload: {} as Record<string, unknown>,
                 },
             }),
         );
