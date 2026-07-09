@@ -13,9 +13,9 @@ enum EnvelopeType {
 }
 
 enum IngestionStatus {
-  pending
-  ready
-  failed
+  PENDING
+  READY
+  FAILED
 }
 
 enum MessagePayloadType {
@@ -51,7 +51,7 @@ model Envelope {
   organizationId String?         @map("organization_id")
   occurredAt     DateTime        @map("occurred_at") @db.Timestamptz
   ingestedAt     DateTime        @default(now()) @map("ingested_at") @db.Timestamptz
-  status         IngestionStatus @default(pending)
+  status         IngestionStatus @default(PENDING)
   permissions    Json            @default("{}")
   payload        MessagePayload  @relation(fields: [payloadRef], references: [id])
 

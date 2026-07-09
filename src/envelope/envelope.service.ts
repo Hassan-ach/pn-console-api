@@ -104,15 +104,15 @@ export class EnvelopeService {
 
     private parseStatus(
         status: string | undefined,
-    ): 'pending' | 'ready' | 'failed' {
+    ): 'PENDING' | 'READY' | 'FAILED' {
         if (
-            status === 'pending' ||
-            status === 'ready' ||
-            status === 'failed'
+            status === 'PENDING' ||
+            status === 'READY' ||
+            status === 'FAILED'
         ) {
             return status;
         }
-        return 'pending';
+        return 'PENDING';
     }
 
     async findAll(query: EnvelopeQueryDto) {
