@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsInt, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString } from 'class-validator';
 import { IngestionService } from './ingestion.service';
 
 class BackfillDto {
@@ -9,6 +9,10 @@ class BackfillDto {
 
     @IsInt()
     limit: number;
+
+    @IsOptional()
+    @IsString()
+    organizationId?: string;
 }
 
 @ApiTags('Ingestion')
@@ -19,6 +23,11 @@ export class IngestionController {
     @Post('backfill')
     @ApiOperation({ summary: 'Backfill historical data from a plugin' })
     async backfill(@Body() dto: BackfillDto) {
-        return this.ingestionService.ingest(dto.plugin, dto.limit);
+        return this.ingestionService.ingest({
+            plugins: dto.plugin,
+            limit: dto.limit,
+            organizationId: dto.organizationId,
+            triggeredBy: 'user',
+        });
     }
 }

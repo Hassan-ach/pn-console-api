@@ -8,7 +8,7 @@ import {
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class EnvelopeDataDto {
     @ApiProperty()
@@ -35,6 +35,21 @@ export class EnvelopeDataDto {
     @ApiProperty()
     @IsDateString()
     occurred_at: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    organization_id?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    status?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsObject()
+    permissions?: Record<string, unknown>;
 }
 
 export class MessagePayloadDataDto {
