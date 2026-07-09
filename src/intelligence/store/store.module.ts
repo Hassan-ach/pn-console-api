@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppDbModule } from 'src/prisma/app-db/app-db.module';
+import { RepositoriesModule } from 'src/repositories/repositories.module';
 import { InsightPersistenceService } from './insight-persistence.service';
 
 @Module({
-  imports: [AppDbModule],
+  imports: [RepositoriesModule],
   providers: [InsightPersistenceService],
   exports: [InsightPersistenceService],
 })
