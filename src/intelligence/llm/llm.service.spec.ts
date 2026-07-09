@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LlmService } from './llm.service';
 import { initChatModel } from 'langchain/chat_models/universal';
+import { AIMessage } from '@langchain/core/messages';
+import type { StructuredTool } from '@langchain/core/tools';
 
 jest.mock('langchain/chat_models/universal', () => ({
   initChatModel: jest.fn(),
@@ -104,6 +106,149 @@ describe('LlmService', () => {
 
       await expect(service.createLLM()).rejects.toThrow(
         'provider unreachable',
+      );
+    });
+  });
+
+  describe('createToolModel', () => {
+    function setEnv() {
+      process.env.LLM_PROVIDER = 'openai';
+      process.env.LLM_MODEL = 'gpt-4';
+      process.env.LLM_API_KEY = 'key';
+    }
+
+    it('throws when bindTools is undefined on the model', async () => {
+      setEnv();
+      mockInitChatModel.mockResolvedValue({});
+
+      await expect(service.createToolModel([])).rejects.toThrow(
+        'does not support tool calling',
+      );
+    });
+
+    it('throws when env vars are missing', async () => {
+      await expect(service.createToolModel([])).rejects.toThrow(
+        'Missing required environment variable',
+      );
+    });
+
+    it('binds tools and returns the runnable', async () => {
+      setEnv();
+
+      const mockRunnable = { invoke: jest.fn() };
+      const mockBindTools = jest.fn().mockReturnValue(mockRunnable);
+      mockInitChatModel.mockResolvedValue({ bindTools: mockBindTools });
+
+      const tools = [{ name: 't1' }] as unknown as StructuredTool[];
+      const result = await service.createToolModel(tools);
+
+      expect(mockBindTools).toHaveBeenCalledWith(tools);
+      expect(result).toBe(mockRunnable);
+    });
+  });
+
+  describe('createToolChain', () => {
+    function setEnv() {
+      process.env.LLM_PROVIDER = 'openai';
+      process.env.LLM_MODEL = 'gpt-4';
+      process.env.LLM_API_KEY = 'key';
+    }
+
+    it('throws when bindTools is undefined on the model', async () => {
+      setEnv();
+      mockInitChatModel.mockResolvedValue({});
+
+      await expect(
+        service.createToolChain({ tools: [] }),
+      ).rejects.toThrow('does not support tool calling');
+    });
+
+    it('throws when env vars are missing', async () => {
+      await expect(
+        service.createToolChain({ tools: [] }),
+      ).rejects.toThrow('Missing required environment variable');
+    });
+
+    it('returns a chain that resolves with content when no tool calls', async () => {
+      setEnv();
+
+      const mockToolModelInvoke = jest
+        .fn()
+        .mockResolvedValue(new AIMessage('hello world'));
+
+      mockInitChatModel.mockResolvedValue({
+        bindTools: jest.fn().mockReturnValue({ invoke: mockToolModelInvoke }),
+      });
+
+      const chain = await service.createToolChain({
+        tools: [],
+        maxIterations: 3,
+      });
+
+      const result = await chain.invoke({ messages: [] });
+
+      expect(result).toBe('hello world');
+    });
+
+    it('executes tool calls and returns final content', async () => {
+      setEnv();
+
+      const toolInvoke = jest.fn().mockResolvedValue('tool_output');
+
+      const tools = [
+        { name: 'test_tool', invoke: toolInvoke },
+      ] as unknown as StructuredTool[];
+
+      const mockToolModelInvoke = jest
+        .fn()
+        .mockResolvedValueOnce(
+          new AIMessage({
+            content: '',
+            tool_calls: [{ name: 'test_tool', args: {}, id: 'call_1' }],
+          }),
+        )
+        .mockResolvedValueOnce(new AIMessage('final result'));
+
+      mockInitChatModel.mockResolvedValue({
+        bindTools: jest.fn().mockReturnValue({ invoke: mockToolModelInvoke }),
+      });
+
+      const chain = await service.createToolChain({
+        tools,
+        maxIterations: 3,
+      });
+
+      const result = await chain.invoke({ messages: [] });
+
+      expect(toolInvoke).toHaveBeenCalledWith({});
+      expect(result).toBe('final result');
+    });
+
+    it('throws when tool calling exceeds max iterations', async () => {
+      setEnv();
+
+      const tools = [
+        { name: 'test_tool', invoke: jest.fn().mockResolvedValue('x') },
+      ] as unknown as StructuredTool[];
+
+      const mockToolModelInvoke = jest.fn().mockResolvedValue(
+        new AIMessage({
+          content: '',
+          tool_calls: [{ name: 'test_tool', args: {}, id: 'call_1' }],
+        }),
+      );
+
+      mockInitChatModel.mockResolvedValue({
+        bindTools: jest.fn().mockReturnValue({ invoke: mockToolModelInvoke }),
+      });
+
+      const chain = await service.createToolChain({
+        tools,
+        maxIterations: 3,
+      });
+
+      await expect(chain.invoke({ messages: [] })).rejects.toThrow(
+        'exceeded max iterations',
       );
     });
   });

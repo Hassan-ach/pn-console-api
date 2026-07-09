@@ -13,6 +13,6 @@ import { StoreModule } from './store/store.module';
         },
     ],
     imports: [LlmModule, CapabilitiesModule, StoreModule],
-    exports: [EnterpriseContextBuilder],
+    exports: [EnterpriseContextBuilder, StoreModule],
 })
 export class IntelligenceModule {}

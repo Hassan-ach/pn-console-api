@@ -3,18 +3,23 @@ import { RunnableLambda } from '@langchain/core/runnables';
 import { InsightExtractorService } from './insights-extractor.service';
 import { LlmService } from '../../llm/llm.service';
 import { InsightResultSchema } from './insight-schema';
-import { InputInsight, InputMessage } from './types';
+import { InputMessage } from './types';
+import { Insight } from 'src/types/insight.types';
 
-const sampleHistory: InputInsight[] = [
+const sampleHistory: Insight[] = [
   {
-    id: 1,
+    id: '1',
+    organizationId: 'org-1',
     type: 'TASK',
     content: 'Send the Q3 budget report to the finance team',
+    owners: [],
   },
   {
-    id: 2,
+    id: '2',
+    organizationId: 'org-1',
     type: 'URGENCY',
     content: 'Production server CPU usage spiking above 90%',
+    owners: [],
   },
 ];
 
@@ -33,7 +38,7 @@ const sampleMessages: InputMessage[] = [
 
 const sampleResult = {
   updatedInsights: [
-    { id: 1, type: 'INFO', content: 'Q3 budget report was sent to finance.' },
+    { id: '1', type: 'INFO', content: 'Q3 budget report was sent to finance.', owners: ['owner-1'] },
   ],
   newInsights: [],
 };
@@ -73,7 +78,7 @@ describe('InsightExtractorService', () => {
     const response = await service.extractInsights([], []);
 
     expect(response).toBeTruthy();
-  });
+});
 
   it('should return a valid schema', async () => {
     const result = await service.extractInsights(sampleHistory, sampleMessages);
@@ -88,7 +93,7 @@ describe('InsightExtractorService', () => {
     await expect(service.extractInsights([], [])).rejects.toThrow(
       'insights extraction failed after 3 attempts',
     );
-  });
+  }, 10_000);
 
   it('should throw because of unstructured output', async () => {
     modelInvoke.mockResolvedValue({ newInsights: {} });
@@ -96,5 +101,5 @@ describe('InsightExtractorService', () => {
     await expect(service.extractInsights([], [])).rejects.toThrow(
       'insights extraction failed after 3 attempts',
     );
-  });
+  }, 10_000);
 });

@@ -1,11 +1,3 @@
-export type InsightType = 'TASK' | 'URGENCY' | 'INFO' | 'DECISION';
-
-export interface InputInsight {
-  id: number;
-  type: InsightType;
-  content: string;
-}
-
 export interface InputMessage {
   id: string;
   type: 'direct' | 'email';
