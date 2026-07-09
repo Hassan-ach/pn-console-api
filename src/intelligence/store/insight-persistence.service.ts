@@ -25,6 +25,8 @@ export class InsightPersistenceService {
                   type: insight.type,
                   content: insight.content,
                   owners: insight.owners,
+                  broadcasted: insight.broadcasted ?? false,
+                  envolopsRef: insight.envolopsRef ?? [],
                 },
               },
             },
@@ -63,6 +65,8 @@ export class InsightPersistenceService {
             type: insight.type,
             content: insight.content,
             owners: insight.owners,
+            broadcasted: insight.broadcasted ?? false,
+            envolopsRef: insight.envolopsRef ?? [],
           })),
         });
       }
