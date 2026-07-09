@@ -9,7 +9,7 @@ export class SourcePartitioner implements Partitioner {
     split(group: EnvelopeWithPayload[]): PartitionResult[] {
         const map = new Map<string, EnvelopeWithPayload[]>();
         for (const item of group) {
-            const key = item.envelope.source_plugin;
+            const key = item.envelope.sourcePlugin;
             const bucket = map.get(key);
             if (bucket) bucket.push(item);
             else map.set(key, [item]);

@@ -9,7 +9,7 @@ export class ChannelIdPartitioner implements Partitioner {
     split(group: EnvelopeWithPayload[]): PartitionResult[] {
         const map = new Map<string, EnvelopeWithPayload[]>();
         for (const item of group) {
-            const key = item.payload.channel_id ?? '__null__';
+            const key = item.payload.channelId ?? '__null__';
             const bucket = map.get(key);
             if (bucket) bucket.push(item);
             else map.set(key, [item]);

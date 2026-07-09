@@ -3,7 +3,7 @@ import {
     IsBoolean,
     IsObject,
     IsOptional,
-    IsDateString,
+    IsDate,
     IsEnum,
     ValidateNested,
 } from 'class-validator';
@@ -13,11 +13,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class EnvelopeDataDto {
     @ApiProperty()
     @IsString()
-    source_plugin: string;
+    sourcePlugin: string;
 
     @ApiProperty()
     @IsString()
-    source_id: string;
+    sourceId: string;
 
     @ApiProperty({ enum: ['message'] })
     @IsEnum(['message'] as const)
@@ -25,21 +25,21 @@ export class EnvelopeDataDto {
 
     @ApiProperty()
     @IsBoolean()
-    has_attachment: boolean;
+    hasAttachment: boolean;
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
     @IsString()
-    author_id: string | null;
+    authorId: string | null;
 
     @ApiProperty()
-    @IsDateString()
-    occurred_at: string;
+    @IsDate()
+    occurredAt: Date;
 
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    organization_id?: string;
+    organizationId?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -64,17 +64,17 @@ export class MessagePayloadDataDto {
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
     @IsString()
-    group_id: string | null;
+    groupId: string | null;
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
     @IsString()
-    channel_id: string | null;
+    channelId: string | null;
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
     @IsString()
-    reply_to: string | null;
+    replyTo: string | null;
 
     @ApiProperty()
     @IsObject()
@@ -86,8 +86,8 @@ export class MessagePayloadDataDto {
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
-    @IsString()
-    edited_date: string | null;
+    @IsDate()
+    editedDate: Date | null;
 
     @ApiProperty({ required: false, nullable: true })
     @IsOptional()
@@ -96,7 +96,7 @@ export class MessagePayloadDataDto {
 
     @ApiProperty()
     @IsObject()
-    raw_payload: Record<string, unknown>;
+    rawPayload: Record<string, unknown>;
 }
 
 export class CreateEnvelopeDto {

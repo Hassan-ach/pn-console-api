@@ -1,26 +1,28 @@
 export interface EnvelopeData {
-    source_plugin: string;
-    source_id: string;
+    id?: string;
+    sourcePlugin: string;
+    sourceId: string;
     type: 'message';
-    has_attachment: boolean;
-    author_id: string | null;
-    occurred_at: string;
-    organization_id?: string;
+    hasAttachment: boolean;
+    authorId: string | null;
+    occurredAt: Date;
+    organizationId?: string;
     status?: string;
     permissions?: Record<string, unknown>;
 }
 
 export interface MessagePayloadData {
+    id?: string;
     type: 'direct' | 'email';
     content: string;
-    group_id: string | null;
-    channel_id: string | null;
-    reply_to: string | null;
+    groupId: string | null;
+    channelId: string | null;
+    replyTo: string | null;
     reactions: Record<string, unknown>;
     pinned: boolean;
-    edited_date: string | null;
+    editedDate: Date | null;
     entities: Record<string, unknown> | null;
-    raw_payload: Record<string, unknown>;
+    rawPayload: Record<string, unknown>;
 }
 
 export type Payload = MessagePayloadData;

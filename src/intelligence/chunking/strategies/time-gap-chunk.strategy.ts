@@ -25,18 +25,16 @@ export class TimeGapChunkStrategy implements ChunkingStrategy {
 
         const sorted = [...batch].sort(
             (a, b) =>
-                new Date(a.envelope.occurred_at).getTime() -
-                new Date(b.envelope.occurred_at).getTime(),
+                a.envelope.occurredAt.getTime() -
+                b.envelope.occurredAt.getTime(),
         );
 
         let chunkStart = 0;
-        let windowStartTime = new Date(
-            sorted[0].envelope.occurred_at,
-        ).getTime();
+        let windowStartTime = sorted[0].envelope.occurredAt.getTime();
 
         for (let i = 1; i < sorted.length; i++) {
-            const prev = new Date(sorted[i - 1].envelope.occurred_at).getTime();
-            const curr = new Date(sorted[i].envelope.occurred_at).getTime();
+            const prev = sorted[i - 1].envelope.occurredAt.getTime();
+            const curr = sorted[i].envelope.occurredAt.getTime();
             const gap = curr - prev;
             const windowElapsed = curr - windowStartTime;
 
@@ -54,7 +52,7 @@ export class TimeGapChunkStrategy implements ChunkingStrategy {
         yield this.buildChunk(
             sorted.slice(chunkStart),
             windowStartTime,
-            new Date(sorted[sorted.length - 1].envelope.occurred_at).getTime(),
+            sorted[sorted.length - 1].envelope.occurredAt.getTime(),
         );
     }
 
@@ -64,7 +62,7 @@ export class TimeGapChunkStrategy implements ChunkingStrategy {
         end: number,
     ): DataChunk {
         return {
-            id: `${envelopes[0].envelope.source_plugin}_${start}`,
+            id: `${envelopes[0].envelope.sourcePlugin}_${start}`,
             envelopes,
             metadata: {
                 timeRange: { start: new Date(start), end: new Date(end) },
