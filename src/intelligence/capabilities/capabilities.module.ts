@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
-import { InsightsExtractorModule } from './insights-extractor/insights-extractor.module';
+import { InsightsExtractionModule } from './insights-extraction/insights-extraction.module';
+import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
 import { MergeModule } from '../merge/merge.module';
 import { CapabilityManager } from './capability-manager.service';
 import { CAPABILITY } from './capability.token';
-import { ICapability } from './capability.interface';
 
 @Module({
-    imports: [InsightsExtractorModule],
+    imports: [InsightsExtractionModule, MergeModule],
     providers: [
         CapabilityManager,
         {
             provide: CAPABILITY,
-            useValue: [] as ICapability[],
+            useFactory: (service: InsightExtractionCapability) => [service],
+            inject: [InsightExtractionCapability],
         },
     ],
     exports: [CapabilityManager, MergeModule],
