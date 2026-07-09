@@ -25,7 +25,7 @@ model InsightVersion {
   type      InsightType
   content   String
   owners    String[]    @db.Uuid
-  envolopsRef    String[]?
+  envolopsRef    String[]
   createdAt DateTime    @default(now()) @map("created_at")
   insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
