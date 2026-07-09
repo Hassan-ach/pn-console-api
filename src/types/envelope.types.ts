@@ -5,6 +5,9 @@ export interface EnvelopeData {
     has_attachment: boolean;
     author_id: string | null;
     occurred_at: string;
+    organization_id?: string;
+    status?: string;
+    permissions?: Record<string, unknown>;
 }
 
 export interface MessagePayloadData {

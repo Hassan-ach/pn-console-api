@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PluginManagerService } from './plugins/plugin-manager.service';
 import { EnvelopeService } from '../envelope/envelope.service';
+import { IngestOptions } from './types/ingestion-options.type';
 
 @Injectable()
 export class IngestionService {
@@ -11,25 +12,34 @@ export class IngestionService {
         private readonly envelopeService: EnvelopeService,
     ) {}
 
-    async ingest(
-        pluginName: string,
-        limit: number,
-    ): Promise<{ inserted: number }> {
-        const plugin = this.pluginManager.get(pluginName);
-        if (!plugin) throw new Error(`Plugin "${pluginName}" not found`);
+    async ingest(options: IngestOptions): Promise<{ inserted: number }> {
+        const pluginNames =
+            typeof options.plugins === 'string'
+                ? [options.plugins]
+                : options.plugins;
 
         let totalInserted = 0;
-        for await (const chunk of plugin.backfill(limit)) {
-            const dto = chunk.map((item) => ({
-                envelope: item.envelope,
-                payload: item.payload,
-            }));
-            const result = await this.envelopeService.bulkCreate(dto);
-            totalInserted += result.inserted;
+
+        for (const name of pluginNames) {
+            const plugin = this.pluginManager.get(name);
+            if (!plugin)
+                throw new Error(`Plugin "${name}" not found`);
+
+            for await (const chunk of plugin.backfill(options.limit)) {
+                const dto = chunk.map((item) => ({
+                    envelope: item.envelope,
+                    payload: item.payload,
+                }));
+                const result = await this.envelopeService.bulkCreate(dto, {
+                    organizationId: options.organizationId,
+                });
+                totalInserted += result.inserted;
+            }
         }
 
         this.logger.log(
-            `Ingest from "${pluginName}" complete: ${totalInserted} inserted`,
+            `Ingest complete: ${totalInserted} inserted`,
+            options,
         );
         return { inserted: totalInserted };
     }
