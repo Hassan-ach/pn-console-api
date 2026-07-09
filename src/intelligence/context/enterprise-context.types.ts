@@ -10,6 +10,7 @@ export interface EnterpriseContext {
         windowEnd?: Date;
     }): AsyncIterable<Insight[]>;
     envelopes(opts?: {
+        ids?: string[];
         windowStart?: Date;
         windowEnd?: Date;
         maxBatchSize?: number;
