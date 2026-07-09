@@ -13,6 +13,7 @@ const sampleHistory: Insight[] = [
     type: 'TASK',
     content: 'Send the Q3 budget report to the finance team',
     owners: [],
+    broadcasted: false,
   },
   {
     id: '2',
@@ -20,6 +21,7 @@ const sampleHistory: Insight[] = [
     type: 'URGENCY',
     content: 'Production server CPU usage spiking above 90%',
     owners: [],
+    broadcasted: true,
   },
 ];
 
@@ -42,7 +44,14 @@ const sampleMessages: InputMessage[] = [
 
 const sampleResult = {
   updatedInsights: [
-    { id: '1', type: 'INFO', content: 'Q3 budget report was sent to finance.', owners: ['owner-1'] },
+    {
+      id: '1',
+      type: 'INFO',
+      content: 'Q3 budget report was sent to finance.',
+      owners: [],
+      envolopsRef: ['1'],
+      broadcasted: false,
+    },
   ],
   newInsights: [],
 };
@@ -82,7 +91,7 @@ describe('InsightExtractorService', () => {
     const response = await service.extractInsights([], []);
 
     expect(response).toBeTruthy();
-});
+  });
 
   it('should return a valid schema', async () => {
     const result = await service.extractInsights(sampleHistory, sampleMessages);

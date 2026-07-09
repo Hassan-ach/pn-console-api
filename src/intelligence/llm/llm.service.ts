@@ -67,7 +67,7 @@ export class LlmService {
     const toolMap = Object.fromEntries(config.tools.map((t) => [t.name, t]));
 
     const chain = RunnableLambda.from(async (input: ToolChainInput) => {
-      let messages = [...input.messages];
+      const messages = [...input.messages];
 
       for (let i = 0; i < (config.maxIterations ?? 3); i++) {
         const response = await toolModel.invoke(messages);
