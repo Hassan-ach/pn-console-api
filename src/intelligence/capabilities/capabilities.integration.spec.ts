@@ -2,9 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RunnableLambda } from '@langchain/core/runnables';
 import { CapabilitiesModule } from './capabilities.module';
 import { CapabilityManager } from './capability-manager.service';
-import { InsightExtractionCapability } from './insights-extractor/insight-extraction.capability';
+import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
 import { LlmService } from '../llm/llm.service';
-import { InsightResultSchema } from './insights-extractor/insight-schema';
 
 describe('CapabilitiesModule — injection', () => {
   let manager: CapabilityManager;
