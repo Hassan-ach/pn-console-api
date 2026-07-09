@@ -9,7 +9,7 @@ export class GroupIdPartitioner implements Partitioner {
     split(group: EnvelopeWithPayload[]): PartitionResult[] {
         const map = new Map<string, EnvelopeWithPayload[]>();
         for (const item of group) {
-            const key = item.payload.group_id ?? '__null__';
+            const key = item.payload.groupId ?? '__null__';
             const bucket = map.get(key);
             if (bucket) bucket.push(item);
             else map.set(key, [item]);

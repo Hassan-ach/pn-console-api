@@ -82,6 +82,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
             include: {
                 payload: {
                     select: {
+                        id: true,
                         type: true,
                         content: true,
                         groupId: true,
@@ -105,27 +106,29 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
         yield rows.map(
             (env): EnvelopeWithPayload => ({
                 envelope: {
-                    source_plugin: env.sourcePlugin,
-                    source_id: env.sourceId,
+                    id: env.id,
+                    sourcePlugin: env.sourcePlugin,
+                    sourceId: env.sourceId,
                     type: env.type.toLowerCase() as 'message',
-                    has_attachment: env.hasAttachment,
-                    author_id: env.authorId,
-                    occurred_at: env.occurredAt.toISOString(),
+                    hasAttachment: env.hasAttachment,
+                    authorId: env.authorId,
+                    occurredAt: env.occurredAt,
                 },
                 payload: {
+                    id: env.payload.id,
                     type: env.payload.type.toLowerCase() as 'direct' | 'email',
                     content: env.payload.content,
-                    group_id: env.payload.groupId,
-                    channel_id: env.payload.channelId,
-                    reply_to: env.payload.replyTo,
+                    groupId: env.payload.groupId,
+                    channelId: env.payload.channelId,
+                    replyTo: env.payload.replyTo,
                     reactions: env.payload.reactions as Record<string, unknown>,
                     pinned: env.payload.pinned,
-                    edited_date: env.payload.editedDate?.toISOString() ?? null,
+                    editedDate: env.payload.editedDate,
                     entities: env.payload.entities as Record<
                         string,
                         unknown
                     > | null,
-                    raw_payload: {} as Record<string, unknown>,
+                    rawPayload: {} as Record<string, unknown>,
                 },
             }),
         );

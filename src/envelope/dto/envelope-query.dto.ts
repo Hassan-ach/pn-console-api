@@ -6,7 +6,7 @@ export class EnvelopeQueryDto {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
-    source_plugin?: string;
+    sourcePlugin?: string;
 
     @ApiPropertyOptional()
     @IsOptional()
