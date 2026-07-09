@@ -7,18 +7,20 @@ import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plug
 import { AppDbModule } from './prisma/app-db/app-db.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
+import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-        PrismaModule,
-        EnvelopeModule,
-        PluginsModule,
-        TelegramPluginModule,
-        IngestionModule,
-        IntelligenceModule,
-    ],
-    controllers: [AppController],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    EnvelopeModule,
+    PluginsModule,
+    TelegramPluginModule,
+    IngestionModule,
+    IntelligenceModule,
+    AuthModule,
+  ],
+  controllers: [AppController],
 })
 export class AppModule {}

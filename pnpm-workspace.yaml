@@ -2,6 +2,7 @@ allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
   '@scarf/scarf': false
+  bcrypt: true
   bufferutil: true
   es5-ext: true
   prisma: true

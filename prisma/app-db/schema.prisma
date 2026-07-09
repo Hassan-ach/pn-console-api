@@ -25,7 +25,7 @@ model InsightVersion {
   type      InsightType
   content   String
   owners    String[]    @db.Uuid
-  envolopsRef    String[]?
+  envolopsRef    String[]
   createdAt DateTime    @default(now()) @map("created_at")
   insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
@@ -44,7 +44,7 @@ enum ProviderType {
 model User {
   id           String       @id @default(uuid()) @db.Uuid
   firstName    String       @map("first_name")
-  lastName     String?      @map("last_name")
+  lastName     String       @map("last_name")
   email        String       @unique
   passwordHash String       @map("password_hash")
   providerType ProviderType @default(EMAIL) @map("provider_type")
