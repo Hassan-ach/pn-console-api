@@ -1,10 +1,14 @@
 export interface InputMessage {
-  id: string;
+  envolopId: string;
   type: 'direct' | 'email';
   content: string;
-  reply_to: string | null;
+  groupId: string | null;
+  channelId: string | null;
+  authorId: string | null;
+  hasAttachment: boolean;
+  replyTo: string | null;
   reactions: Record<string, unknown>;
   pinned: boolean;
-  edited_date: string | null;
+  editedDate: string | null;
   entities: Record<string, unknown> | null;
 }
