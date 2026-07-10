@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RawDbService } from '../../prisma/raw-db/raw-db.service';
 import { AppDbService } from '../../prisma/app-db/app-db.service';
 import { Insight } from '../../types/insight.types';
@@ -8,6 +8,8 @@ import { EnterpriseContextBuilder } from './enterprise-context-builder.abstract'
 
 @Injectable()
 export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
+    private readonly logger = new Logger(InMemoryEnterpriseContextBuilder.name);
+
     constructor(
         private readonly rawDb: RawDbService,
         private readonly appDb: AppDbService,
@@ -49,6 +51,8 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                 },
             },
         });
+
+        this.logger.debug(`Loaded ${insights.length} previous intelligence items for org=${organizationId}`);
 
         yield insights.flatMap((i) =>
             i.versions.map(
@@ -104,6 +108,8 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
             ],
             take: opts?.maxBatchSize,
         });
+
+        this.logger.debug(`Queried ${rows.length} envelopes for org=${organizationId}`);
 
         yield rows.map(
             (env): EnvelopeWithPayload => ({
