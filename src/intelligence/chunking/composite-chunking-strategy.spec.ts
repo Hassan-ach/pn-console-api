@@ -114,9 +114,7 @@ describe('CompositeChunkingStrategy', () => {
             for (const c of chunks) {
                 const channelId = c.envelopes[0].payload.channelId;
                 expect(
-                    c.envelopes.every(
-                        (e) => e.payload.channelId === channelId,
-                    ),
+                    c.envelopes.every((e) => e.payload.channelId === channelId),
                 ).toBe(true);
             }
         });

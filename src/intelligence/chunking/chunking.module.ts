@@ -12,7 +12,7 @@ import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
         ChunkingPipeline,
         {
             provide: CHUNKING_STRATEGY,
-            useFactory: () =>
+            useFactory: () => [
                 new CompositeChunkingStrategy({
                     partitioners: [
                         new SourcePartitioner(),
@@ -25,8 +25,8 @@ import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
                     }),
                     minMessages: 10,
                 }),
-            multi: true,
-        } as any,
+            ],
+        },
     ],
     exports: [ChunkingPipeline],
 })

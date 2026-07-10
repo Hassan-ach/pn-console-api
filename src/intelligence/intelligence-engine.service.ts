@@ -35,7 +35,9 @@ export class IntelligenceEngineService {
         for await (const batch of ctx.previousIntelligence({})) {
             prevIntelligence.push(...batch);
         }
-        this.logger.log(`Previous intelligence: ${prevIntelligence.length} insights`);
+        this.logger.log(
+            `Previous intelligence: ${prevIntelligence.length} insights`,
+        );
 
         let totalInsights = 0;
 

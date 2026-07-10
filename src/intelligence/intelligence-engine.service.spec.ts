@@ -24,9 +24,7 @@ function makeContext(overrides?: {
             ),
         envelopes: jest
             .fn()
-            .mockReturnValue(
-                overrides?.envelopes ?? (async function* () {})(),
-            ),
+            .mockReturnValue(overrides?.envelopes ?? (async function* () {})()),
     };
 }
 
@@ -34,9 +32,7 @@ async function* singleBatch<T>(batch: T[]): AsyncIterable<T[]> {
     yield batch;
 }
 
-async function* singleChunk(
-    chunk: DataChunk,
-): AsyncIterable<DataChunk> {
+async function* singleChunk(chunk: DataChunk): AsyncIterable<DataChunk> {
     yield chunk;
 }
 
@@ -53,12 +49,10 @@ describe('IntelligenceEngineService', () => {
 
         mockContextBuilder = {
             build: jest.fn().mockReturnValue(mockCtx),
-        } as any;
+        };
 
         mockPipeline = {
-            run: jest.fn().mockReturnValue(
-                (async function* () {})(),
-            ),
+            run: jest.fn().mockReturnValue((async function* () {})()),
         } as any;
 
         mockCapabilityManager = {
@@ -148,9 +142,7 @@ describe('IntelligenceEngineService', () => {
         mockContextBuilder.build.mockReturnValue(mockCtx);
         mockPipeline.run.mockReturnValue(singleChunk(chunk));
         mockCapabilityManager.executeAll.mockResolvedValue({
-            results: [
-                { capabilityName: 'cap-a', insights: [insight] },
-            ],
+            results: [{ capabilityName: 'cap-a', insights: [insight] }],
             errors: [],
         });
 
@@ -287,21 +279,36 @@ describe('IntelligenceEngineService', () => {
 
         const envelope: EnvelopeWithPayload = {
             envelope: {
-                id: 'e1', sourcePlugin: 'telegram', sourceId: 's1',
-                type: 'message', hasAttachment: false, authorId: 'u1',
+                id: 'e1',
+                sourcePlugin: 'telegram',
+                sourceId: 's1',
+                type: 'message',
+                hasAttachment: false,
+                authorId: 'u1',
                 occurredAt: new Date(),
             },
             payload: {
-                id: 'p1', type: 'direct', content: 'hello',
-                groupId: null, channelId: null, replyTo: null,
-                reactions: {}, pinned: false, editedDate: null,
-                entities: null, rawPayload: {},
+                id: 'p1',
+                type: 'direct',
+                content: 'hello',
+                groupId: null,
+                channelId: null,
+                replyTo: null,
+                reactions: {},
+                pinned: false,
+                editedDate: null,
+                entities: null,
+                rawPayload: {},
             },
         };
 
         const chunk: DataChunk = {
-            id: 'chunk-1', envelopes: [envelope],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            id: 'chunk-1',
+            envelopes: [envelope],
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
 
         mockCtx = makeContext({
@@ -326,24 +333,44 @@ describe('IntelligenceEngineService', () => {
     it('logs capability errors and persists successful results', async () => {
         const envelope: EnvelopeWithPayload = {
             envelope: {
-                id: 'e1', sourcePlugin: 'telegram', sourceId: 's1',
-                type: 'message', hasAttachment: false, authorId: 'u1',
+                id: 'e1',
+                sourcePlugin: 'telegram',
+                sourceId: 's1',
+                type: 'message',
+                hasAttachment: false,
+                authorId: 'u1',
                 occurredAt: new Date(),
             },
             payload: {
-                id: 'p1', type: 'direct', content: 'hello',
-                groupId: null, channelId: null, replyTo: null,
-                reactions: {}, pinned: false, editedDate: null,
-                entities: null, rawPayload: {},
+                id: 'p1',
+                type: 'direct',
+                content: 'hello',
+                groupId: null,
+                channelId: null,
+                replyTo: null,
+                reactions: {},
+                pinned: false,
+                editedDate: null,
+                entities: null,
+                rawPayload: {},
             },
         };
 
         const chunk: DataChunk = {
-            id: 'chunk-1', envelopes: [envelope],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            id: 'chunk-1',
+            envelopes: [envelope],
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
 
-        const insight: Insight = { id: null, type: 'INFO', content: 'good', owners: [] };
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'good',
+            owners: [],
+        };
 
         mockCtx = makeContext({
             previousIntelligence: singleBatch<Insight>([]),

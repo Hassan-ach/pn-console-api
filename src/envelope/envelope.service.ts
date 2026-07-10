@@ -12,6 +12,7 @@ function toJson(value: unknown): Prisma.InputJsonValue {
 
 export interface BulkCreateResult {
     inserted: number;
+    ids: string[];
 }
 
 @Injectable()
@@ -22,91 +23,93 @@ export class EnvelopeService {
         items: CreateEnvelopeDto[],
         options: { organizationId: string },
     ): Promise<BulkCreateResult> {
-        if (items.length === 0) return { inserted: 0 };
+        if (items.length === 0) return { inserted: 0, ids: [] };
 
         let totalInserted = 0;
+        const allIds: string[] = [];
 
         for (let i = 0; i < items.length; i += CHUNK_SIZE) {
             const chunk = items.slice(i, i + CHUNK_SIZE);
-            totalInserted += await this.insertChunk(chunk, options.organizationId);
+            const { inserted, ids } = await this.insertChunk(
+                chunk,
+                options.organizationId,
+            );
+            totalInserted += inserted;
+            allIds.push(...ids);
         }
 
-        return { inserted: totalInserted };
+        return { inserted: totalInserted, ids: allIds };
     }
 
     private async insertChunk(
         items: CreateEnvelopeDto[],
         organizationId: string,
-    ): Promise<number> {
-        let inserted = 0;
+    ): Promise<{ inserted: number; ids: string[] }> {
+        const ids: string[] = [];
 
         await this.prisma.$transaction(async (tx) => {
             for (const item of items) {
-                try {
-                    const payload = await tx.messagePayload.create({
-                        data: {
-                            type: item.payload.type,
-                            content: item.payload.content,
-                            groupId: item.payload.groupId,
-                            channelId: item.payload.channelId,
-                            replyTo: item.payload.replyTo,
-                            reactions: item.payload.reactions
-                                ? toJson(item.payload.reactions)
-                                : Prisma.JsonNull,
-                            pinned: item.payload.pinned,
-                            editedDate: item.payload.editedDate,
-                            entities: item.payload.entities
-                                ? toJson(item.payload.entities)
-                                : Prisma.JsonNull,
-                            rawPayload: item.payload.rawPayload
-                                ? toJson(item.payload.rawPayload)
-                                : Prisma.JsonNull,
-                        },
-                    });
-
-                    await tx.envelope.create({
-                        data: {
+                const exists = await tx.envelope.findUnique({
+                    where: {
+                        sourcePlugin_sourceId: {
                             sourcePlugin: item.envelope.sourcePlugin,
                             sourceId: item.envelope.sourceId,
-                            type: item.envelope.type,
-                            payloadRef: payload.id,
-                            hasAttachment: item.envelope.hasAttachment,
-                            authorId: item.envelope.authorId,
-                            organizationId:
-                                item.envelope.organizationId ??
-                                organizationId,
-                            status: this.parseStatus(item.envelope.status),
-                            permissions: item.envelope.permissions
-                                ? toJson(item.envelope.permissions)
-                                : Prisma.JsonNull,
-                            occurredAt: item.envelope.occurredAt,
                         },
-                    });
+                    },
+                    select: { id: true },
+                });
+                if (exists) continue;
 
-                    inserted++;
-                } catch (error) {
-                    if (
-                        error instanceof Prisma.PrismaClientKnownRequestError &&
-                        error.code === 'P2002'
-                    ) {
-                        continue;
-                    }
-                    throw error;
-                }
+                const payload = await tx.messagePayload.create({
+                    data: {
+                        type: item.payload.type,
+                        content: item.payload.content,
+                        groupId: item.payload.groupId,
+                        channelId: item.payload.channelId,
+                        replyTo: item.payload.replyTo,
+                        reactions: item.payload.reactions
+                            ? toJson(item.payload.reactions)
+                            : Prisma.JsonNull,
+                        pinned: item.payload.pinned,
+                        editedDate: item.payload.editedDate,
+                        entities: item.payload.entities
+                            ? toJson(item.payload.entities)
+                            : Prisma.JsonNull,
+                        rawPayload: item.payload.rawPayload
+                            ? toJson(item.payload.rawPayload)
+                            : Prisma.JsonNull,
+                    },
+                });
+
+                const envelope = await tx.envelope.create({
+                    data: {
+                        sourcePlugin: item.envelope.sourcePlugin,
+                        sourceId: item.envelope.sourceId,
+                        type: item.envelope.type,
+                        payloadRef: payload.id,
+                        hasAttachment: item.envelope.hasAttachment,
+                        authorId: item.envelope.authorId,
+                        organizationId:
+                            item.envelope.organizationId ?? organizationId,
+                        status: this.parseStatus(item.envelope.status),
+                        permissions: item.envelope.permissions
+                            ? toJson(item.envelope.permissions)
+                            : Prisma.JsonNull,
+                        occurredAt: item.envelope.occurredAt,
+                    },
+                });
+
+                ids.push(envelope.id);
             }
         });
 
-        return inserted;
+        return { inserted: ids.length, ids };
     }
 
     private parseStatus(
         status: string | undefined,
     ): 'PENDING' | 'READY' | 'FAILED' {
-        if (
-            status === 'PENDING' ||
-            status === 'READY' ||
-            status === 'FAILED'
-        ) {
+        if (status === 'PENDING' || status === 'READY' || status === 'FAILED') {
             return status;
         }
         return 'PENDING';
