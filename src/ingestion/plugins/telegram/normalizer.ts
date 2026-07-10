@@ -16,7 +16,7 @@ export function normalizeTelegramMessage(
         payload: {
             type: 'direct',
             content: msg.text,
-            groupId: msg.channel_id,
+            groupId: msg.group_id,
             channelId: msg.channel_id,
             replyTo: msg.replyTo?.toString() ?? null,
             reactions: msg.reactions,

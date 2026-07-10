@@ -13,7 +13,9 @@ export class InsightPersistenceService {
 
         const newCount = insights.filter((i) => i.id === null).length;
         const updateCount = insights.filter((i) => i.id !== null).length;
-        this.logger.log(`Persisting ${insights.length} insights (${newCount} new, ${updateCount} updates)`);
+        this.logger.log(
+            `Persisting ${insights.length} insights (${newCount} new, ${updateCount} updates)`,
+        );
 
         await Promise.all(
             insights.map((insight) => {
