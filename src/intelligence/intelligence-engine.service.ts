@@ -50,7 +50,7 @@ export class IntelligenceEngineService {
 
                 const insights = results.flatMap((r) => r.insights);
                 if (insights.length > 0) {
-                    await this.persistence.persistAll(insights);
+                    await this.persistence.persistAll(insights, organizationId);
                     totalInsights += insights.length;
                 }
             }
