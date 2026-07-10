@@ -66,11 +66,13 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
 
     private async *queryEnvelopes(
         organizationId: string,
-        opts?: { windowStart?: Date; windowEnd?: Date; maxBatchSize?: number },
+        opts?: { ids?: string[]; windowStart?: Date; windowEnd?: Date; maxBatchSize?: number },
     ): AsyncIterable<EnvelopeWithPayload[]> {
         const where: Record<string, unknown> = { organizationId };
 
-        if (opts?.windowStart || opts?.windowEnd) {
+        if (opts?.ids) {
+            where.id = { in: opts.ids };
+        } else if (opts?.windowStart || opts?.windowEnd) {
             where.occurredAt = {};
             if (opts.windowStart)
                 (where.occurredAt as any).gte = opts.windowStart;
