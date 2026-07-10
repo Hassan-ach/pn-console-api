@@ -11,18 +11,19 @@ export class EnvelopesIngestedListener {
 
     @OnEvent('envelopes.ingested')
     async handle(event: EnvelopesIngestedEvent) {
+        if (event.inserted === 0) {
+            this.logger.log(
+                `Skipping intelligence: ${event.inserted} envelopes inserted`,
+            );
+            return;
+        }
+
         this.logger.log(
             `Triggered by ${event.type}: ${event.inserted} envelopes in org=${event.organizationId}`,
         );
 
         try {
             const result = await this.engine.run(event.organizationId, {
-                ...(event.windowStart && event.windowEnd
-                    ? {
-                          windowStart: event.windowStart,
-                          windowEnd: event.windowEnd,
-                      }
-                    : {}),
                 ...(event.envelopeIds?.length
                     ? { envelopeIds: event.envelopeIds }
                     : {}),

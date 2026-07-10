@@ -28,7 +28,6 @@ export class IngestionService {
         );
 
         let totalInserted = 0;
-        const windowStart = new Date();
 
         for (const name of pluginNames) {
             const plugin = this.pluginManager.get(name);
@@ -37,6 +36,7 @@ export class IngestionService {
             this.logger.log(`Plugin "${name}" backfill starting`);
 
             let pluginInserted = 0;
+            const pluginEnvelopeIds: string[] = [];
 
             for await (const chunk of plugin.backfill(options.limit)) {
                 const dto = chunk.map((item) => ({
@@ -48,6 +48,7 @@ export class IngestionService {
                 });
                 pluginInserted += result.inserted;
                 totalInserted += result.inserted;
+                pluginEnvelopeIds.push(...result.ids);
                 this.logger.debug(
                     `Plugin "${name}": inserted ${result.inserted} envelopes in chunk`,
                 );
@@ -63,8 +64,11 @@ export class IngestionService {
                     options.organizationId,
                     totalInserted,
                     'backfill',
-                    windowStart,
-                    new Date(),
+                    undefined,
+                    undefined,
+                    pluginEnvelopeIds.length > 0
+                        ? pluginEnvelopeIds
+                        : undefined,
                 ),
             );
         }

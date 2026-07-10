@@ -49,7 +49,7 @@ describe('IntelligenceEngineService', () => {
 
         mockContextBuilder = {
             build: jest.fn().mockReturnValue(mockCtx),
-        } as any;
+        };
 
         mockPipeline = {
             run: jest.fn().mockReturnValue((async function* () {})()),

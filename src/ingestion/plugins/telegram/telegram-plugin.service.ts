@@ -140,17 +140,26 @@ export class TelegramPluginService implements IPlugin {
                                 ? msg.date
                                 : new Date((msg.date as number) * 1000);
 
-                        // Resolve channel_id from peer_id
+                        // Resolve channel_id / group_id from peer_id
                         let channelId: string | null = null;
-                        if (raw.peer_id?.Channel?.channel_id) {
-                            channelId =
-                                raw.peer_id.Channel.channel_id.toString();
+                        let groupId: string | null = null;
+                        if (raw.peerId?.className === 'PeerChannel') {
+                            channelId = raw.peerId.channelId.toString();
+                        }
+                        if (raw.peerId?.className === 'PeerChat') {
+                            groupId = raw.peerId.chatId.toString();
+                        } else {
+                            groupId = chatId;
                         }
 
                         // Resolve author_id from from_id
                         let authorId: string | null = null;
-                        if (raw.from_id?.User?.user_id) {
-                            authorId = raw.from_id.User.user_id.toString();
+                        if (raw.fromId?.userId) {
+                            authorId = raw.fromId.userId.toString();
+                        } else if (raw.fromId?.channelId) {
+                            authorId = raw.fromId.channelId.toString();
+                        } else if (raw.fromId?.chatId) {
+                            authorId = raw.fromId.chatId.toString();
                         }
 
                         // Resolve entities
@@ -165,6 +174,7 @@ export class TelegramPluginService implements IPlugin {
                         chunk.push({
                             id: msg.id as number,
                             channel_id: channelId,
+                            group_id: groupId,
                             text: msgText,
                             date: ts,
                             replyTo:

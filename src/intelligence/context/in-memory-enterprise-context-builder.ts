@@ -111,7 +111,6 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                 { payload: { channelId: 'asc' } },
                 { occurredAt: 'asc' },
             ],
-            take: opts?.maxBatchSize,
         });
 
         this.logger.debug(
@@ -142,7 +141,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                     string,
                     unknown
                 > | null,
-                rawPayload: {} as Record<string, unknown>,
+                rawPayload: {},
             },
         }));
     }

@@ -7,6 +7,7 @@ export interface ResolvedEntity {
 export interface TelegramMessageRaw {
     id: number;
     channel_id: string | null;
+    group_id: string | null;
     text: string;
     date: Date;
     replyTo: number | null;
