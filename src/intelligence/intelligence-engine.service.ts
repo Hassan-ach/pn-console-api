@@ -20,12 +20,22 @@ export class IntelligenceEngineService {
         organizationId: string,
         opts?: { envelopeIds?: string[]; windowStart?: Date; windowEnd?: Date },
     ): Promise<{ insightsPersisted: number }> {
+        this.logger.log(
+            `Starting intelligence run: org=${organizationId}${
+                opts?.envelopeIds?.length
+                    ? `, ids=${opts.envelopeIds.length}`
+                    : ''
+            }${opts?.windowStart ? `, window=${opts.windowStart}–${opts.windowEnd}` : ''}`,
+        );
+
+        const startedAt = Date.now();
         const ctx = this.contextBuilder.build(organizationId);
 
         const prevIntelligence: Insight[] = [];
         for await (const batch of ctx.previousIntelligence({})) {
             prevIntelligence.push(...batch);
         }
+        this.logger.log(`Previous intelligence: ${prevIntelligence.length} insights`);
 
         let totalInsights = 0;
 
@@ -35,6 +45,9 @@ export class IntelligenceEngineService {
             windowEnd: opts?.windowEnd,
         })) {
             if (envBatch.length === 0) continue;
+
+            this.logger.debug(`Processing batch: ${envBatch.length} envelopes`);
+
             for await (const chunk of this.pipeline.run(envBatch)) {
                 const { results, errors } =
                     await this.capabilityManager.executeAll({
@@ -49,12 +62,20 @@ export class IntelligenceEngineService {
                 }
 
                 const insights = results.flatMap((r) => r.insights);
+                this.logger.debug(
+                    `Chunk ${chunk.id}: ${chunk.envelopes.length} envelopes → ${insights.length} insights`,
+                );
+
                 if (insights.length > 0) {
                     await this.persistence.persistAll(insights, organizationId);
                     totalInsights += insights.length;
                 }
             }
         }
+
+        this.logger.log(
+            `Intelligence run complete: ${totalInsights} insights persisted in ${Date.now() - startedAt}ms`,
+        );
 
         return { insightsPersisted: totalInsights };
     }
