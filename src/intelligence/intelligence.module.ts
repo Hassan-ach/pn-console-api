@@ -4,6 +4,7 @@ import { InMemoryEnterpriseContextBuilder } from './context/in-memory-enterprise
 import { LlmModule } from './llm/llm.module';
 import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
+import { MergeModule } from './merge/merge.module';
 
 @Module({
     providers: [
@@ -12,7 +13,7 @@ import { StoreModule } from './store/store.module';
             useClass: InMemoryEnterpriseContextBuilder,
         },
     ],
-    imports: [LlmModule, CapabilitiesModule, StoreModule],
+    imports: [LlmModule, CapabilitiesModule, StoreModule, MergeModule],
     exports: [EnterpriseContextBuilder, StoreModule],
 })
 export class IntelligenceModule {}
