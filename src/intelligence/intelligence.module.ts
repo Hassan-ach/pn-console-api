@@ -7,6 +7,7 @@ import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
+import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
 @Module({
     providers: [
@@ -15,6 +16,7 @@ import { IntelligenceEngineService } from './intelligence-engine.service';
             useClass: InMemoryEnterpriseContextBuilder,
         },
         IntelligenceEngineService,
+        EnvelopesIngestedListener,
     ],
     imports: [
         LlmModule,
