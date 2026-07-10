@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { EnterpriseContextBuilder } from './context/enterprise-context-builder.abstract';
 import { InMemoryEnterpriseContextBuilder } from './context/in-memory-enterprise-context-builder';
 import { LlmModule } from './llm/llm.module';
+import { ChunkingModule } from './chunking/chunking.module';
 import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
+import { IntelligenceEngineService } from './intelligence-engine.service';
 
 @Module({
     providers: [
@@ -12,8 +14,15 @@ import { MergeModule } from './merge/merge.module';
             provide: EnterpriseContextBuilder,
             useClass: InMemoryEnterpriseContextBuilder,
         },
+        IntelligenceEngineService,
     ],
-    imports: [LlmModule, CapabilitiesModule, StoreModule, MergeModule],
-    exports: [EnterpriseContextBuilder, StoreModule],
+    imports: [
+        LlmModule,
+        ChunkingModule,
+        CapabilitiesModule,
+        StoreModule,
+        MergeModule,
+    ],
+    exports: [EnterpriseContextBuilder, StoreModule, IntelligenceEngineService],
 })
 export class IntelligenceModule {}
