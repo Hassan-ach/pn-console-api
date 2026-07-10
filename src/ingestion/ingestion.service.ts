@@ -40,18 +40,16 @@ export class IngestionService {
                 totalInserted += result.inserted;
             }
 
-            if (options.organizationId) {
-                this.eventEmitter.emit(
-                    'envelopes.ingested',
-                    new EnvelopesIngestedEvent(
-                        options.organizationId,
-                        totalInserted,
-                        'backfill',
-                        windowStart,
-                        new Date(),
-                    ),
-                );
-            }
+            this.eventEmitter.emit(
+                'envelopes.ingested',
+                new EnvelopesIngestedEvent(
+                    options.organizationId,
+                    totalInserted,
+                    'backfill',
+                    windowStart,
+                    new Date(),
+                ),
+            );
         }
 
         this.logger.log(
