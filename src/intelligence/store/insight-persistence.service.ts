@@ -6,14 +6,17 @@ import { Insight } from 'src/types/insight.types';
 export class InsightPersistenceService {
   constructor(private readonly repo: InsightRepository) {}
 
-  async persistAll(insights: Insight[]): Promise<void> {
+  async persistAll(
+    insights: Insight[],
+    organizationId: string,
+  ): Promise<void> {
     if (insights.length === 0) return;
 
     await Promise.all(
       insights.map((insight) => {
         if (insight.id === null) {
           return this.repo.create({
-            organizationId: insight.organizationId,
+            organizationId,
             type: insight.type,
             content: insight.content,
             owners: insight.owners,
@@ -33,7 +36,7 @@ export class InsightPersistenceService {
     );
   }
 
-  async persist(insight: Insight): Promise<void> {
-    return this.persistAll([insight]);
+  async persist(insight: Insight, organizationId: string): Promise<void> {
+    return this.persistAll([insight], organizationId);
   }
 }
