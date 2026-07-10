@@ -1,9 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CAPABILITY } from './capability.token';
 import { ICapability, CapabilityInput, CapabilityResult } from './capability.interface';
 
 @Injectable()
 export class CapabilityManager {
+    private readonly logger = new Logger(CapabilityManager.name);
+
     constructor(
         @Inject(CAPABILITY)
         private readonly capabilities: ICapability[],
@@ -21,6 +23,9 @@ export class CapabilityManager {
         results: CapabilityResult[];
         errors: { capabilityName: string; error: string }[];
     }> {
+        const names = this.capabilities.map((c) => c.name);
+        this.logger.debug(`Executing ${this.capabilities.length} capabilities: ${names.join(', ')}`);
+
         const entries = this.capabilities.map((cap) => ({
             name: cap.name,
             promise: cap
@@ -39,6 +44,9 @@ export class CapabilityManager {
             const outcome = outcomes[i];
             if (outcome.status === 'fulfilled') {
                 results.push(outcome.value);
+                this.logger.debug(
+                    `Capability ${entries[i].name}: ${outcome.value.insights.length} insights`,
+                );
             } else {
                 errors.push({
                     capabilityName: entries[i].name,
@@ -47,6 +55,9 @@ export class CapabilityManager {
                             ? outcome.reason.message
                             : String(outcome.reason),
                 });
+                this.logger.warn(
+                    `Capability ${entries[i].name} failed: ${errors[errors.length - 1].error}`,
+                );
             }
         }
 
@@ -57,6 +68,7 @@ export class CapabilityManager {
         name: string,
         input: CapabilityInput,
     ): Promise<CapabilityResult> {
+        this.logger.debug(`Executing capability "${name}"`);
         const cap = this.getByName(name);
         if (!cap) {
             throw new NotFoundException(`Capability "${name}" not found`);
