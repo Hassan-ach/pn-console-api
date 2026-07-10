@@ -20,7 +20,7 @@ export class EnvelopeService {
 
     async bulkCreate(
         items: CreateEnvelopeDto[],
-        options?: { organizationId?: string },
+        options: { organizationId: string },
     ): Promise<BulkCreateResult> {
         if (items.length === 0) return { inserted: 0 };
 
@@ -28,7 +28,7 @@ export class EnvelopeService {
 
         for (let i = 0; i < items.length; i += CHUNK_SIZE) {
             const chunk = items.slice(i, i + CHUNK_SIZE);
-            totalInserted += await this.insertChunk(chunk, options?.organizationId);
+            totalInserted += await this.insertChunk(chunk, options.organizationId);
         }
 
         return { inserted: totalInserted };
@@ -36,7 +36,7 @@ export class EnvelopeService {
 
     private async insertChunk(
         items: CreateEnvelopeDto[],
-        organizationId?: string,
+        organizationId: string,
     ): Promise<number> {
         let inserted = 0;
 
@@ -74,8 +74,7 @@ export class EnvelopeService {
                             authorId: item.envelope.authorId,
                             organizationId:
                                 item.envelope.organizationId ??
-                                organizationId ??
-                                null,
+                                organizationId,
                             status: this.parseStatus(item.envelope.status),
                             permissions: item.envelope.permissions
                                 ? toJson(item.envelope.permissions)
