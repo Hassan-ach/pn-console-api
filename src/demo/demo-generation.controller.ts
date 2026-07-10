@@ -17,7 +17,9 @@ export class DemoGenerationController {
     ) {}
 
     @Post('generate')
-    @ApiOperation({ summary: 'Demo: extract insights from messages using the LLM' })
+    @ApiOperation({
+        summary: 'Demo: extract insights from messages using the LLM',
+    })
     async generate(@Body() dto: GenerateInsightsDto) {
         const envelopes: EnvelopeWithPayload[] = dto.messages.map((msg) => ({
             envelope: {

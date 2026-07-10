@@ -1,6 +1,10 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CAPABILITY } from './capability.token';
-import { ICapability, CapabilityInput, CapabilityResult } from './capability.interface';
+import {
+    ICapability,
+    CapabilityInput,
+    CapabilityResult,
+} from './capability.interface';
 
 @Injectable()
 export class CapabilityManager {
@@ -24,7 +28,9 @@ export class CapabilityManager {
         errors: { capabilityName: string; error: string }[];
     }> {
         const names = this.capabilities.map((c) => c.name);
-        this.logger.debug(`Executing ${this.capabilities.length} capabilities: ${names.join(', ')}`);
+        this.logger.debug(
+            `Executing ${this.capabilities.length} capabilities: ${names.join(', ')}`,
+        );
 
         const entries = this.capabilities.map((cap) => ({
             name: cap.name,

@@ -14,7 +14,9 @@ export class ChunkingPipeline {
     ) {}
 
     async *run(batch: EnvelopeWithPayload[]): AsyncIterable<DataChunk> {
-        this.logger.debug(`Chunking ${batch.length} envelopes with ${this.strategies.length} strategies`);
+        this.logger.debug(
+            `Chunking ${batch.length} envelopes with ${this.strategies.length} strategies`,
+        );
 
         let totalChunks = 0;
         for (const strategy of this.strategies) {
@@ -23,6 +25,8 @@ export class ChunkingPipeline {
                 yield chunk;
             }
         }
-        this.logger.debug(`Chunking complete: ${totalChunks} chunks from ${batch.length} envelopes`);
+        this.logger.debug(
+            `Chunking complete: ${totalChunks} chunks from ${batch.length} envelopes`,
+        );
     }
 }

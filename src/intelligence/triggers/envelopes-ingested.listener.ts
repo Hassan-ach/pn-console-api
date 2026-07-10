@@ -7,9 +7,7 @@ import { IntelligenceEngineService } from '../intelligence-engine.service';
 export class EnvelopesIngestedListener {
     private readonly logger = new Logger(EnvelopesIngestedListener.name);
 
-    constructor(
-        private readonly engine: IntelligenceEngineService,
-    ) {}
+    constructor(private readonly engine: IntelligenceEngineService) {}
 
     @OnEvent('envelopes.ingested')
     async handle(event: EnvelopesIngestedEvent) {

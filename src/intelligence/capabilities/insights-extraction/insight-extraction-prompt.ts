@@ -1,9 +1,9 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 const InsightExtractionPrompt = ChatPromptTemplate.fromMessages([
-  [
-    'system',
-    `You are an assistant that manages a structured list of insights for a user.
+    [
+        'system',
+        `You are an assistant that manages a structured list of insights for a user.
 
       You will receive:
        1. The user's current insights as a JSON array. Each insight has an id, type, content, owners, envolopsRef, and broadcasted.
@@ -65,15 +65,15 @@ const InsightExtractionPrompt = ChatPromptTemplate.fromMessages([
         "updatedInsights": [],
         "newInsights": []
       }}`,
-  ],
-  [
-    'human',
-    `Current insights:
+    ],
+    [
+        'human',
+        `Current insights:
     {history}
 
     New messages:
     {messages}`,
-  ],
+    ],
 ]);
 
 export default InsightExtractionPrompt;

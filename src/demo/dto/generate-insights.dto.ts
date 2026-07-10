@@ -3,7 +3,9 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class DemoMessageDto {
-    @ApiProperty({ example: 'Hey team, we need to deploy the hotfix by Friday' })
+    @ApiProperty({
+        example: 'Hey team, we need to deploy the hotfix by Friday',
+    })
     @IsString()
     content: string;
 

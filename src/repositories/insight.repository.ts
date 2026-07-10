@@ -4,139 +4,139 @@ import { Insight, InsightType } from 'src/types/insight.types';
 
 @Injectable()
 export class InsightRepository {
-  constructor(private readonly prisma: AppDbService) {}
+    constructor(private readonly prisma: AppDbService) {}
 
-  async create(data: {
-    organizationId?: string;
-    type: InsightType;
-    content: string;
-    owners: string[];
-    envolopsRef?: string[];
-    broadcasted?: boolean;
-  }): Promise<Insight> {
-    const insight = await this.prisma.insight.create({
-      data: {
-        organizationId: data.organizationId ?? null,
-        versions: {
-          create: {
-            version: 1,
-            type: data.type,
-            content: data.content,
-            owners: data.owners,
-            broadcasted: data.broadcasted ?? false,
-            envolopsRef: data.envolopsRef ?? [],
-          },
-        },
-      },
-      include: {
-        versions: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
+    async create(data: {
+        organizationId?: string;
+        type: InsightType;
+        content: string;
+        owners: string[];
+        envolopsRef?: string[];
+        broadcasted?: boolean;
+    }): Promise<Insight> {
+        const insight = await this.prisma.insight.create({
+            data: {
+                organizationId: data.organizationId ?? null,
+                versions: {
+                    create: {
+                        version: 1,
+                        type: data.type,
+                        content: data.content,
+                        owners: data.owners,
+                        broadcasted: data.broadcasted ?? false,
+                        envolopsRef: data.envolopsRef ?? [],
+                    },
+                },
+            },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+            },
+        });
 
-    return this.toInsight(insight);
-  }
+        return this.toInsight(insight);
+    }
 
-  async update(
-    id: string,
-    data: {
-      type: InsightType;
-      content: string;
-      owners: string[];
-      envolopsRef?: string[];
-      broadcasted?: boolean;
-    },
-  ): Promise<Insight> {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.insight.update({ where: { id }, data: {} });
-
-      const latestVersions = await tx.insightVersion.groupBy({
-        by: ['insightId'],
-        where: { insightId: id },
-        _max: { version: true },
-      });
-
-      const maxVersion = latestVersions[0]?._max.version ?? 0;
-
-      await tx.insightVersion.create({
+    async update(
+        id: string,
         data: {
-          insightId: id,
-          version: maxVersion + 1,
-          type: data.type,
-          content: data.content,
-          owners: data.owners,
-          broadcasted: data.broadcasted ?? false,
-          envolopsRef: data.envolopsRef ?? [],
+            type: InsightType;
+            content: string;
+            owners: string[];
+            envolopsRef?: string[];
+            broadcasted?: boolean;
         },
-      });
+    ): Promise<Insight> {
+        return this.prisma.$transaction(async (tx) => {
+            await tx.insight.update({ where: { id }, data: {} });
 
-      const updated = await tx.insight.findUnique({
-        where: { id },
-        include: {
-          versions: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
-      });
+            const latestVersions = await tx.insightVersion.groupBy({
+                by: ['insightId'],
+                where: { insightId: id },
+                _max: { version: true },
+            });
 
-      return this.toInsight(updated!);
-    });
-  }
+            const maxVersion = latestVersions[0]?._max.version ?? 0;
 
-  async getAll(): Promise<Insight[]> {
-    const insights = await this.prisma.insight.findMany({
-      include: {
+            await tx.insightVersion.create({
+                data: {
+                    insightId: id,
+                    version: maxVersion + 1,
+                    type: data.type,
+                    content: data.content,
+                    owners: data.owners,
+                    broadcasted: data.broadcasted ?? false,
+                    envolopsRef: data.envolopsRef ?? [],
+                },
+            });
+
+            const updated = await tx.insight.findUnique({
+                where: { id },
+                include: {
+                    versions: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                    },
+                },
+            });
+
+            return this.toInsight(updated!);
+        });
+    }
+
+    async getAll(): Promise<Insight[]> {
+        const insights = await this.prisma.insight.findMany({
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+            },
+        });
+
+        return insights.map((i) => this.toInsight(i));
+    }
+
+    async getAllByOrganizationId(organizationId: string): Promise<Insight[]> {
+        const insights = await this.prisma.insight.findMany({
+            where: { organizationId },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+            },
+        });
+
+        return insights.map((i) => this.toInsight(i));
+    }
+
+    private toInsight(row: {
+        id: string;
+        organizationId: string | null;
         versions: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
-
-    return insights.map((i) => this.toInsight(i));
-  }
-
-  async getAllByOrganizationId(organizationId: string): Promise<Insight[]> {
-    const insights = await this.prisma.insight.findMany({
-      where: { organizationId },
-      include: {
-        versions: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
-
-    return insights.map((i) => this.toInsight(i));
-  }
-
-  private toInsight(row: {
-    id: string;
-    organizationId: string | null;
-    versions: {
-      version: number;
-      type: string;
-      content: string;
-      owners: string[];
-      envolopsRef: string[];
-      broadcasted: boolean;
-      createdAt: Date;
-    }[];
-  }): Insight {
-    const latest = row.versions[0];
-    return {
-      id: row.id,
-      organizationId: row.organizationId ?? undefined,
-      type: latest.type as Insight['type'],
-      content: latest.content,
-      owners: [...latest.owners],
-      envolopsRef: [...latest.envolopsRef],
-      broadcasted: latest.broadcasted,
-      version: latest.version,
-      createdAt: latest.createdAt,
-    };
-  }
+            version: number;
+            type: string;
+            content: string;
+            owners: string[];
+            envolopsRef: string[];
+            broadcasted: boolean;
+            createdAt: Date;
+        }[];
+    }): Insight {
+        const latest = row.versions[0];
+        return {
+            id: row.id,
+            organizationId: row.organizationId ?? undefined,
+            type: latest.type as Insight['type'],
+            content: latest.content,
+            owners: [...latest.owners],
+            envolopsRef: [...latest.envolopsRef],
+            broadcasted: latest.broadcasted,
+            version: latest.version,
+            createdAt: latest.createdAt,
+        };
+    }
 }

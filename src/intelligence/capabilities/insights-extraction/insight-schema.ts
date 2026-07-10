@@ -3,25 +3,25 @@ import z from 'zod';
 const InsightTypeSchema = z.enum(['TASK', 'URGENCY', 'INFO', 'DECISION']);
 
 export const UpdatedInsightSchema = z.object({
-  id: z.string(),
-  type: InsightTypeSchema,
-  content: z.string(),
-  owners: z.array(z.string()),
-  envolopsRef: z.array(z.string()),
-  broadcasted: z.boolean(),
+    id: z.string(),
+    type: InsightTypeSchema,
+    content: z.string(),
+    owners: z.array(z.string()),
+    envolopsRef: z.array(z.string()),
+    broadcasted: z.boolean(),
 });
 
 export const NewInsightSchema = z.object({
-  type: InsightTypeSchema,
-  content: z.string(),
-  owners: z.array(z.string()),
-  envolopsRef: z.array(z.string()),
-  broadcasted: z.boolean(),
+    type: InsightTypeSchema,
+    content: z.string(),
+    owners: z.array(z.string()),
+    envolopsRef: z.array(z.string()),
+    broadcasted: z.boolean(),
 });
 
 export const InsightResultSchema = z.object({
-  updatedInsights: z.array(UpdatedInsightSchema),
-  newInsights: z.array(NewInsightSchema),
+    updatedInsights: z.array(UpdatedInsightSchema),
+    newInsights: z.array(NewInsightSchema),
 });
 
 export type InsightExtractionResult = z.infer<typeof InsightResultSchema>;

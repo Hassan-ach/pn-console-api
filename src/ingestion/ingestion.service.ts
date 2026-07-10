@@ -32,8 +32,7 @@ export class IngestionService {
 
         for (const name of pluginNames) {
             const plugin = this.pluginManager.get(name);
-            if (!plugin)
-                throw new Error(`Plugin "${name}" not found`);
+            if (!plugin) throw new Error(`Plugin "${name}" not found`);
 
             this.logger.log(`Plugin "${name}" backfill starting`);
 
@@ -54,7 +53,9 @@ export class IngestionService {
                 );
             }
 
-            this.logger.log(`Plugin "${name}" backfill complete: ${pluginInserted} inserted`);
+            this.logger.log(
+                `Plugin "${name}" backfill complete: ${pluginInserted} inserted`,
+            );
 
             this.eventEmitter.emit(
                 'envelopes.ingested',

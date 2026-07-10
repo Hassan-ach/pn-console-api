@@ -52,25 +52,30 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
             },
         });
 
-        this.logger.debug(`Loaded ${insights.length} previous intelligence items for org=${organizationId}`);
+        this.logger.debug(
+            `Loaded ${insights.length} previous intelligence items for org=${organizationId}`,
+        );
 
         yield insights.flatMap((i) =>
-            i.versions.map(
-                (v): Insight => ({
-                    id: i.id,
-                    type: v.type,
-                    content: v.content,
-                    owners: v.owners,
-                    version: v.version,
-                    createdAt: v.createdAt,
-                }),
-            ),
+            i.versions.map((v): Insight => ({
+                id: i.id,
+                type: v.type,
+                content: v.content,
+                owners: v.owners,
+                version: v.version,
+                createdAt: v.createdAt,
+            })),
         );
     }
 
     private async *queryEnvelopes(
         organizationId: string,
-        opts?: { ids?: string[]; windowStart?: Date; windowEnd?: Date; maxBatchSize?: number },
+        opts?: {
+            ids?: string[];
+            windowStart?: Date;
+            windowEnd?: Date;
+            maxBatchSize?: number;
+        },
     ): AsyncIterable<EnvelopeWithPayload[]> {
         const where: Record<string, unknown> = { organizationId };
 
@@ -109,36 +114,36 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
             take: opts?.maxBatchSize,
         });
 
-        this.logger.debug(`Queried ${rows.length} envelopes for org=${organizationId}`);
-
-        yield rows.map(
-            (env): EnvelopeWithPayload => ({
-                envelope: {
-                    id: env.id,
-                    sourcePlugin: env.sourcePlugin,
-                    sourceId: env.sourceId,
-                    type: env.type.toLowerCase() as 'message',
-                    hasAttachment: env.hasAttachment,
-                    authorId: env.authorId,
-                    occurredAt: env.occurredAt,
-                },
-                payload: {
-                    id: env.payload.id,
-                    type: env.payload.type.toLowerCase() as 'direct' | 'email',
-                    content: env.payload.content,
-                    groupId: env.payload.groupId,
-                    channelId: env.payload.channelId,
-                    replyTo: env.payload.replyTo,
-                    reactions: env.payload.reactions as Record<string, unknown>,
-                    pinned: env.payload.pinned,
-                    editedDate: env.payload.editedDate,
-                    entities: env.payload.entities as Record<
-                        string,
-                        unknown
-                    > | null,
-                    rawPayload: {} as Record<string, unknown>,
-                },
-            }),
+        this.logger.debug(
+            `Queried ${rows.length} envelopes for org=${organizationId}`,
         );
+
+        yield rows.map((env): EnvelopeWithPayload => ({
+            envelope: {
+                id: env.id,
+                sourcePlugin: env.sourcePlugin,
+                sourceId: env.sourceId,
+                type: env.type.toLowerCase() as 'message',
+                hasAttachment: env.hasAttachment,
+                authorId: env.authorId,
+                occurredAt: env.occurredAt,
+            },
+            payload: {
+                id: env.payload.id,
+                type: env.payload.type.toLowerCase() as 'direct' | 'email',
+                content: env.payload.content,
+                groupId: env.payload.groupId,
+                channelId: env.payload.channelId,
+                replyTo: env.payload.replyTo,
+                reactions: env.payload.reactions as Record<string, unknown>,
+                pinned: env.payload.pinned,
+                editedDate: env.payload.editedDate,
+                entities: env.payload.entities as Record<
+                    string,
+                    unknown
+                > | null,
+                rawPayload: {} as Record<string, unknown>,
+            },
+        }));
     }
 }

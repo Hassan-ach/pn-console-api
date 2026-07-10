@@ -14,7 +14,9 @@ export class DemoPersistenceController {
     ) {}
 
     @Post('persist')
-    @ApiOperation({ summary: 'Demo: persist extracted insights to the database' })
+    @ApiOperation({
+        summary: 'Demo: persist extracted insights to the database',
+    })
     async persist(@Body() dto: PersistInsightsDto) {
         const insights: Insight[] = dto.insights.map((i) => ({
             id: i.id ?? null,

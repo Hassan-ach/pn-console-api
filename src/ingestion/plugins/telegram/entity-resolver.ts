@@ -15,7 +15,11 @@ export function resolveEntities(
 
         if (type === 'MentionName') {
             value = data.user_id;
-        } else if (data && typeof data.offset === 'number' && typeof data.length === 'number') {
+        } else if (
+            data &&
+            typeof data.offset === 'number' &&
+            typeof data.length === 'number'
+        ) {
             value = text.substring(data.offset, data.offset + data.length);
         }
 

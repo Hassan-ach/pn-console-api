@@ -45,7 +45,10 @@ describe('CapabilityManager', () => {
         });
 
         it('returns all registered capabilities', () => {
-            expect(manager.getAll()).toEqual([mockCapabilityA, mockCapabilityB]);
+            expect(manager.getAll()).toEqual([
+                mockCapabilityA,
+                mockCapabilityB,
+            ]);
         });
 
         it('finds a capability by name', () => {
@@ -64,14 +67,18 @@ describe('CapabilityManager', () => {
                 name: 'cap-a',
                 execute: jest.fn().mockResolvedValue({
                     capabilityName: 'cap-a',
-                    insights: [{ id: 'i1', type: 'TASK', content: 'a', owners: [] }],
+                    insights: [
+                        { id: 'i1', type: 'TASK', content: 'a', owners: [] },
+                    ],
                 }),
             };
             const capB: ICapability = {
                 name: 'cap-b',
                 execute: jest.fn().mockResolvedValue({
                     capabilityName: 'cap-b',
-                    insights: [{ id: 'i2', type: 'INFO', content: 'b', owners: [] }],
+                    insights: [
+                        { id: 'i2', type: 'INFO', content: 'b', owners: [] },
+                    ],
                 }),
             };
 
@@ -163,7 +170,12 @@ describe('CapabilityManager', () => {
 
     describe('executeByName', () => {
         it('runs a single capability by name', async () => {
-            const insight = { id: 'i1', type: 'TASK' as const, content: 'x', owners: [] };
+            const insight = {
+                id: 'i1',
+                type: 'TASK' as const,
+                content: 'x',
+                owners: [],
+            };
             const cap: ICapability = {
                 name: 'my-cap',
                 execute: jest.fn().mockResolvedValue({

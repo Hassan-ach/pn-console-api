@@ -143,7 +143,8 @@ export class TelegramPluginService implements IPlugin {
                         // Resolve channel_id from peer_id
                         let channelId: string | null = null;
                         if (raw.peer_id?.Channel?.channel_id) {
-                            channelId = raw.peer_id.Channel.channel_id.toString();
+                            channelId =
+                                raw.peer_id.Channel.channel_id.toString();
                         }
 
                         // Resolve author_id from from_id
@@ -153,7 +154,9 @@ export class TelegramPluginService implements IPlugin {
                         }
 
                         // Resolve entities
-                        const msgText = (msg.text ?? msg.message ?? '') as string;
+                        const msgText = (msg.text ??
+                            msg.message ??
+                            '') as string;
                         const resolvedEntities = resolveEntities(
                             msgText,
                             raw.entities ?? [],
@@ -166,8 +169,7 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    | number
-                                    | undefined) ?? null,
+                                    number | undefined) ?? null,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
                             reactions: raw.reactions ?? {},

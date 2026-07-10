@@ -14,13 +14,16 @@ export interface IPlugin<TPayload extends Payload = Payload> {
 
     logout(): Promise<void>;
 
-    backfill(
-        limit: number,
-    ): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
+    backfill(limit: number): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
 
-    startStream(signal?: AbortSignal): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
+    startStream(
+        signal?: AbortSignal,
+    ): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
 
     stopStream(): void;
 
-    handleAction(action: string, params: Record<string, unknown>): Promise<unknown>;
+    handleAction(
+        action: string,
+        params: Record<string, unknown>,
+    ): Promise<unknown>;
 }
