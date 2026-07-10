@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PluginManagerService } from './plugins/plugin-manager.service';
 import { EnvelopeService } from '../envelope/envelope.service';
 import { IngestOptions } from './types/ingestion-options.type';
+import { EnvelopesIngestedEvent } from '../intelligence/triggers/envelopes-ingested.event';
 
 @Injectable()
 export class IngestionService {
@@ -10,6 +12,7 @@ export class IngestionService {
     constructor(
         private readonly pluginManager: PluginManagerService,
         private readonly envelopeService: EnvelopeService,
+        private readonly eventEmitter: EventEmitter2,
     ) {}
 
     async ingest(options: IngestOptions): Promise<{ inserted: number }> {
@@ -19,6 +22,7 @@ export class IngestionService {
                 : options.plugins;
 
         let totalInserted = 0;
+        const windowStart = new Date();
 
         for (const name of pluginNames) {
             const plugin = this.pluginManager.get(name);
@@ -35,6 +39,17 @@ export class IngestionService {
                 });
                 totalInserted += result.inserted;
             }
+
+            this.eventEmitter.emit(
+                'envelopes.ingested',
+                new EnvelopesIngestedEvent(
+                    options.organizationId,
+                    totalInserted,
+                    'backfill',
+                    windowStart,
+                    new Date(),
+                ),
+            );
         }
 
         this.logger.log(

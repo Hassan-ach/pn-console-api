@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsString } from 'class-validator';
 import { IngestionService } from './ingestion.service';
 
 class BackfillDto {
@@ -9,10 +9,6 @@ class BackfillDto {
 
     @IsInt()
     limit: number;
-
-    @IsOptional()
-    @IsString()
-    organizationId?: string;
 }
 
 @ApiTags('Ingestion')
@@ -26,7 +22,7 @@ export class IngestionController {
         return this.ingestionService.ingest({
             plugins: dto.plugin,
             limit: dto.limit,
-            organizationId: dto.organizationId,
+            organizationId: 'org-1',
             triggeredBy: 'user',
         });
     }
