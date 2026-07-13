@@ -43,4 +43,25 @@ export class AuthController {
             `http://localhost:1420/#signup?access_token=${result.access_token}&google_success=1`,
         );
     }
+
+    @Get('microsoft')
+    @UseGuards(AuthGuard('microsoft'))
+    @ApiOperation({ summary: 'Initiate Microsoft OAuth login' })
+    async microsoftAuth() {
+        // Passport handles the redirect — no implementation needed
+    }
+
+    @Get('microsoft/callback')
+    @UseGuards(AuthGuard('microsoft'))
+    @ApiOperation({ summary: 'Microsoft OAuth callback' })
+    async microsoftCallback(@Req() req, @Res() res: Response) {
+        const result = await this.authService.loginOrCreateMicrosoftUser({
+            email: req.user.email,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+        });
+        res.redirect(
+            `http://localhost:1420/#signup?access_token=${result.access_token}&microsoft_success=1`,
+        );
+    }
 }
