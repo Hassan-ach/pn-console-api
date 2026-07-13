@@ -2,7 +2,6 @@ import { CompositeChunkingStrategy } from './composite-chunking-strategy';
 import { SourcePartitioner } from './partitioners/source-partitioner';
 import { GroupIdPartitioner } from './partitioners/group-id-partitioner';
 import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
-import { TimeGapChunkStrategy } from './strategies/time-gap-chunk.strategy';
 import type { EnvelopeWithPayload } from '../../types/envelope.types';
 import type { DataChunk } from './types/data-chunk.type';
 
@@ -48,11 +47,6 @@ describe('CompositeChunkingStrategy', () => {
                 new GroupIdPartitioner(),
                 new ChannelIdPartitioner(),
             ],
-            chunker: new TimeGapChunkStrategy({
-                gapMinutes: 30,
-                maxWindowMinutes: 240,
-            }),
-            minMessages: 2,
         });
     });
 
@@ -142,12 +136,13 @@ describe('CompositeChunkingStrategy', () => {
 
             expect(chunks).toHaveLength(1);
             expect(chunks[0].id).toMatch(
-                /^source:telegram\/group-id:chat_99\/channel-id:chan_1\/start:\d+$/,
+                /^source:telegram\/group-id:chat_99\/channel-id:chan_1\/minimal$/,
             );
         });
 
-        it('uses /minimal suffix for groups below minMessages', async () => {
+        it('includes all partitioner keys in fingerprint', async () => {
             const batch = [
+                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
                 makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
             ];
 
@@ -161,60 +156,10 @@ describe('CompositeChunkingStrategy', () => {
                 /^source:telegram\/group-id:chat_a\/channel-id:__null__\/minimal$/,
             );
         });
-
-        it('uses /start:timestamp for chunker-produced chunks', async () => {
-            const batch = [
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
-            ];
-
-            const chunks: DataChunk[] = [];
-            for await (const chunk of strategy.run(batch)) {
-                chunks.push(chunk);
-            }
-
-            expect(chunks).toHaveLength(1);
-            expect(chunks[0].id).toMatch(/\/start:\d+$/);
-        });
     });
 
-    describe('minMessages', () => {
-        it('yields minimal chunks for groups below threshold instead of dropping them', async () => {
-            const batch = [
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_b' }),
-            ];
-
-            const chunks: DataChunk[] = [];
-            for await (const chunk of strategy.run(batch)) {
-                chunks.push(chunk);
-            }
-
-            expect(chunks).toHaveLength(2);
-            for (const c of chunks) {
-                expect(c.id).toMatch(/\/minimal$/);
-                expect(c.envelopes).toHaveLength(1);
-                expect(c.metadata.envelopeCount).toBe(1);
-            }
-        });
-
-        it('passes groups at or above threshold to the inner chunker', async () => {
-            const batch = [
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
-                makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
-            ];
-
-            const chunks: DataChunk[] = [];
-            for await (const chunk of strategy.run(batch)) {
-                chunks.push(chunk);
-            }
-
-            expect(chunks).toHaveLength(1);
-            expect(chunks[0].id).not.toMatch(/\/minimal$/);
-            expect(chunks[0].id).toMatch(/\/start:\d+$/);
-        });
-
-        it('preserves all envelopes regardless of group size', async () => {
+    describe('basic behavior', () => {
+        it('preserves all envelopes', async () => {
             const batch = [
                 makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_a' }),
                 makeEnvelope({ sourcePlugin: 'telegram', groupId: 'chat_b' }),

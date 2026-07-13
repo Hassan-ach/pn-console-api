@@ -5,7 +5,7 @@ import { IStore } from './store.interface';
 
 @Injectable()
 export class JsonStore<T extends { id: string }> implements IStore<T> {
-    private cache: T[] | null = null;
+    protected cache: T[] | null = null;
 
     constructor(private readonly filePath: string) {}
 
@@ -43,7 +43,7 @@ export class JsonStore<T extends { id: string }> implements IStore<T> {
         await this.flush();
     }
 
-    private async flush(): Promise<void> {
+    protected async flush(): Promise<void> {
         const dir = path.dirname(this.filePath);
         await fs.mkdir(dir, { recursive: true });
         const tmp = this.filePath + '.tmp';

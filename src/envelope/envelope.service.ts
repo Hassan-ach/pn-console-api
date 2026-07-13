@@ -67,6 +67,7 @@ export class EnvelopeService {
                         groupId: item.payload.groupId,
                         channelId: item.payload.channelId,
                         replyTo: item.payload.replyTo,
+                        topicId: item.payload.topicId,
                         reactions: item.payload.reactions
                             ? toJson(item.payload.reactions)
                             : Prisma.JsonNull,

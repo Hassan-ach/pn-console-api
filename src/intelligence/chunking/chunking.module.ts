@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { ChunkingPipeline } from './chunking-pipeline.service';
 import { CHUNKING_STRATEGY } from './chunking.token';
 import { CompositeChunkingStrategy } from './composite-chunking-strategy';
-import { TimeGapChunkStrategy } from './strategies/time-gap-chunk.strategy';
 import { SourcePartitioner } from './partitioners/source-partitioner';
 import { GroupIdPartitioner } from './partitioners/group-id-partitioner';
 import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
+import { TopicIdPartitioner } from './partitioners/topic-id-partitioner';
+import { DailyPartitioner } from './partitioners/daily-partitioner';
 
 @Module({
     providers: [
@@ -18,12 +19,12 @@ import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
                         new SourcePartitioner(),
                         new GroupIdPartitioner(),
                         new ChannelIdPartitioner(),
+                        new TopicIdPartitioner(),
+                        new DailyPartitioner({
+                            minChunkMessages: 30,
+                            maxChunkMessages: 60,
+                        }),
                     ],
-                    chunker: new TimeGapChunkStrategy({
-                        gapMinutes: 30,
-                        maxWindowMinutes: 240,
-                    }),
-                    minMessages: 10,
                 }),
             ],
         },
