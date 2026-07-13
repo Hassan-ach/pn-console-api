@@ -30,6 +30,7 @@ model MessagePayload {
   groupId    String?            @map("group_id")
   channelId  String?            @map("channel_id")
   replyTo    String?            @map("reply_to")
+  topicId    String?            @map("topic_id")
   reactions  Json               @default("{}")
   pinned     Boolean            @default(false)
   editedDate DateTime?          @map("edited_date") @db.Timestamptz
