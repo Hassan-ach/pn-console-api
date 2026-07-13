@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import type { Response } from 'express';
 import {
     ApiConflictResponse,
     ApiCreatedResponse,
@@ -32,11 +33,14 @@ export class AuthController {
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Google OAuth callback' })
-    async googleCallback(@Req() req) {
-        return this.authService.loginOrCreateGoogleUser({
+    async googleCallback(@Req() req, @Res() res: Response) {
+        const result = await this.authService.loginOrCreateGoogleUser({
             email: req.user.email,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
+        res.redirect(
+            `http://localhost:1420/#signup?access_token=${result.access_token}&google_success=1`,
+        );
     }
 }
