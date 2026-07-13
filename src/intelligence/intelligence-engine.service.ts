@@ -69,7 +69,7 @@ export class IntelligenceEngineService {
                 );
 
                 if (insights.length > 0) {
-                    await this.persistence.persistAll(insights);
+                    await this.persistence.persistAll(insights, organizationId);
                     totalInsights += insights.length;
                 }
             }
