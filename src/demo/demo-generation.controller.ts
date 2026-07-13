@@ -33,6 +33,7 @@ export class DemoGenerationController {
                 organizationId: dto.organizationId,
             },
             payload: {
+                topicId: null,
                 type: msg.type ?? ('direct' as const),
                 content: msg.content,
                 groupId: msg.groupId ?? null,
