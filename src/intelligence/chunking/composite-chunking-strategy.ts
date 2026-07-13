@@ -49,7 +49,7 @@ export class CompositeChunkingStrategy implements ChunkingStrategy {
             this.logger.debug(
                 `Chunk [${group.fingerprint}]: ${group.envelopes.length} envelopes`,
             );
-            // here i need to add 
+            // here i need to add time gap to oversized chunks
             yield this.buildMinimalChunk(group);
         }
     }
