@@ -76,6 +76,11 @@ export class MessagePayloadDataDto {
     @IsString()
     replyTo: string | null;
 
+    @ApiProperty({ required: false, nullable: true })
+    @IsOptional()
+    @IsString()
+    topicId: string | null;
+
     @ApiProperty()
     @IsObject()
     reactions: Record<string, unknown>;

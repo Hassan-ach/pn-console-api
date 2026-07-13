@@ -11,6 +11,7 @@ export interface TelegramMessageRaw {
     text: string;
     date: Date;
     replyTo: number | null;
+    topic_id: number | null;
     author_id: string | null;
     hasAttachment: boolean;
     reactions: Record<string, unknown>;

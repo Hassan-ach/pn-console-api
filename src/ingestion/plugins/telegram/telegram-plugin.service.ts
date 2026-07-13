@@ -3,8 +3,9 @@ import { IPlugin, PluginLoginResult } from '../interfaces/plugin.interface';
 import { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramAuthService } from './telegram-auth.service';
+import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from './normalizer';
-import { resolveEntities } from './entity-resolver';
+import { resolveEntities, resolveTopicId } from './telegram-utils';
 import type { TelegramMessageRaw } from './telegram.types';
 
 interface TelegramConfig {
@@ -24,6 +25,7 @@ export class TelegramPluginService implements IPlugin {
     constructor(
         private readonly factory: TelegramClientFactory,
         private readonly auth: TelegramAuthService,
+        private readonly topicStore: TelegramTopicStore,
     ) {}
 
     async initialize(config: Record<string, unknown>): Promise<void> {
@@ -118,8 +120,16 @@ export class TelegramPluginService implements IPlugin {
             for (const chatId of this.config.chats) {
                 this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
 
+                const messageToTopicMap =
+                    await this.topicStore.prewarmChat(chatId);
+                const pendingTopicEntries: {
+                    chatId: string;
+                    messageId: number;
+                    topicId: number;
+                }[] = [];
+
                 const chat = await client.getEntity(chatId);
-                let offsetId = 0;
+                let offsetId = 1;
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
@@ -128,6 +138,7 @@ export class TelegramPluginService implements IPlugin {
                     const messages: any[] = await client.getMessages(chat, {
                         limit: batchSize,
                         offsetId,
+                        reverse: true,
                     });
 
                     if (messages.length === 0) break;
@@ -171,6 +182,19 @@ export class TelegramPluginService implements IPlugin {
                             raw.entities ?? [],
                         );
 
+                        // Resolve topic_id
+                        const topicId = resolveTopicId(
+                            msg,
+                            raw,
+                            messageToTopicMap,
+                        );
+                        messageToTopicMap.set(msg.id as number, topicId);
+                        pendingTopicEntries.push({
+                            chatId,
+                            messageId: msg.id as number,
+                            topicId,
+                        });
+
                         chunk.push({
                             id: msg.id as number,
                             channel_id: channelId,
@@ -179,7 +203,9 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
+                                    | number
+                                    | undefined) ?? null,
+                            topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
                             reactions: raw.reactions ?? {},
@@ -200,6 +226,10 @@ export class TelegramPluginService implements IPlugin {
                     totalFetched += messages.length;
                     offsetId = messages[messages.length - 1].id as number;
                     if (messages.length < 100) break;
+                }
+
+                if (pendingTopicEntries.length > 0) {
+                    await this.topicStore.setBatch(pendingTopicEntries);
                 }
             }
         } finally {

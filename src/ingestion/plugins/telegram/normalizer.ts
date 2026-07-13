@@ -19,6 +19,7 @@ export function normalizeTelegramMessage(
             groupId: msg.group_id,
             channelId: msg.channel_id,
             replyTo: msg.replyTo?.toString() ?? null,
+            topicId: msg.topic_id?.toString() ?? null,
             reactions: msg.reactions,
             pinned: msg.pinned,
             editedDate: msg.editedDate ? new Date(msg.editedDate) : null,

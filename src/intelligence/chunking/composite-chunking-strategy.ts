@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { EnvelopeWithPayload } from '../../types/envelope.types';
 import { ChunkingStrategy } from './chunking-strategy.interface';
 import { Partitioner } from './partitioners/partitioner.interface';
@@ -5,8 +6,6 @@ import { DataChunk } from './types/data-chunk.type';
 
 export interface CompositeChunkingOptions {
     partitioners: Partitioner[];
-    chunker: ChunkingStrategy;
-    minMessages: number;
 }
 
 interface GroupWithFingerprint {
@@ -16,14 +15,11 @@ interface GroupWithFingerprint {
 
 export class CompositeChunkingStrategy implements ChunkingStrategy {
     readonly name = 'composite';
+    private readonly logger = new Logger(CompositeChunkingStrategy.name);
     private readonly partitioners: Partitioner[];
-    private readonly chunker: ChunkingStrategy;
-    private readonly minMessages: number;
 
     constructor(options: CompositeChunkingOptions) {
         this.partitioners = options.partitioners;
-        this.chunker = options.chunker;
-        this.minMessages = options.minMessages;
     }
 
     async *run(batch: EnvelopeWithPayload[]): AsyncIterable<DataChunk> {
@@ -42,20 +38,19 @@ export class CompositeChunkingStrategy implements ChunkingStrategy {
                     next.push({ envelopes, fingerprint });
                 }
             }
+            const totalEnv = next.reduce((s, g) => s + g.envelopes.length, 0);
+            this.logger.debug(
+                `Partitioner "${partitioner.name}": ${groups.length} groups → ${next.length} groups (${totalEnv} envelopes)`,
+            );
             groups = next;
         }
 
         for (const group of groups) {
-            if (group.envelopes.length < this.minMessages) {
-                yield this.buildMinimalChunk(group);
-                continue;
-            }
-            for await (const chunk of this.chunker.run(group.envelopes)) {
-                yield {
-                    ...chunk,
-                    id: `${group.fingerprint}/start:${chunk.metadata.timeRange.start.getTime()}`,
-                };
-            }
+            this.logger.debug(
+                `Chunk [${group.fingerprint}]: ${group.envelopes.length} envelopes`,
+            );
+            // here i need to add time gap to oversized chunks
+            yield this.buildMinimalChunk(group);
         }
     }
 
