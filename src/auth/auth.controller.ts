@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import {
@@ -13,7 +14,10 @@ import { SignupDto } from './dto/signup.dto';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly configService: ConfigService,
+    ) {}
 
     @Post('signup')
     @ApiOperation({ summary: 'Create a new account with email and password' })
@@ -34,13 +38,36 @@ export class AuthController {
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Google OAuth callback' })
     async googleCallback(@Req() req, @Res() res: Response) {
+        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateGoogleUser({
             email: req.user.email,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
         res.redirect(
-            `http://localhost:1420/#signup?access_token=${result.access_token}&google_success=1`,
+            `${frontendUrl}/#signup?access_token=${result.access_token}&google_success=1`,
+        );
+    }
+
+    @Get('microsoft')
+    @UseGuards(AuthGuard('microsoft'))
+    @ApiOperation({ summary: 'Initiate Microsoft OAuth login' })
+    async microsoftAuth() {
+        // Passport handles the redirect — no implementation needed
+    }
+
+    @Get('microsoft/callback')
+    @UseGuards(AuthGuard('microsoft'))
+    @ApiOperation({ summary: 'Microsoft OAuth callback' })
+    async microsoftCallback(@Req() req, @Res() res: Response) {
+        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const result = await this.authService.loginOrCreateMicrosoftUser({
+            email: req.user.email,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+        });
+        res.redirect(
+            `${frontendUrl}/#signup?access_token=${result.access_token}&microsoft_success=1`,
         );
     }
 }
