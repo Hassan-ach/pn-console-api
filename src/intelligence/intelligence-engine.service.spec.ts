@@ -160,7 +160,7 @@ describe('IntelligenceEngineService', () => {
             chunk,
             previousIntelligence: [],
         });
-        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight]);
+        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight], 'org-1');
         expect(result).toEqual({ insightsPersisted: 1 });
     });
 
@@ -386,7 +386,7 @@ describe('IntelligenceEngineService', () => {
         const result = await engine.run('org-1');
 
         expect(Logger.prototype.warn).toHaveBeenCalled();
-        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight]);
+        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight], 'org-1');
         expect(result).toEqual({ insightsPersisted: 1 });
     });
 });

@@ -37,7 +37,11 @@ export class DemoPersistenceController {
     async getAll(): Promise<Insight[]> {
         const rows = await this.prisma.insight.findMany({
             include: {
-                versions: { orderBy: { createdAt: 'desc' }, take: 1 },
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
             },
         });
 
@@ -48,7 +52,7 @@ export class DemoPersistenceController {
                 organizationId: row.organizationId ?? undefined,
                 type: latest.type as Insight['type'],
                 content: latest.content,
-                owners: [...latest.owners],
+                owners: latest.owners.map((u) => u.id),
                 envolopsRef: [...latest.envolopsRef],
                 broadcasted: latest.broadcasted,
                 version: latest.version,

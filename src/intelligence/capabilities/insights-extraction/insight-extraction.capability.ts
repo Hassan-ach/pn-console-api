@@ -1,10 +1,13 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Runnable } from '@langchain/core/runnables';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import { StructuredTool } from '@langchain/core/tools';
 import { InsightExtractionResult, InsightResultSchema } from './insight-schema';
-import InsightExtractionPrompt from './insight-extraction-prompt';
+import { SYSTEM_PROMPT } from './insight-extraction-prompt';
 import { InputMessage } from './types';
 import { Insight } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
+import { RESOLVE_USERS_TOOL } from '../../tools/tools.module';
 import {
     ICapability,
     CapabilityInput,
@@ -17,23 +20,23 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
 
     private chain: Runnable;
 
-    constructor(private readonly llmService: LlmService) {}
+    constructor(
+        private readonly llmService: LlmService,
+        @Inject(RESOLVE_USERS_TOOL)
+        private readonly resolveUsersTool: StructuredTool,
+    ) {}
 
     async onModuleInit() {
-        const llm = await this.llmService.createLLM();
-        const llmWithStructuredOutput =
-            llm.withStructuredOutput(InsightResultSchema);
-
-        this.chain = InsightExtractionPrompt.pipe(
-            llmWithStructuredOutput,
-        ).withRetry({
-            stopAfterAttempt: 3,
+        this.chain = await this.llmService.createToolChain({
+            tools: [this.resolveUsersTool],
+            maxIterations: 3,
         });
     }
 
     async execute(input: CapabilityInput): Promise<CapabilityResult> {
         const messages: InputMessage[] = input.chunk.envelopes.map((env) => ({
             envolopId: env.envelope.id ?? '',
+            sourcePlugin: env.envelope.sourcePlugin,
             type: env.payload.type,
             content: env.payload.content,
             groupId: env.payload.groupId,
@@ -48,17 +51,33 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
         }));
 
         const history = input.previousIntelligence;
+        const chainInput = {
+            messages: [
+                new SystemMessage(SYSTEM_PROMPT),
+                new HumanMessage(
+                    `Current insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
+                ),
+            ],
+        };
 
-        let result: InsightExtractionResult;
-        try {
-            result = await this.chain.invoke({
-                history: JSON.stringify(history),
-                messages: JSON.stringify(messages),
-            });
-        } catch (error) {
-            throw new Error('insights extraction failed after 3 attempts', {
-                cause: error,
-            });
+        const MAX_RETRIES = 3;
+        let result: InsightExtractionResult = {
+            updatedInsights: [],
+            newInsights: [],
+        };
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const raw = (await this.chain.invoke(chainInput)) as string;
+                result = InsightResultSchema.parse(JSON.parse(raw));
+                break;
+            } catch (error) {
+                if (attempt === MAX_RETRIES) {
+                    throw new Error(
+                        `insights extraction failed: ${error.message}`,
+                    );
+                }
+            }
         }
 
         const insights: Insight[] = [

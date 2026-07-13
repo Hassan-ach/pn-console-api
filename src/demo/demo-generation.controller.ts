@@ -58,7 +58,11 @@ export class DemoGenerationController {
         const rows = await this.prisma.insight.findMany({
             where: { organizationId: dto.organizationId },
             include: {
-                versions: { orderBy: { createdAt: 'desc' }, take: 1 },
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
             },
         });
 
@@ -69,7 +73,7 @@ export class DemoGenerationController {
                 organizationId: row.organizationId ?? undefined,
                 type: latest.type as Insight['type'],
                 content: latest.content,
-                owners: [...latest.owners],
+                owners: latest.owners.map((u) => u.id),
                 envolopsRef: [...latest.envolopsRef],
                 broadcasted: latest.broadcasted,
                 version: latest.version,

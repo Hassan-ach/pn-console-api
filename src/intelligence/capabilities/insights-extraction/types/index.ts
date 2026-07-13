@@ -1,5 +1,6 @@
 export interface InputMessage {
     envolopId: string;
+    sourcePlugin: string;
     type: 'direct' | 'email';
     content: string;
     groupId: string | null;

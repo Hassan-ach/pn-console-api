@@ -48,6 +48,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -61,7 +62,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
                 id: i.id,
                 type: v.type,
                 content: v.content,
-                owners: v.owners,
+                owners: v.owners.map((u) => u.id),
                 version: v.version,
                 createdAt: v.createdAt,
             })),

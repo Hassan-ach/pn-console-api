@@ -4,19 +4,24 @@ import { CapabilitiesModule } from './capabilities.module';
 import { CapabilityManager } from './capability-manager.service';
 import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
 import { LlmService } from '../llm/llm.service';
+import { RESOLVE_USERS_TOOL } from '../tools/tools.module';
 
 describe('CapabilitiesModule — injection', () => {
     let manager: CapabilityManager;
     let module: TestingModule;
 
     beforeAll(async () => {
-        const fakeStructuredLlm = RunnableLambda.from(async () => ({
-            updatedInsights: [],
-            newInsights: [],
-        }));
+        const fakeChain = RunnableLambda.from(async () => {
+            return JSON.stringify({
+                updatedInsights: [],
+                newInsights: [],
+            });
+        });
 
-        const fakeLlm = {
-            withStructuredOutput: jest.fn().mockReturnValue(fakeStructuredLlm),
+        const mockResolveUsersTool = {
+            name: 'resolve_users',
+            description: 'mock',
+            invoke: jest.fn(),
         };
 
         module = await Test.createTestingModule({
@@ -24,8 +29,11 @@ describe('CapabilitiesModule — injection', () => {
         })
             .overrideProvider(LlmService)
             .useValue({
-                createLLM: jest.fn().mockResolvedValue(fakeLlm),
+                createLLM: jest.fn(),
+                createToolChain: jest.fn().mockResolvedValue(fakeChain),
             })
+            .overrideProvider(RESOLVE_USERS_TOOL)
+            .useValue(mockResolveUsersTool)
             .compile();
 
         manager = module.get(CapabilityManager);
