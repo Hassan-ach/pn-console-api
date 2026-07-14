@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RawDbService } from '../../prisma/raw-db/raw-db.service';
-import { RetrievalWindow } from './retrieval-window.type';
+import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
+import { RetrievalWindow } from '../types/enterprise-context.types';
 
 @Injectable()
 export class WindowDiscoveryService {

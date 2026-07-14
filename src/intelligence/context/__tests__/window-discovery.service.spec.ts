@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WindowDiscoveryService } from '../window-discovery.service';
+import { WindowDiscoveryService } from '../services/window-discovery.service';
 import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 
 describe('WindowDiscoveryService', () => {

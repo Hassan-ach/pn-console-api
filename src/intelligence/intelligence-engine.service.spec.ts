@@ -1,13 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { IntelligenceEngineService } from './intelligence-engine.service';
-import { EnterpriseContextBuilder } from './context/enterprise-context-builder.abstract';
+import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
-import type { EnterpriseContext } from './context/enterprise-context.types';
-import type { RetrievalWindow } from './context/retrieval-window.type';
-import type { PreviousIntelligenceQuery } from './context/previous-intelligence-query.type';
+import type { EnterpriseContext, RetrievalWindow, PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import type { Insight } from '../types/insight.types';
 import type { DataChunk } from './chunking/types/data-chunk.type';
 import type { EnvelopeWithPayload } from '../types/envelope.types';

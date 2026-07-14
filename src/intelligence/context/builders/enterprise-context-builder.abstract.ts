@@ -1,4 +1,4 @@
-import { EnterpriseContext } from './enterprise-context.types';
+import { EnterpriseContext } from '../types/enterprise-context.types';
 
 export abstract class EnterpriseContextBuilder {
     abstract build(

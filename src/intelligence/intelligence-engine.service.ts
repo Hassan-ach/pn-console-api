@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EnterpriseContextBuilder } from './context/enterprise-context-builder.abstract';
-import { PreviousIntelligenceQuery } from './context/previous-intelligence-query.type';
+import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
+import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { DataChunk } from './chunking/types/data-chunk.type';
 import { CapabilityManager } from './capabilities/capability-manager.service';
