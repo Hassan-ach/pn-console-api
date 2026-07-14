@@ -65,6 +65,60 @@ export class AuthService {
         };
     }
 
+    async loginOrCreateSsoUser(profile: {
+        email: string;
+        firstName: string;
+        lastName: string;
+    }) {
+        let user = await this.db.user.findUnique({
+            where: { email: profile.email },
+        });
+
+        if (user) {
+            const token = this.jwtService.sign({
+                sub: user.id,
+                email: user.email,
+            });
+
+            return {
+                access_token: token,
+                user: {
+                    id: user.id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    providerType: user.providerType,
+                },
+            };
+        }
+
+        user = await this.db.user.create({
+            data: {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                email: profile.email,
+                passwordHash: null,
+                providerType: 'SSO',
+            },
+        });
+
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+        });
+
+        return {
+            access_token: token,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                providerType: user.providerType,
+            },
+        };
+    }
+
     async signup(dto: SignupDto) {
         const existing = await this.db.user.findUnique({
             where: { email: dto.email },

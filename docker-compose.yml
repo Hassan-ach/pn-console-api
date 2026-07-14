@@ -17,5 +17,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: pn_console_keycloak
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+    ports:
+      - "8080:8080"
+    command: start-dev
+
 volumes:
   postgres_data:
