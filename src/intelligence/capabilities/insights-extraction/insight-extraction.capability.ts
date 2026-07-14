@@ -80,6 +80,12 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
             }
         }
 
+        const firstEnv = input.chunk.envelopes[0];
+        const chunkSourcePlugin = firstEnv?.envelope.sourcePlugin;
+        const chunkGroupId = firstEnv?.payload.groupId ?? undefined;
+        const chunkChannelId = firstEnv?.payload.channelId ?? undefined;
+        const chunkTopicId = firstEnv?.payload.topicId ?? undefined;
+
         const insights: Insight[] = [
             ...result.updatedInsights.map((u) => ({
                 id: u.id,
@@ -88,6 +94,10 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
                 owners: u.owners,
                 envolopsRef: u.envolopsRef,
                 broadcasted: u.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
             ...result.newInsights.map((n) => ({
                 id: null,
@@ -96,6 +106,10 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
                 owners: n.owners,
                 envolopsRef: n.envolopsRef,
                 broadcasted: n.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
         ];
 

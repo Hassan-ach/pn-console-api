@@ -30,6 +30,10 @@ export class InsightPersistenceService {
                         owners: insight.owners,
                         envolopsRef: insight.envolopsRef,
                         broadcasted: insight.broadcasted,
+                        sourcePlugin: insight.sourcePlugin,
+                        groupId: insight.groupId,
+                        channelId: insight.channelId,
+                        topicId: insight.topicId,
                     });
                 }
 
@@ -39,6 +43,10 @@ export class InsightPersistenceService {
                     owners: insight.owners,
                     envolopsRef: insight.envolopsRef,
                     broadcasted: insight.broadcasted,
+                    sourcePlugin: insight.sourcePlugin,
+                    groupId: insight.groupId,
+                    channelId: insight.channelId,
+                    topicId: insight.topicId,
                 });
             }),
         );

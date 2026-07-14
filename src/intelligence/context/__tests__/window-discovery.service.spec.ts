@@ -30,7 +30,7 @@ describe('WindowDiscoveryService', () => {
         expect(rawDb.$queryRawUnsafe).toHaveBeenCalledTimes(1);
     });
 
-    it('returns windows from raw query result', async () => {
+    it('returns windows from raw query result with normalized dates', async () => {
         rawDb.$queryRawUnsafe.mockResolvedValue([
             {
                 window_start: new Date('2026-07-01'),
@@ -47,16 +47,14 @@ describe('WindowDiscoveryService', () => {
         const result = await service.discoverWindows('org-1');
 
         expect(result).toHaveLength(2);
-        expect(result[0]).toEqual({
-            start: new Date('2026-07-01'),
-            end: new Date('2026-07-03'),
-            messageCount: 500,
-        });
-        expect(result[1]).toEqual({
-            start: new Date('2026-07-04'),
-            end: new Date('2026-07-04'),
-            messageCount: 100,
-        });
+        // Start normalized to beginning of first calendar day
+        expect(result[0].start.toISOString()).toBe('2026-07-01T00:00:00.000Z');
+        // End normalized to end of last calendar day
+        expect(result[0].end.toISOString()).toBe('2026-07-03T23:59:59.999Z');
+        expect(result[0].messageCount).toBe(500);
+        expect(result[1].start.toISOString()).toBe('2026-07-04T00:00:00.000Z');
+        expect(result[1].end.toISOString()).toBe('2026-07-04T23:59:59.999Z');
+        expect(result[1].messageCount).toBe(100);
     });
 
     it('passes organizationId to SQL query', async () => {
