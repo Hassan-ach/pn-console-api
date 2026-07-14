@@ -3,7 +3,6 @@ import { CapabilitiesModule } from './capabilities.module';
 import { CapabilityManager } from './capability-manager.service';
 import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
 import { LlmService } from '../llm/llm.service';
-import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 
 describe('CapabilitiesModule — injection', () => {
     let manager: CapabilityManager;
@@ -26,12 +25,6 @@ describe('CapabilitiesModule — injection', () => {
             .useValue({
                 createLLM: jest.fn().mockResolvedValue(mockLlm),
             })
-            .overrideProvider(PlatformUserMappingRepository)
-            .useValue({
-                findByPluginName: jest.fn().mockResolvedValue([]),
-            })
-            .overrideProvider(RESOLVE_USERS_TOOL)
-            .useValue(mockResolveUsersTool)
             .compile();
 
         manager = module.get(CapabilityManager);
