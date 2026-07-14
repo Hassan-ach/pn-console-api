@@ -22,6 +22,13 @@ export class SsoStrategy extends PassportStrategy(Strategy, 'sso') {
         });
     }
 
+    authorizationParams(req: any): Record<string, string> {
+        if (req.query?.mode === 'desktop') {
+            req.session.oauthMode = 'desktop';
+        }
+        return {};
+    }
+
     validate(
         _issuer: string,
         profile: any,
