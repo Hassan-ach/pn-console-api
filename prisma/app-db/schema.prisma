@@ -46,7 +46,7 @@ model User {
   id               String                  @id @default(uuid()) @db.Uuid
   firstName        String                  @map("first_name")
   lastName         String?                 @map("last_name")
-  email            String                  @unique
+  email            String
   passwordHash     String?                 @map("password_hash")
   providerType     ProviderType            @default(EMAIL) @map("provider_type")
   createdAt        DateTime                @default(now()) @map("created_at")
@@ -54,6 +54,7 @@ model User {
   platformMappings PlatformUserMapping[]
   insightVersions  InsightVersion[]        @relation("InsightVersionOwners")
 
+  @@unique([email, providerType])
   @@map("users")
 }
 
