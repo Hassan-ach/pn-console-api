@@ -192,9 +192,7 @@ export class InsightExtractionCapability implements ICapability {
             }
 
             if (!appUserId) {
-                this.logger.warn(
-                    `Could not resolve owner: ${key}`,
-                );
+                this.logger.warn(`Could not resolve owner: ${key}`);
             }
 
             results.set(key, appUserId);

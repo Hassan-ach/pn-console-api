@@ -62,9 +62,7 @@ export class PlatformUserMappingRepository {
         return mappings.map((m) => this.toMapping(m));
     }
 
-    async findByPluginName(
-        pluginName: string,
-    ): Promise<PlatformUserMapping[]> {
+    async findByPluginName(pluginName: string): Promise<PlatformUserMapping[]> {
         const mappings = await this.prisma.platformUserMapping.findMany({
             where: { pluginName },
         });
@@ -93,10 +91,7 @@ export class PlatformUserMappingRepository {
         }));
     }
 
-    async delete(
-        platformUserId: string,
-        pluginName: string,
-    ): Promise<void> {
+    async delete(platformUserId: string, pluginName: string): Promise<void> {
         await this.prisma.platformUserMapping.delete({
             where: {
                 platformUserId_pluginName: {
