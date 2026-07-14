@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { InsightExtractionCapability } from './insight-extraction.capability';
 import { LlmModule } from 'src/intelligence/llm/llm.module';
-import { ToolsModule } from 'src/intelligence/tools/tools.module';
+import { RepositoriesModule } from 'src/repositories/repositories.module';
 
 @Module({
-    imports: [LlmModule, ToolsModule],
+    imports: [LlmModule, RepositoriesModule],
     providers: [InsightExtractionCapability],
     exports: [InsightExtractionCapability],
 })
