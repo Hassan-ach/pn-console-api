@@ -9,6 +9,7 @@ import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
+import { WindowDiscoveryService } from './context/window-discovery.service';
 
 @Module({
     providers: [
@@ -18,6 +19,7 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         },
         IntelligenceEngineService,
         EnvelopesIngestedListener,
+        WindowDiscoveryService,
     ],
     imports: [
         LlmModule,
