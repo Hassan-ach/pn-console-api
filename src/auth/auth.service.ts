@@ -11,58 +11,20 @@ export class AuthService {
         private readonly jwtService: JwtService,
     ) {}
 
+    async loginOrCreateGoogleUser(profile: {
+        email: string;
+        firstName: string;
+        lastName: string;
+    }) {
+        return this.loginOrCreateOAuthUser(profile, 'GOOGLE');
+    }
+
     async loginOrCreateMicrosoftUser(profile: {
         email: string;
         firstName: string;
         lastName: string;
     }) {
-        let user = await this.db.user.findUnique({
-            where: { email: profile.email },
-        });
-
-        if (user) {
-            const token = this.jwtService.sign({
-                sub: user.id,
-                email: user.email,
-            });
-
-            return {
-                access_token: token,
-                user: {
-                    id: user.id,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    providerType: user.providerType,
-                },
-            };
-        }
-
-        user = await this.db.user.create({
-            data: {
-                firstName: profile.firstName,
-                lastName: profile.lastName,
-                email: profile.email,
-                passwordHash: null,
-                providerType: 'MICROSOFT',
-            },
-        });
-
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-        });
-
-        return {
-            access_token: token,
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                providerType: user.providerType,
-            },
-        };
+        return this.loginOrCreateOAuthUser(profile, 'MICROSOFT');
     }
 
     async loginOrCreateSsoUser(profile: {
@@ -70,58 +32,13 @@ export class AuthService {
         firstName: string;
         lastName: string;
     }) {
-        let user = await this.db.user.findUnique({
-            where: { email: profile.email },
-        });
-
-        if (user) {
-            const token = this.jwtService.sign({
-                sub: user.id,
-                email: user.email,
-            });
-
-            return {
-                access_token: token,
-                user: {
-                    id: user.id,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    providerType: user.providerType,
-                },
-            };
-        }
-
-        user = await this.db.user.create({
-            data: {
-                firstName: profile.firstName,
-                lastName: profile.lastName,
-                email: profile.email,
-                passwordHash: null,
-                providerType: 'SSO',
-            },
-        });
-
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-        });
-
-        return {
-            access_token: token,
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                providerType: user.providerType,
-            },
-        };
+        return this.loginOrCreateOAuthUser(profile, 'SSO');
     }
 
     async signup(dto: SignupDto) {
+        // Only conflict when the same email + EMAIL provider already exists.
         const existing = await this.db.user.findUnique({
-            where: { email: dto.email },
+            where: { email_providerType: { email: dto.email, providerType: 'EMAIL' } },
         });
 
         if (existing) {
@@ -138,16 +55,15 @@ export class AuthService {
                 lastName: dto.lastName,
                 email: dto.email,
                 passwordHash,
+                providerType: 'EMAIL',
             },
         });
 
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-        });
+        const token = this.jwtService.sign({ sub: user.id, email: user.email });
 
         return {
             access_token: token,
+            is_new_user: true,
             user: {
                 id: user.id,
                 firstName: user.firstName,
@@ -158,23 +74,23 @@ export class AuthService {
         };
     }
 
-    async loginOrCreateGoogleUser(profile: {
-        email: string;
-        firstName: string;
-        lastName: string;
-    }) {
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private async loginOrCreateOAuthUser(
+        profile: { email: string; firstName: string; lastName: string },
+        provider: 'GOOGLE' | 'MICROSOFT' | 'SSO',
+    ) {
+        // Lookup by (email, providerType) composite key — the same email
+        // registered via a different provider resolves to a different account.
         let user = await this.db.user.findUnique({
-            where: { email: profile.email },
+            where: { email_providerType: { email: profile.email, providerType: provider } },
         });
 
         if (user) {
-            const token = this.jwtService.sign({
-                sub: user.id,
-                email: user.email,
-            });
-
+            const token = this.jwtService.sign({ sub: user.id, email: user.email });
             return {
                 access_token: token,
+                is_new_user: false,
                 user: {
                     id: user.id,
                     firstName: user.firstName,
@@ -191,17 +107,15 @@ export class AuthService {
                 lastName: profile.lastName,
                 email: profile.email,
                 passwordHash: null,
-                providerType: 'GOOGLE',
+                providerType: provider,
             },
         });
 
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-        });
+        const token = this.jwtService.sign({ sub: user.id, email: user.email });
 
         return {
             access_token: token,
+            is_new_user: true,
             user: {
                 id: user.id,
                 firstName: user.firstName,
