@@ -2,11 +2,16 @@ import z from 'zod';
 
 const InsightTypeSchema = z.enum(['TASK', 'URGENCY', 'INFO', 'DECISION']);
 
+const OwnerRefSchema = z.object({
+    id: z.string().optional(),
+    username: z.string().optional(),
+});
+
 export const UpdatedInsightSchema = z.object({
     id: z.string(),
     type: InsightTypeSchema,
     content: z.string(),
-    owners: z.array(z.string()),
+    owners: z.array(OwnerRefSchema),
     envolopsRef: z.array(z.string()),
     broadcasted: z.boolean(),
 });
@@ -14,7 +19,7 @@ export const UpdatedInsightSchema = z.object({
 export const NewInsightSchema = z.object({
     type: InsightTypeSchema,
     content: z.string(),
-    owners: z.array(z.string()),
+    owners: z.array(OwnerRefSchema),
     envolopsRef: z.array(z.string()),
     broadcasted: z.boolean(),
 });
@@ -25,3 +30,4 @@ export const InsightResultSchema = z.object({
 });
 
 export type InsightExtractionResult = z.infer<typeof InsightResultSchema>;
+export type OwnerRef = z.infer<typeof OwnerRefSchema>;

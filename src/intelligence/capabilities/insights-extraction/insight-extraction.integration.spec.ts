@@ -1,15 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { ChatOllama } from '@langchain/ollama';
-import { RunnableLambda } from '@langchain/core/runnables';
-import { ToolMessage } from '@langchain/core/messages';
 
 import { AppDbModule } from 'src/prisma/app-db/app-db.module';
 import { RawDbModule } from 'src/prisma/raw-db/raw-db.module';
 import { RepositoriesModule } from 'src/repositories/repositories.module';
 import { InsightRepository } from 'src/repositories/insight.repository';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
-import { createResolveUsersTool } from 'src/intelligence/tools/resolve-users.tool';
 import { InsightExtractionCapability } from './insight-extraction.capability';
 import { StoreModule } from 'src/intelligence/store/store.module';
 import { InsightPersistenceService } from 'src/intelligence/store/insight-persistence.service';
@@ -47,6 +44,7 @@ function makeEnvelope(
             groupId: null,
             channelId: null,
             replyTo: null,
+            topicId: null,
             reactions: {},
             pinned: false,
             editedDate: null,
@@ -76,7 +74,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
     let prisma: AppDbService;
 
     beforeAll(async () => {
-        // DB modules only — no LlmModule, no InsightsExtractionModule
         module = await Test.createTestingModule({
             imports: [
                 AppDbModule,
@@ -93,57 +90,21 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
         platformRepo = module.get(PlatformUserMappingRepository);
         prisma = module.get(AppDbService);
 
-        // Build the real resolve_users tool backed by the real DB
-        const resolveUsersTool = createResolveUsersTool(platformRepo);
-
-        // Build the tool-calling chain using ChatOllama directly
         const ollama = new ChatOllama({
             model: process.env.LLM_MODEL ?? 'qwen3:8b',
             baseUrl: process.env.LLM_BASE_URL ?? 'http://localhost:11434',
             temperature: 0,
-            think: false,
         });
 
-        const toolModel = ollama.bindTools([resolveUsersTool]);
-        const toolMap: Record<string, typeof resolveUsersTool> = {
-            [resolveUsersTool.name]: resolveUsersTool,
+        const llmServiceMock = {
+            createLLM: jest.fn().mockResolvedValue(ollama),
         };
 
-        const chain = RunnableLambda.from(async (input: {
-            messages: any[];
-        }) => {
-            const messages = [...input.messages];
-            for (let i = 0; i < 3; i++) {
-                const response = await toolModel.invoke(messages);
-                messages.push(response);
-                if (!response.tool_calls?.length) {
-                    return response.content;
-                }
-                for (const call of response.tool_calls) {
-                    const tool = toolMap[call.name];
-                    if (!tool) throw new Error(`Unknown tool: ${call.name}`);
-                    const result = await tool.invoke(
-                        call.args as Record<string, unknown>,
-                    );
-                    messages.push(
-                        new ToolMessage({
-                            content: JSON.stringify(result),
-                            tool_call_id: call.id!,
-                        }),
-                    );
-                }
-            }
-            throw new Error('Tool calling exceeded max iterations');
-        });
-
-        // Construct capability directly and inject the pre-built chain
         capability = new InsightExtractionCapability(
-            { createLLM: jest.fn(), createToolChain: jest.fn() } as any,
-            resolveUsersTool,
+            llmServiceMock as any,
+            platformRepo,
         );
-        (capability as any).chain = chain;
 
-        // Seed users
         await prisma.user.create({
             data: {
                 id: USER_A_ID,
@@ -161,7 +122,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
             },
         });
 
-        // Seed platform mappings
         await platformRepo.create({
             platformUserId: USER_A_PLATFORM_ID,
             appUserId: USER_A_ID,
@@ -175,7 +135,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
             platformUsername: USER_B_USERNAME,
         });
 
-        // Seed one existing insight for update tests
         await insightRepo.create({
             organizationId: TEST_ORG_ID,
             type: 'TASK',
@@ -188,12 +147,10 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
     afterAll(async () => {
         if (!prisma) return;
 
-        // Clean up insights for test org (versions cascade)
         await prisma.insight.deleteMany({
             where: { organizationId: TEST_ORG_ID },
         });
 
-        // Clean up platform mappings for seeded users
         const mappingsA = await platformRepo.findByAppUser(USER_A_ID);
         for (const m of mappingsA) {
             await platformRepo.delete(m.platformUserId, m.pluginName);
@@ -203,7 +160,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
             await platformRepo.delete(m.platformUserId, m.pluginName);
         }
 
-        // Clean up users
         await prisma.user.delete({ where: { id: USER_A_ID } }).catch(() => {});
         await prisma.user.delete({ where: { id: USER_B_ID } }).catch(() => {});
 
@@ -233,17 +189,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
             expect(result.capabilityName).toBe('insights-extractor');
             expect(result.insights.length).toBeGreaterThanOrEqual(1);
 
-            // Each returned insight should have valid structure
-            for (const insight of result.insights) {
-                expect(['TASK', 'URGENCY', 'INFO', 'DECISION']).toContain(
-                    insight.type,
-                );
-                expect(insight.content).toBeTruthy();
-                expect(Array.isArray(insight.owners)).toBe(true);
-                expect(Array.isArray(insight.envolopsRef)).toBe(true);
-            }
-
-            // Persist and verify DB
             await persistence.persistAll(result.insights, TEST_ORG_ID);
             const persisted = await insightRepo.getAllByOrganizationId(
                 TEST_ORG_ID,
@@ -256,8 +201,14 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
                     insight.type,
                 );
                 expect(insight.content).toBeTruthy();
-                expect(insight.version).toBe(1);
-                expect(insight.createdAt).toBeDefined();
+                expect(insight.envolopsRef).toBeDefined();
+                expect(insight.envolopsRef!.length).toBeGreaterThanOrEqual(1);
+
+                const validEnvIds = ['env-basic-1', 'env-basic-2'];
+                const hasValidRef = insight.envolopsRef!.some((ref) =>
+                    validEnvIds.includes(ref),
+                );
+                expect(hasValidRef).toBe(true);
             }
         },
         86_400_000,
@@ -266,7 +217,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
     it(
         'should update an existing insight and create new ones',
         async () => {
-            // Fetch the seeded insight to get its ID
             const existing = await insightRepo.getAllByOrganizationId(
                 TEST_ORG_ID,
             );
@@ -294,7 +244,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
 
             expect(result.insights.length).toBeGreaterThanOrEqual(1);
 
-            // Check if the LLM decided to update the existing insight
             const updatedOnes = result.insights.filter(
                 (i) => i.id === seedInsight!.id,
             );
@@ -302,12 +251,10 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
                 (i) => i.id !== seedInsight!.id,
             );
 
-            // At least one of update or new should be present
             expect(updatedOnes.length + newOnes.length).toBeGreaterThanOrEqual(
                 1,
             );
 
-            // Persist and verify DB state
             await persistence.persistAll(result.insights, TEST_ORG_ID);
             const allInsights = await insightRepo.getAllByOrganizationId(
                 TEST_ORG_ID,
@@ -318,7 +265,7 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
     );
 
     it(
-        'should resolve platform user IDs to app user IDs via resolve_users tool',
+        'should resolve platform user IDs to app user IDs via local resolution',
         async () => {
             const env1 = makeEnvelope(
                 'env-resolve-1',
@@ -334,7 +281,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
 
             expect(result.insights.length).toBeGreaterThanOrEqual(1);
 
-            // Check if any insight has owners referencing the seeded test users
             const insightsWithOwners = result.insights.filter(
                 (i) => i.owners.length > 0,
             );
@@ -343,13 +289,11 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
                 const allOwnerIds = insightsWithOwners.flatMap((i) => i.owners);
                 const resolvedUserIds: string[] = [USER_A_ID, USER_B_ID];
 
-                // At least one owner should match a seeded test user
                 const hasResolvedUser = allOwnerIds.some((ownerId) =>
                     resolvedUserIds.includes(ownerId),
                 );
                 expect(hasResolvedUser).toBe(true);
 
-                // Persist and verify DB
                 await persistence.persistAll(result.insights, TEST_ORG_ID);
                 const persisted = await insightRepo.getAllByOrganizationId(
                     TEST_ORG_ID,
@@ -362,7 +306,6 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
 
                 for (const insight of persistedWithOwners) {
                     for (const ownerId of insight.owners) {
-                        // Each owner should be a valid UUID of a seeded user
                         expect(resolvedUserIds).toContain(ownerId);
                     }
                 }
