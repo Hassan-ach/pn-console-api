@@ -5,7 +5,7 @@ allowBuilds:
   bcrypt: false
   bufferutil: true
   es5-ext: true
-  esbuild: set this to true or false
+  esbuild: true
   prisma: true
   unrs-resolver: true
   utf-8-validate: true

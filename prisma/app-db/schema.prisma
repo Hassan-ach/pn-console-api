@@ -27,11 +27,19 @@ model InsightVersion {
   owners    User[]      @relation("InsightVersionOwners")
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
+
+  sourcePlugin   String?   @map("source_plugin")
+  groupId        String?   @map("group_id")
+  channelId      String?   @map("channel_id")
+  topicId        String?   @map("topic_id")
+
   createdAt DateTime    @default(now()) @map("created_at")
   insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@unique([insightId, version])
   @@index([insightId])
+  @@index([sourcePlugin, channelId, topicId, createdAt])
+  @@index([sourcePlugin, groupId, createdAt])
   @@map("insight_versions")
 }
 

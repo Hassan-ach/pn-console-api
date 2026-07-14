@@ -13,6 +13,10 @@ export class InsightRepository {
         owners: string[];
         envolopsRef?: string[];
         broadcasted?: boolean;
+        sourcePlugin?: string;
+        groupId?: string;
+        channelId?: string;
+        topicId?: string;
     }): Promise<Insight> {
         const insight = await this.prisma.insight.create({
             data: {
@@ -27,6 +31,10 @@ export class InsightRepository {
                         },
                         broadcasted: data.broadcasted ?? false,
                         envolopsRef: data.envolopsRef ?? [],
+                        sourcePlugin: data.sourcePlugin ?? null,
+                        groupId: data.groupId ?? null,
+                        channelId: data.channelId ?? null,
+                        topicId: data.topicId ?? null,
                     },
                 },
             },
@@ -50,6 +58,10 @@ export class InsightRepository {
             owners: string[];
             envolopsRef?: string[];
             broadcasted?: boolean;
+            sourcePlugin?: string;
+            groupId?: string;
+            channelId?: string;
+            topicId?: string;
         },
     ): Promise<Insight> {
         return this.prisma.$transaction(async (tx) => {
@@ -74,6 +86,10 @@ export class InsightRepository {
                     },
                     broadcasted: data.broadcasted ?? false,
                     envolopsRef: data.envolopsRef ?? [],
+                    sourcePlugin: data.sourcePlugin ?? null,
+                    groupId: data.groupId ?? null,
+                    channelId: data.channelId ?? null,
+                    topicId: data.topicId ?? null,
                 },
             });
 
@@ -121,6 +137,50 @@ export class InsightRepository {
         return insights.map((i) => this.toInsight(i));
     }
 
+    async findByScope(
+        organizationId: string,
+        scope: {
+            sourcePlugin?: string;
+            groupId?: string | null;
+            channelId?: string | null;
+            topicId?: string | null;
+        },
+        limit: number,
+    ): Promise<Insight[]> {
+        const where: Record<string, unknown> = { organizationId };
+
+        if (scope.sourcePlugin) where.sourcePlugin = scope.sourcePlugin;
+
+        if (scope.channelId || scope.topicId || scope.groupId) {
+            if (scope.channelId) where.channelId = scope.channelId;
+            if (scope.topicId) where.topicId = scope.topicId;
+            if (scope.groupId) where.groupId = scope.groupId;
+        }
+
+        const versions = await this.prisma.insightVersion.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: { owners: true },
+        });
+
+        return versions.map((v) => ({
+            id: v.insightId,
+            organizationId,
+            type: v.type as Insight['type'],
+            content: v.content,
+            owners: v.owners.map((u) => u.id),
+            envolopsRef: [...v.envolopsRef],
+            broadcasted: v.broadcasted,
+            version: v.version,
+            createdAt: v.createdAt,
+            sourcePlugin: v.sourcePlugin ?? undefined,
+            groupId: v.groupId ?? undefined,
+            channelId: v.channelId ?? undefined,
+            topicId: v.topicId ?? undefined,
+        }));
+    }
+
     private toInsight(row: {
         id: string;
         organizationId: string | null;
@@ -132,6 +192,10 @@ export class InsightRepository {
             envolopsRef: string[];
             broadcasted: boolean;
             createdAt: Date;
+            sourcePlugin: string | null;
+            groupId: string | null;
+            channelId: string | null;
+            topicId: string | null;
         }[];
     }): Insight {
         const latest = row.versions[0];
@@ -145,6 +209,10 @@ export class InsightRepository {
             broadcasted: latest.broadcasted,
             version: latest.version,
             createdAt: latest.createdAt,
+            sourcePlugin: latest.sourcePlugin ?? undefined,
+            groupId: latest.groupId ?? undefined,
+            channelId: latest.channelId ?? undefined,
+            topicId: latest.topicId ?? undefined,
         };
     }
 }
