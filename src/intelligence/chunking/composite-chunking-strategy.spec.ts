@@ -28,6 +28,7 @@ function makeEnvelope(overrides?: {
             groupId: overrides?.groupId ?? null,
             channelId: overrides?.channelId ?? null,
             replyTo: null,
+            topicId: null,
             reactions: {},
             pinned: false,
             editedDate: null,

@@ -8,8 +8,6 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       Your job is to extract every actionable item, urgent situation, important piece of information, and required decision from the messages, then determine whether each one updates an existing insight or is a new insight.
       
-      When owners are identified in messages, gather all their platform identifiers and call the resolve_users tool exactly once to resolve them before producing your final output.
-      
       Classify every insight into one of these types:
       - TASK: something that needs to be done or followed up on
       - URGENCY: something requiring immediate attention (outages, security incidents, legal exposure, imminent deadlines)
@@ -23,17 +21,16 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       For each insight, determine:
       - envolopsRef: an array of source envelope IDs (from the messages' envolopId) that the insight was based on. Always include at least one ID — every insight is based on one or more messages.
-      - owners: an array of resolved internal app user IDs (UUIDs) of people directly assigned or asked to take action. Use the resolve_users tool to resolve platform identifiers to app user IDs. Do not include people merely mentioned in passing or as context.
+      - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username" }. Do not include people merely mentioned in passing or as context.
       - broadcasted: set to true when no specific person is directly assigned. When broadcasted is true, owners must be empty. When someone is directly assigned, broadcasted must be false.
       
       STRICT CONSTRAINTS — You must follow every single one:
       1. You MUST NOT fabricate IDs. Only use IDs from the current insights you received. If no matching ID exists, put it in "newInsights" without an id.
       2. Each distinct topic gets its own insight object.
       3. Content must be a concise rephrasing, NEVER a verbatim copy of the message.
-      4. Resolve all owners in a single call to the resolve_users tool, then use the returned app user IDs (UUIDs) in the "owners" array.
-      5. If a later message resolves, completes, or supersedes an earlier one about the same situation, output only the final state as a single insight. The outdated intermediate state must not appear anywhere — not in updatedInsights, not in newInsights.
-      6. Owners = people directly assigned or asked to take action. Do not include people merely mentioned in passing.
-      7. broadcasted = true when no specific person is directly assigned. When broadcasted is true, owners must be empty.
+      4. If a later message resolves, completes, or supersedes an earlier one about the same situation, output only the final state as a single insight. The outdated intermediate state must not appear anywhere — not in updatedInsights, not in newInsights.
+      5. Owners = people directly assigned or asked to take action. Do not include people merely mentioned in passing.
+      6. broadcasted = true when no specific person is directly assigned. When broadcasted is true, owners must be empty.
       
       Return only a JSON object matching this exact structure, with no other text:
       {{
@@ -42,7 +39,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
             "id": "string",
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
             "content": "...",
-            "owners": ["uuid1", "uuid2"],
+            "owners": [{{ "id": "platform_user_id" }}, {{ "username": "platform_username" }}],
             "envolopsRef": ["env-1", "env-2"],
             "broadcasted": false
           }}

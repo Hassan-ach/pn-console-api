@@ -1,27 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RunnableLambda } from '@langchain/core/runnables';
 import { CapabilitiesModule } from './capabilities.module';
 import { CapabilityManager } from './capability-manager.service';
 import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
 import { LlmService } from '../llm/llm.service';
-import { RESOLVE_USERS_TOOL } from '../tools/tools.module';
+import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 
 describe('CapabilitiesModule — injection', () => {
     let manager: CapabilityManager;
     let module: TestingModule;
 
     beforeAll(async () => {
-        const fakeChain = RunnableLambda.from(async () => {
-            return JSON.stringify({
-                updatedInsights: [],
-                newInsights: [],
-            });
-        });
-
-        const mockResolveUsersTool = {
-            name: 'resolve_users',
-            description: 'mock',
-            invoke: jest.fn(),
+        const mockLlm = {
+            invoke: jest.fn().mockResolvedValue({
+                content: JSON.stringify({
+                    updatedInsights: [],
+                    newInsights: [],
+                }),
+            }),
         };
 
         module = await Test.createTestingModule({
@@ -29,11 +24,12 @@ describe('CapabilitiesModule — injection', () => {
         })
             .overrideProvider(LlmService)
             .useValue({
-                createLLM: jest.fn(),
-                createToolChain: jest.fn().mockResolvedValue(fakeChain),
+                createLLM: jest.fn().mockResolvedValue(mockLlm),
             })
-            .overrideProvider(RESOLVE_USERS_TOOL)
-            .useValue(mockResolveUsersTool)
+            .overrideProvider(PlatformUserMappingRepository)
+            .useValue({
+                findByPluginName: jest.fn().mockResolvedValue([]),
+            })
             .compile();
 
         manager = module.get(CapabilityManager);
