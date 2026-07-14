@@ -18,10 +18,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         });
     }
 
-    authorizationParams(req: any): { prompt: string } {
-        if (req.query?.mode === 'desktop') {
-            req.session.oauthMode = 'desktop';
-        }
+    authorizationParams(): { prompt: string } {
         return { prompt: 'select_account' };
     }
 

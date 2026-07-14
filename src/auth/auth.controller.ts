@@ -90,14 +90,7 @@ export class AuthController {
         res.redirect(redirectUrl);
     }
 
-    private oauthRedirectUrl(req: any, token: string, successParam: string, fallbackUrl: string): string {
-        const mode = req.session?.oauthMode;
-        if (req.session?.oauthMode) {
-            delete req.session.oauthMode;
-        }
-        if (mode === 'desktop') {
-            return `mosaid://auth-callback?access_token=${token}`;
-        }
+    private oauthRedirectUrl(_req: any, token: string, successParam: string, fallbackUrl: string): string {
         return `${fallbackUrl}/#signup?access_token=${token}&${successParam}`;
     }
 }

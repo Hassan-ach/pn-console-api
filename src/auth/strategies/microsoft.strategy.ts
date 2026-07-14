@@ -27,13 +27,6 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
         });
     }
 
-    authorizationParams(req: any): Record<string, string> {
-        if (req.query?.mode === 'desktop') {
-            req.session.oauthMode = 'desktop';
-        }
-        return {};
-    }
-
     validate(
         _accessToken: string,
         _refreshToken: string,
