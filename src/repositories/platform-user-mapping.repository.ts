@@ -9,6 +9,13 @@ export interface PlatformUserMapping {
     platformUsername: string;
 }
 
+export interface PlatformUserMappingWithUser extends PlatformUserMapping {
+    user: {
+        firstName: string;
+        lastName: string | null;
+    };
+}
+
 @Injectable()
 export class PlatformUserMappingRepository {
     constructor(private readonly prisma: AppDbService) {}
@@ -63,6 +70,27 @@ export class PlatformUserMappingRepository {
         });
 
         return mappings.map((m) => this.toMapping(m));
+    }
+
+    async findWithUser(
+        pluginName: string,
+    ): Promise<PlatformUserMappingWithUser[]> {
+        const mappings = await this.prisma.platformUserMapping.findMany({
+            where: { pluginName },
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+            },
+        });
+
+        return mappings.map((m) => ({
+            ...this.toMapping(m),
+            user: m.user,
+        }));
     }
 
     async delete(

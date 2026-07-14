@@ -60,7 +60,7 @@ export class InsightExtractionCapability implements ICapability {
             ),
         ];
 
-        const MAX_RETRIES = 3;
+        const MAX_RETRIES = parseInt(process.env.LLM_MAX_RETRIES ?? '3', 10);
         let result: InsightExtractionResult = {
             updatedInsights: [],
             newInsights: [],
