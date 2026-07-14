@@ -24,7 +24,7 @@ model InsightVersion {
   version   Int
   type      InsightType
   content   String
-  owners    String[]
+  owners    User[]      @relation("InsightVersionOwners")
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
   createdAt DateTime    @default(now()) @map("created_at")
@@ -52,6 +52,7 @@ model User {
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
   platformMappings PlatformUserMapping[]
+  insightVersions  InsightVersion[]        @relation("InsightVersionOwners")
 
   @@map("users")
 }

@@ -6,6 +6,7 @@ import { ChunkingModule } from './chunking/chunking.module';
 import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
+import { ToolsModule } from './tools/tools.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
@@ -24,6 +25,7 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         CapabilitiesModule,
         StoreModule,
         MergeModule,
+        ToolsModule,
     ],
     exports: [EnterpriseContextBuilder, StoreModule, IntelligenceEngineService],
 })

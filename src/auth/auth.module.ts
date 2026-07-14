@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { SsoStrategy } from './strategies/sso.strategy';
 
 @Module({
     imports: [
@@ -25,7 +26,7 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
         }),
     ],
     controllers: [AuthController],
-    providers: [AuthService, JwtStrategy, GoogleStrategy, MicrosoftStrategy],
+    providers: [AuthService, JwtStrategy, GoogleStrategy, MicrosoftStrategy, SsoStrategy],
     exports: [AuthService],
 })
 export class AuthModule {}
