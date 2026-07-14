@@ -88,6 +88,12 @@ export class InsightExtractionCapability implements ICapability {
             }
         }
 
+        const firstEnv = input.chunk.envelopes[0];
+        const chunkSourcePlugin = firstEnv?.envelope.sourcePlugin;
+        const chunkGroupId = firstEnv?.payload.groupId ?? undefined;
+        const chunkChannelId = firstEnv?.payload.channelId ?? undefined;
+        const chunkTopicId = firstEnv?.payload.topicId ?? undefined;
+
         const allRawInsights = [
             ...result.updatedInsights,
             ...result.newInsights,
@@ -119,6 +125,10 @@ export class InsightExtractionCapability implements ICapability {
                 owners: resolveOwners(u.owners),
                 envolopsRef: u.envolopsRef,
                 broadcasted: u.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
             ...result.newInsights.map((n) => ({
                 id: null,
@@ -127,6 +137,10 @@ export class InsightExtractionCapability implements ICapability {
                 owners: resolveOwners(n.owners),
                 envolopsRef: n.envolopsRef,
                 broadcasted: n.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
         ];
 

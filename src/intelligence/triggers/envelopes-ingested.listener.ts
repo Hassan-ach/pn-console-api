@@ -11,10 +11,6 @@ export class EnvelopesIngestedListener {
 
     @OnEvent('envelopes.ingested')
     async handle(event: EnvelopesIngestedEvent) {
-        this.logger.log(
-            `Received envelopes.ingested event: ${JSON.stringify(event)}`,
-        );
-        return;
         if (event.inserted === 0) {
             this.logger.log(
                 `Skipping intelligence: ${event.inserted} envelopes inserted`,

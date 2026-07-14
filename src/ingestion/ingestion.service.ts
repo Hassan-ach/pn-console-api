@@ -66,9 +66,7 @@ export class IngestionService {
                     'backfill',
                     undefined,
                     undefined,
-                    pluginEnvelopeIds.length > 0
-                        ? pluginEnvelopeIds
-                        : undefined,
+                    undefined,
                 ),
             );
         }
