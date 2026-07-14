@@ -8,6 +8,8 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       Your job is to extract every actionable item, urgent situation, important piece of information, and required decision from the messages, then determine whether each one updates an existing insight or is a new insight.
       
+      When owners are identified in messages, gather all their platform identifiers and call the resolve_users tool exactly once to resolve them before producing your final output.
+      
       Classify every insight into one of these types:
       - TASK: something that needs to be done or followed up on
       - URGENCY: something requiring immediate attention (outages, security incidents, legal exposure, imminent deadlines)

@@ -30,6 +30,8 @@ describe('CapabilitiesModule — injection', () => {
             .useValue({
                 findByPluginName: jest.fn().mockResolvedValue([]),
             })
+            .overrideProvider(RESOLVE_USERS_TOOL)
+            .useValue(mockResolveUsersTool)
             .compile();
 
         manager = module.get(CapabilityManager);

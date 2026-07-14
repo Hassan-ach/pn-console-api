@@ -70,4 +70,26 @@ export class AuthController {
             `${frontendUrl}/#signup?access_token=${result.access_token}&microsoft_success=1`,
         );
     }
+
+    @Get('sso')
+    @UseGuards(AuthGuard('sso'))
+    @ApiOperation({ summary: 'Initiate SSO (OIDC) login' })
+    async ssoAuth() {
+        // Passport handles the redirect — no implementation needed
+    }
+
+    @Get('sso/callback')
+    @UseGuards(AuthGuard('sso'))
+    @ApiOperation({ summary: 'SSO (OIDC) callback' })
+    async ssoCallback(@Req() req, @Res() res: Response) {
+        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const result = await this.authService.loginOrCreateSsoUser({
+            email: req.user.email,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+        });
+        res.redirect(
+            `${frontendUrl}/#signup?access_token=${result.access_token}&sso_success=1`,
+        );
+    }
 }
