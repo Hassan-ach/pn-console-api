@@ -3,7 +3,11 @@ import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 import { AppDbService } from '../../../prisma/app-db/app-db.service';
 import { Insight } from '../../../types/insight.types';
 import { EnvelopeWithPayload } from '../../../types/envelope.types';
-import { EnterpriseContext, RetrievalWindow, PreviousIntelligenceQuery } from '../types/enterprise-context.types';
+import {
+    EnterpriseContext,
+    RetrievalWindow,
+    PreviousIntelligenceQuery,
+} from '../types/enterprise-context.types';
 import { EnterpriseContextBuilder } from './enterprise-context-builder.abstract';
 import { WindowDiscoveryService } from '../services/window-discovery.service';
 import { toInsight, toEnvelopeWithPayload } from '../utils/context-mappers';

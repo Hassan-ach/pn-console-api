@@ -5,7 +5,11 @@ import { EnterpriseContextBuilder } from './context/builders/enterprise-context-
 import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
-import type { EnterpriseContext, RetrievalWindow, PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
+import type {
+    EnterpriseContext,
+    RetrievalWindow,
+    PreviousIntelligenceQuery,
+} from './context/types/enterprise-context.types';
 import type { Insight } from '../types/insight.types';
 import type { DataChunk } from './chunking/types/data-chunk.type';
 import type { EnvelopeWithPayload } from '../types/envelope.types';
@@ -64,16 +68,19 @@ function makeContext(overrides?: {
         metadata: {},
         envelopes: overrides?.envelopes ?? [],
         previousIntelligence:
-            overrides?.previousIntelligence ??
-            jest.fn().mockResolvedValue([]),
+            overrides?.previousIntelligence ?? jest.fn().mockResolvedValue([]),
     };
 }
 
-async function* singleCtx(ctx: EnterpriseContext): AsyncIterable<EnterpriseContext> {
+async function* singleCtx(
+    ctx: EnterpriseContext,
+): AsyncIterable<EnterpriseContext> {
     yield ctx;
 }
 
-async function* multiCtx(...contexts: EnterpriseContext[]): AsyncIterable<EnterpriseContext> {
+async function* multiCtx(
+    ...contexts: EnterpriseContext[]
+): AsyncIterable<EnterpriseContext> {
     for (const ctx of contexts) {
         yield ctx;
     }
@@ -120,10 +127,16 @@ describe('IntelligenceEngineService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 IntelligenceEngineService,
-                { provide: EnterpriseContextBuilder, useValue: mockContextBuilder },
+                {
+                    provide: EnterpriseContextBuilder,
+                    useValue: mockContextBuilder,
+                },
                 { provide: ChunkingPipeline, useValue: mockPipeline },
                 { provide: CapabilityManager, useValue: mockCapabilityManager },
-                { provide: InsightPersistenceService, useValue: mockPersistence },
+                {
+                    provide: InsightPersistenceService,
+                    useValue: mockPersistence,
+                },
             ],
         }).compile();
 
@@ -136,7 +149,12 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('builds context, chunks, executes capabilities, and persists results', async () => {
-        const insight: Insight = { id: null, type: 'INFO', content: 'extracted', owners: [] };
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'extracted',
+            owners: [],
+        };
         const ctx = makeContext({ envelopes: [baseEnvelope] });
         const prevMock = ctx.previousIntelligence as jest.Mock;
         prevMock.mockResolvedValue([]);
@@ -164,7 +182,10 @@ describe('IntelligenceEngineService', () => {
             chunk: baseChunk,
             previousIntelligence: [],
         });
-        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight], 'org-1');
+        expect(mockPersistence.persistAll).toHaveBeenCalledWith(
+            [insight],
+            'org-1',
+        );
         expect(result).toEqual({ insightsPersisted: 1 });
     });
 
@@ -224,7 +245,12 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('calls previousIntelligence per chunk and passes to capabilities', async () => {
-        const prevInsight: Insight = { id: 'existing-1', type: 'TASK', content: 'previous task', owners: ['u1'] };
+        const prevInsight: Insight = {
+            id: 'existing-1',
+            type: 'TASK',
+            content: 'previous task',
+            owners: ['u1'],
+        };
         const prevMock = jest.fn().mockResolvedValue([prevInsight]);
         const ctx = makeContext({
             envelopes: [baseEnvelope],
@@ -251,7 +277,12 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('logs capability errors and persists successful results', async () => {
-        const insight: Insight = { id: null, type: 'INFO', content: 'good', owners: [] };
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'good',
+            owners: [],
+        };
         const ctx = makeContext({ envelopes: [baseEnvelope] });
         mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
         mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
@@ -263,18 +294,34 @@ describe('IntelligenceEngineService', () => {
         const result = await engine.run('org-1');
 
         expect(Logger.prototype.warn).toHaveBeenCalled();
-        expect(mockPersistence.persistAll).toHaveBeenCalledWith([insight], 'org-1');
+        expect(mockPersistence.persistAll).toHaveBeenCalledWith(
+            [insight],
+            'org-1',
+        );
         expect(result).toEqual({ insightsPersisted: 1 });
     });
 
     it('processes multiple windows in order', async () => {
-        const insight: Insight = { id: null, type: 'INFO', content: 'from w1', owners: [] };
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'from w1',
+            owners: [],
+        };
         const ctx1 = makeContext({
-            window: { start: new Date('2026-01-01'), end: new Date('2026-01-02'), messageCount: 2 },
+            window: {
+                start: new Date('2026-01-01'),
+                end: new Date('2026-01-02'),
+                messageCount: 2,
+            },
             envelopes: [baseEnvelope],
         });
         const ctx2 = makeContext({
-            window: { start: new Date('2026-01-03'), end: new Date('2026-01-04'), messageCount: 2 },
+            window: {
+                start: new Date('2026-01-03'),
+                end: new Date('2026-01-04'),
+                messageCount: 2,
+            },
             envelopes: [baseEnvelope],
         });
 
@@ -293,17 +340,32 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('skips empty window', async () => {
-        const insight: Insight = { id: null, type: 'INFO', content: 'from w2', owners: [] };
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'from w2',
+            owners: [],
+        };
         const emptyCtx = makeContext({
-            window: { start: new Date('2026-01-01'), end: new Date('2026-01-01'), messageCount: 0 },
+            window: {
+                start: new Date('2026-01-01'),
+                end: new Date('2026-01-01'),
+                messageCount: 0,
+            },
             envelopes: [],
         });
         const nonEmptyCtx = makeContext({
-            window: { start: new Date('2026-01-02'), end: new Date('2026-01-02'), messageCount: 1 },
+            window: {
+                start: new Date('2026-01-02'),
+                end: new Date('2026-01-02'),
+                messageCount: 1,
+            },
             envelopes: [baseEnvelope],
         });
 
-        mockContextBuilder.build.mockReturnValue(multiCtx(emptyCtx, nonEmptyCtx));
+        mockContextBuilder.build.mockReturnValue(
+            multiCtx(emptyCtx, nonEmptyCtx),
+        );
         mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
         mockCapabilityManager.executeAll.mockResolvedValue({
             results: [{ capabilityName: 'cap-a', insights: [insight] }],
@@ -325,15 +387,22 @@ describe('IntelligenceEngineService', () => {
         const chunkWithTopic: DataChunk = {
             id: 'chunk-topic',
             envelopes: [envWithTopic],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
         const prevMock = jest.fn().mockResolvedValue([]);
-        const ctx = makeContext({ envelopes: [envWithTopic], previousIntelligence: prevMock });
+        const ctx = makeContext({
+            envelopes: [envWithTopic],
+            previousIntelligence: prevMock,
+        });
 
         mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
         mockPipeline.run.mockImplementation(() => singleChunk(chunkWithTopic));
         mockCapabilityManager.executeAll.mockResolvedValue({
-            results: [], errors: [],
+            results: [],
+            errors: [],
         });
 
         await engine.run('org-1');
@@ -352,15 +421,22 @@ describe('IntelligenceEngineService', () => {
         const chunkWithGroup: DataChunk = {
             id: 'chunk-group',
             envelopes: [envWithGroup],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
         const prevMock = jest.fn().mockResolvedValue([]);
-        const ctx = makeContext({ envelopes: [envWithGroup], previousIntelligence: prevMock });
+        const ctx = makeContext({
+            envelopes: [envWithGroup],
+            previousIntelligence: prevMock,
+        });
 
         mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
         mockPipeline.run.mockImplementation(() => singleChunk(chunkWithGroup));
         mockCapabilityManager.executeAll.mockResolvedValue({
-            results: [], errors: [],
+            results: [],
+            errors: [],
         });
 
         await engine.run('org-1');
@@ -381,21 +457,33 @@ describe('IntelligenceEngineService', () => {
             payload: { ...basePayload, channelId: 'c2', topicId: 't2' },
         };
         const chunk1: DataChunk = {
-            id: 'chunk-1', envelopes: [env1],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            id: 'chunk-1',
+            envelopes: [env1],
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
         const chunk2: DataChunk = {
-            id: 'chunk-2', envelopes: [env2],
-            metadata: { timeRange: { start: new Date(), end: new Date() }, envelopeCount: 1 },
+            id: 'chunk-2',
+            envelopes: [env2],
+            metadata: {
+                timeRange: { start: new Date(), end: new Date() },
+                envelopeCount: 1,
+            },
         };
 
         const prevMock = jest.fn().mockResolvedValue([]);
-        const ctx = makeContext({ envelopes: [env1, env2], previousIntelligence: prevMock });
+        const ctx = makeContext({
+            envelopes: [env1, env2],
+            previousIntelligence: prevMock,
+        });
 
         mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
         mockPipeline.run.mockImplementation(() => multiChunk(chunk1, chunk2));
         mockCapabilityManager.executeAll.mockResolvedValue({
-            results: [], errors: [],
+            results: [],
+            errors: [],
         });
 
         await engine.run('org-1');

@@ -10,10 +10,7 @@ import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
 @Module({
-    providers: [
-        IntelligenceEngineService,
-        EnvelopesIngestedListener,
-    ],
+    providers: [IntelligenceEngineService, EnvelopesIngestedListener],
     imports: [
         ContextModule,
         LlmModule,

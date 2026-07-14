@@ -93,8 +93,10 @@ export class IntelligenceEngineService {
         };
 
         if (firstEnv.payload.channelId || firstEnv.payload.topicId) {
-            if (firstEnv.payload.channelId) scope.channelId = firstEnv.payload.channelId;
-            if (firstEnv.payload.topicId) scope.topicId = firstEnv.payload.topicId;
+            if (firstEnv.payload.channelId)
+                scope.channelId = firstEnv.payload.channelId;
+            if (firstEnv.payload.topicId)
+                scope.topicId = firstEnv.payload.topicId;
         } else if (firstEnv.payload.groupId) {
             scope.groupId = firstEnv.payload.groupId;
         }
