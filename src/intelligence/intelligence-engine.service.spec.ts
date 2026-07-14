@@ -149,6 +149,7 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('builds context, chunks, executes capabilities, and persists results', async () => {
+
         const insight: Insight = {
             id: null,
             type: 'INFO',
@@ -277,6 +278,7 @@ describe('IntelligenceEngineService', () => {
     });
 
     it('logs capability errors and persists successful results', async () => {
+
         const insight: Insight = {
             id: null,
             type: 'INFO',
