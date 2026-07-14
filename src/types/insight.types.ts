@@ -10,4 +10,8 @@ export interface Insight {
     owners: string[];
     version?: number;
     createdAt?: Date;
+    sourcePlugin?: string;
+    groupId?: string;
+    channelId?: string;
+    topicId?: string;
 }
