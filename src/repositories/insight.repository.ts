@@ -22,7 +22,9 @@ export class InsightRepository {
                         version: 1,
                         type: data.type,
                         content: data.content,
-                        owners: data.owners,
+                        owners: {
+                            connect: data.owners.map((id) => ({ id })),
+                        },
                         broadcasted: data.broadcasted ?? false,
                         envolopsRef: data.envolopsRef ?? [],
                     },
@@ -32,6 +34,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -66,7 +69,9 @@ export class InsightRepository {
                     version: maxVersion + 1,
                     type: data.type,
                     content: data.content,
-                    owners: data.owners,
+                    owners: {
+                        connect: data.owners.map((id) => ({ id })),
+                    },
                     broadcasted: data.broadcasted ?? false,
                     envolopsRef: data.envolopsRef ?? [],
                 },
@@ -78,6 +83,7 @@ export class InsightRepository {
                     versions: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
+                        include: { owners: true },
                     },
                 },
             });
@@ -92,6 +98,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -106,6 +113,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -120,7 +128,7 @@ export class InsightRepository {
             version: number;
             type: string;
             content: string;
-            owners: string[];
+            owners: { id: string }[];
             envolopsRef: string[];
             broadcasted: boolean;
             createdAt: Date;
@@ -132,7 +140,7 @@ export class InsightRepository {
             organizationId: row.organizationId ?? undefined,
             type: latest.type as Insight['type'],
             content: latest.content,
-            owners: [...latest.owners],
+            owners: latest.owners.map((u) => u.id),
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
             version: latest.version,

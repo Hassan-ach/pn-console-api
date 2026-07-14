@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RunnableLambda } from '@langchain/core/runnables';
 import { InsightExtractionCapability } from './insight-extraction.capability';
 import { LlmService } from '../../llm/llm.service';
-import { InsightResultSchema } from './insight-schema';
+import { RESOLVE_USERS_TOOL } from '../../tools/tools.module';
 import { CapabilityInput } from '../capability.interface';
 
 const sampleInput: CapabilityInput = {
@@ -75,28 +75,34 @@ const sampleResult = {
 
 describe('InsightExtractionCapability', () => {
     let service: InsightExtractionCapability;
-    let modelInvoke: jest.Mock<Promise<unknown>, []>;
+    let chainInvoke: jest.Mock;
 
     beforeEach(async () => {
-        modelInvoke = jest.fn().mockResolvedValue(sampleResult);
+        chainInvoke = jest
+            .fn()
+            .mockResolvedValue(JSON.stringify(sampleResult));
 
-        const fakeStructuredLlm = RunnableLambda.from(async () => {
-            const value = await modelInvoke();
-            return InsightResultSchema.parse(value);
+        const fakeChain = RunnableLambda.from(async () => {
+            const raw = await chainInvoke();
+            return raw;
         });
 
-        const fakeLlm = {
-            withStructuredOutput: jest.fn().mockReturnValue(fakeStructuredLlm),
+        const llmServiceMock = {
+            createLLM: jest.fn(),
+            createToolChain: jest.fn().mockResolvedValue(fakeChain),
         };
 
-        const llmServiceMock = {
-            createLLM: jest.fn().mockResolvedValue(fakeLlm),
+        const mockResolveUsersTool = {
+            name: 'resolve_users',
+            description: 'mock',
+            invoke: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 InsightExtractionCapability,
                 { provide: LlmService, useValue: llmServiceMock },
+                { provide: RESOLVE_USERS_TOOL, useValue: mockResolveUsersTool },
             ],
         }).compile();
 
@@ -132,7 +138,7 @@ describe('InsightExtractionCapability', () => {
     });
 
     it('should throw because LLM service is unreachable', async () => {
-        modelInvoke.mockRejectedValue(new Error('network error'));
+        chainInvoke.mockRejectedValue(new Error('network error'));
 
         const input: CapabilityInput = {
             chunk: {
@@ -146,12 +152,12 @@ describe('InsightExtractionCapability', () => {
             previousIntelligence: [],
         };
         await expect(service.execute(input)).rejects.toThrow(
-            'insights extraction failed after 3 attempts',
+            'insights extraction failed',
         );
     }, 10_000);
 
     it('should throw because of unstructured output', async () => {
-        modelInvoke.mockResolvedValue({ newInsights: {} });
+        chainInvoke.mockResolvedValue(JSON.stringify({ newInsights: {} }));
 
         const input: CapabilityInput = {
             chunk: {
@@ -165,7 +171,7 @@ describe('InsightExtractionCapability', () => {
             previousIntelligence: [],
         };
         await expect(service.execute(input)).rejects.toThrow(
-            'insights extraction failed after 3 attempts',
+            'insights extraction failed',
         );
     }, 10_000);
 });
