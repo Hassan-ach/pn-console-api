@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaModule } from './prisma/prisma.module';
-import { EnvelopeModule } from './envelope/envelope.module';
 import { PluginsModule } from './ingestion/plugins/plugins.module';
 import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
 import { IngestionModule } from './ingestion/ingestion.module';
@@ -16,7 +15,6 @@ import { AppController } from './app.controller';
         ConfigModule.forRoot({ isGlobal: true }),
         EventEmitterModule.forRoot({ wildcard: false }),
         PrismaModule,
-        EnvelopeModule,
         PluginsModule,
         TelegramPluginModule,
         IngestionModule,
