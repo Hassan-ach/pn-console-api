@@ -21,6 +21,7 @@ import { DemoController } from './demo.controller';
         DemoController,
         DemoGenerationController,
         DemoPersistenceController,
+        DemoIntelligenceController,
     ],
 })
 export class DemoModule {}
