@@ -5,6 +5,8 @@ import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { DataChunk } from './chunking/types/data-chunk.type';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
+import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
+import { EnvelopeService } from '../envelope/envelope.service';
 
 @Injectable()
 export class IntelligenceEngineService {
@@ -15,6 +17,8 @@ export class IntelligenceEngineService {
         private readonly pipeline: ChunkingPipeline,
         private readonly capabilityManager: CapabilityManager,
         private readonly persistence: InsightPersistenceService,
+        private readonly failureRepository: CapabilityFailureRepository,
+        private readonly envelopeService: EnvelopeService,
     ) {}
 
     async run(
@@ -65,7 +69,21 @@ export class IntelligenceEngineService {
 
                 if (errors.length > 0) {
                     this.logger.warn(
-                        `Capability errors: ${JSON.stringify(errors)}`,
+                        `Capability errors for chunk ${chunk.id}: ${JSON.stringify(errors)}`,
+                    );
+
+                    const envelopeIds = chunk.envelopes
+                        .map((e) => e.envelope.id)
+                        .filter((id): id is string => !!id);
+
+                    await this.failureRepository.createMany(
+                        errors.map((err) => ({
+                            capabilityName: err.capabilityName,
+                            chunkId: chunk.id,
+                            errorMessage: err.error,
+                            envelopeIds,
+                            organizationId,
+                        })),
                     );
                 }
 
@@ -73,6 +91,22 @@ export class IntelligenceEngineService {
                 if (insights.length > 0) {
                     await this.persistence.persistAll(insights, organizationId);
                     totalInsights += insights.length;
+                }
+
+                const envelopeIds = chunk.envelopes
+                    .map((e) => e.envelope.id)
+                    .filter((id): id is string => !!id);
+
+                if (envelopeIds.length > 0) {
+                    const allFailed =
+                        errors.length > 0 &&
+                        results.every((r) => r.insights.length === 0);
+                    const status = allFailed ? 'FAILED' : 'READY';
+
+                    await this.envelopeService.markBulkStatus(
+                        envelopeIds,
+                        status,
+                    );
                 }
             }
         }

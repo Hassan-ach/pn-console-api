@@ -59,3 +59,18 @@ model Envelope {
   @@unique([sourcePlugin, sourceId])
   @@map("envelope")
 }
+
+model CapabilityFailure {
+  id             String   @id @default(uuid()) @db.Uuid
+  capabilityName String   @map("capability_name")
+  chunkId        String   @map("chunk_id")
+  errorMessage   String   @map("error_message")
+  envelopeIds    String[] @default([]) @map("envelope_ids")
+  organizationId String   @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  resolved       Boolean  @default(false)
+
+  @@index([organizationId, capabilityName])
+  @@index([resolved])
+  @@map("capability_failures")
+}

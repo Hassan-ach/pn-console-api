@@ -44,7 +44,10 @@ export class CapabilityManager {
         );
 
         const results: CapabilityResult[] = [];
-        const errors: { capabilityName: string; error: string }[] = [];
+        const errors: {
+            capabilityName: string;
+            error: string;
+        }[] = [];
 
         for (let i = 0; i < outcomes.length; i++) {
             const outcome = outcomes[i];
