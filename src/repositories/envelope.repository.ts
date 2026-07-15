@@ -52,22 +52,45 @@ export class EnvelopeRepository {
     async createManyWithPayload(
         items: CreateEnvelopeInput[],
     ): Promise<CreateManyResult> {
-        if (items.length === 0) return { inserted: 0, ids: [] };
+        if (items.length === 0) {
+            return { inserted: 0, ids: [] };
+        }
+
+        const uniqueItems = new Map<string, CreateEnvelopeInput>();
+
+        for (const item of items) {
+            const key = `${item.envelope.sourcePlugin}:${item.envelope.sourceId}`;
+            uniqueItems.set(key, item);
+        }
+
+        const dedupedItems = [...uniqueItems.values()];
+
+        const existing = await this.rawDb.envelope.findMany({
+            where: {
+                OR: dedupedItems.map((item) => ({
+                    sourcePlugin: item.envelope.sourcePlugin,
+                    sourceId: item.envelope.sourceId,
+                })),
+            },
+            select: {
+                sourcePlugin: true,
+                sourceId: true,
+            },
+        });
+
+        const existingKeys = new Set(
+            existing.map((e) => `${e.sourcePlugin}:${e.sourceId}`),
+        );
 
         const ids: string[] = [];
 
         await this.rawDb.$transaction(async (tx) => {
-            for (const item of items) {
-                const exists = await tx.envelope.findUnique({
-                    where: {
-                        sourcePlugin_sourceId: {
-                            sourcePlugin: item.envelope.sourcePlugin,
-                            sourceId: item.envelope.sourceId,
-                        },
-                    },
-                    select: { id: true },
-                });
-                if (exists) continue;
+            for (const item of dedupedItems) {
+                const key = `${item.envelope.sourcePlugin}:${item.envelope.sourceId}`;
+
+                if (existingKeys.has(key)) {
+                    continue;
+                }
 
                 const payload = await tx.messagePayload.create({
                     data: {
@@ -112,7 +135,10 @@ export class EnvelopeRepository {
             }
         });
 
-        return { inserted: ids.length, ids };
+        return {
+            inserted: ids.length,
+            ids,
+        };
     }
 
     async markStatus(
