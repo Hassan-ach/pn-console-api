@@ -103,10 +103,7 @@ export class IntelligenceEngineService {
                         results.every((r) => r.insights.length === 0);
                     const status = allFailed ? 'FAILED' : 'READY';
 
-                    await this.envelopeRepo.markStatus(
-                        envelopeIds,
-                        status,
-                    );
+                    await this.envelopeRepo.markStatus(envelopeIds, status);
                 }
             }
         }
