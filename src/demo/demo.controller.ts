@@ -1,17 +1,17 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { EnvelopeService } from '../envelope/envelope.service';
+import { EnvelopeRepository } from '../repositories/envelope.repository';
 import { InsightRepository } from '../repositories/insight.repository';
 
 @Controller('demo')
 export class DemoController {
     constructor(
-        private readonly envelopeService: EnvelopeService,
+        private readonly envelopeRepo: EnvelopeRepository,
         private readonly insightRepository: InsightRepository,
     ) {}
 
     @Get('envelopes/count')
     async getEnvelopeCount(@Query('sourcePlugin') sourcePlugin?: string) {
-        const count = await this.envelopeService.count(sourcePlugin);
+        const count = await this.envelopeRepo.count(sourcePlugin);
         return { count };
     }
 

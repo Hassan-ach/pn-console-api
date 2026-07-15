@@ -6,7 +6,7 @@ import { DataChunk } from './chunking/types/data-chunk.type';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
-import { EnvelopeService } from '../envelope/envelope.service';
+import { EnvelopeRepository } from '../repositories/envelope.repository';
 
 @Injectable()
 export class IntelligenceEngineService {
@@ -18,7 +18,7 @@ export class IntelligenceEngineService {
         private readonly capabilityManager: CapabilityManager,
         private readonly persistence: InsightPersistenceService,
         private readonly failureRepository: CapabilityFailureRepository,
-        private readonly envelopeService: EnvelopeService,
+        private readonly envelopeRepo: EnvelopeRepository,
     ) {}
 
     async run(
@@ -103,7 +103,7 @@ export class IntelligenceEngineService {
                         results.every((r) => r.insights.length === 0);
                     const status = allFailed ? 'FAILED' : 'READY';
 
-                    await this.envelopeService.markBulkStatus(
+                    await this.envelopeRepo.markStatus(
                         envelopeIds,
                         status,
                     );
