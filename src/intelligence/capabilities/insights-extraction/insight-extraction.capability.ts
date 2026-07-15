@@ -7,7 +7,7 @@ import {
 } from './insight-schema';
 import { SYSTEM_PROMPT } from './insight-extraction-prompt';
 import { InputMessage } from './types';
-import { Insight } from 'src/types/insight.types';
+import { Insight, UnresolvedOwnerRef } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import {
@@ -112,36 +112,59 @@ export class InsightExtractionCapability implements ICapability {
                 ? await this.resolveOwnersBatch(allOwnerRefs, pluginName)
                 : new Map<string, string | null>();
 
-        const resolveOwners = (owners: OwnerRef[]): string[] =>
-            owners
-                .map((o) => resolvedMap.get(JSON.stringify(o)))
-                .filter((id): id is string => id !== null && id !== undefined);
+        const resolveOwners = (
+            owners: OwnerRef[],
+        ): { resolved: string[]; unresolved: UnresolvedOwnerRef[] } => {
+            const resolved: string[] = [];
+            const unresolved: UnresolvedOwnerRef[] = [];
+            for (const o of owners) {
+                const appId = resolvedMap.get(JSON.stringify(o));
+                if (appId) {
+                    resolved.push(appId);
+                } else {
+                    unresolved.push({
+                        platformUserId: o.id ?? null,
+                        platformUsername: o.username ?? null,
+                        pluginName,
+                    });
+                }
+            }
+            return { resolved, unresolved };
+        };
 
         const insights: Insight[] = [
-            ...result.updatedInsights.map((u) => ({
-                id: u.id,
-                type: u.type,
-                content: u.content,
-                owners: resolveOwners(u.owners),
-                envolopsRef: u.envolopsRef,
-                broadcasted: u.broadcasted,
-                sourcePlugin: chunkSourcePlugin,
-                groupId: chunkGroupId,
-                channelId: chunkChannelId,
-                topicId: chunkTopicId,
-            })),
-            ...result.newInsights.map((n) => ({
-                id: null,
-                type: n.type,
-                content: n.content,
-                owners: resolveOwners(n.owners),
-                envolopsRef: n.envolopsRef,
-                broadcasted: n.broadcasted,
-                sourcePlugin: chunkSourcePlugin,
-                groupId: chunkGroupId,
-                channelId: chunkChannelId,
-                topicId: chunkTopicId,
-            })),
+            ...result.updatedInsights.map((u) => {
+                const { resolved, unresolved } = resolveOwners(u.owners);
+                return {
+                    id: u.id,
+                    type: u.type,
+                    content: u.content,
+                    owners: resolved,
+                    unresolvedOwnerRefs: unresolved,
+                    envolopsRef: u.envolopsRef,
+                    broadcasted: u.broadcasted,
+                    sourcePlugin: chunkSourcePlugin,
+                    groupId: chunkGroupId,
+                    channelId: chunkChannelId,
+                    topicId: chunkTopicId,
+                };
+            }),
+            ...result.newInsights.map((n) => {
+                const { resolved, unresolved } = resolveOwners(n.owners);
+                return {
+                    id: null,
+                    type: n.type,
+                    content: n.content,
+                    owners: resolved,
+                    unresolvedOwnerRefs: unresolved,
+                    envolopsRef: n.envolopsRef,
+                    broadcasted: n.broadcasted,
+                    sourcePlugin: chunkSourcePlugin,
+                    groupId: chunkGroupId,
+                    channelId: chunkChannelId,
+                    topicId: chunkTopicId,
+                };
+            }),
         ];
 
         this.logger.log(
@@ -151,7 +174,6 @@ export class InsightExtractionCapability implements ICapability {
         return { capabilityName: this.name, insights };
     }
 
-    //TODO: insights with unresolvable owners are currently skipped — find a solution to handle or notify about missing user mappings
     private async resolveOwnersBatch(
         allOwnerRefs: OwnerRef[],
         pluginName: string,
