@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Post,
+    Req,
+    Res,
+    UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
@@ -7,8 +15,10 @@ import {
     ApiCreatedResponse,
     ApiOperation,
     ApiTags,
+    ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 
 @ApiTags('Auth')
@@ -27,6 +37,13 @@ export class AuthController {
         return this.authService.signup(dto);
     }
 
+    @Post('login')
+    @ApiOperation({ summary: 'Log in with email and password' })
+    @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+    async login(@Body() dto: LoginDto) {
+        return this.authService.login(dto);
+    }
+
     @Get('google')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Initiate Google OAuth login' })
@@ -38,14 +55,20 @@ export class AuthController {
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Google OAuth callback' })
     async googleCallback(@Req() req, @Res() res: Response) {
-        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const frontendUrl =
+            this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateGoogleUser({
             email: req.user.email,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
         const successParam = result.is_new_user ? 'google_success=1' : '';
-        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        const redirectUrl = this.oauthRedirectUrl(
+            req,
+            result.access_token,
+            successParam,
+            frontendUrl,
+        );
         res.redirect(redirectUrl);
     }
 
@@ -60,14 +83,20 @@ export class AuthController {
     @UseGuards(AuthGuard('microsoft'))
     @ApiOperation({ summary: 'Microsoft OAuth callback' })
     async microsoftCallback(@Req() req, @Res() res: Response) {
-        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const frontendUrl =
+            this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateMicrosoftUser({
             email: req.user.email,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
         const successParam = result.is_new_user ? 'microsoft_success=1' : '';
-        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        const redirectUrl = this.oauthRedirectUrl(
+            req,
+            result.access_token,
+            successParam,
+            frontendUrl,
+        );
         res.redirect(redirectUrl);
     }
 
@@ -82,18 +111,29 @@ export class AuthController {
     @UseGuards(AuthGuard('sso'))
     @ApiOperation({ summary: 'SSO (OIDC) callback' })
     async ssoCallback(@Req() req, @Res() res: Response) {
-        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const frontendUrl =
+            this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateSsoUser({
             email: req.user.email,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
         const successParam = result.is_new_user ? 'sso_success=1' : '';
-        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        const redirectUrl = this.oauthRedirectUrl(
+            req,
+            result.access_token,
+            successParam,
+            frontendUrl,
+        );
         res.redirect(redirectUrl);
     }
 
-    private oauthRedirectUrl(_req: any, token: string, successParam: string, fallbackUrl: string): string {
+    private oauthRedirectUrl(
+        _req: any,
+        token: string,
+        successParam: string,
+        fallbackUrl: string,
+    ): string {
         const query = successParam ? `&${successParam}` : '';
         return `${fallbackUrl}/#signup?access_token=${token}${query}`;
     }

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AppDbService } from '../prisma/app-db/app-db.service';
@@ -38,7 +42,9 @@ export class AuthService {
     async signup(dto: SignupDto) {
         // Only conflict when the same email + EMAIL provider already exists.
         const existing = await this.db.user.findUnique({
-            where: { email_providerType: { email: dto.email, providerType: 'EMAIL' } },
+            where: {
+                email_providerType: { email: dto.email, providerType: 'EMAIL' },
+            },
         });
 
         if (existing) {
@@ -74,6 +80,39 @@ export class AuthService {
         };
     }
 
+    async login(dto: { email: string; password: string }) {
+        const user = await this.db.user.findUnique({
+            where: {
+                email_providerType: { email: dto.email, providerType: 'EMAIL' },
+            },
+        });
+
+        if (!user || !user.passwordHash) {
+            throw new UnauthorizedException('Incorrect email or password.');
+        }
+
+        const passwordValid = await bcrypt.compare(
+            dto.password,
+            user.passwordHash,
+        );
+        if (!passwordValid) {
+            throw new UnauthorizedException('Incorrect email or password.');
+        }
+
+        const token = this.jwtService.sign({ sub: user.id, email: user.email });
+
+        return {
+            access_token: token,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                providerType: user.providerType,
+            },
+        };
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private async loginOrCreateOAuthUser(
@@ -83,11 +122,19 @@ export class AuthService {
         // Lookup by (email, providerType) composite key — the same email
         // registered via a different provider resolves to a different account.
         let user = await this.db.user.findUnique({
-            where: { email_providerType: { email: profile.email, providerType: provider } },
+            where: {
+                email_providerType: {
+                    email: profile.email,
+                    providerType: provider,
+                },
+            },
         });
 
         if (user) {
-            const token = this.jwtService.sign({ sub: user.id, email: user.email });
+            const token = this.jwtService.sign({
+                sub: user.id,
+                email: user.email,
+            });
             return {
                 access_token: token,
                 is_new_user: false,
