@@ -14,18 +14,14 @@ export class SsoStrategy extends PassportStrategy(Strategy, 'sso') {
             tokenURL: configService.getOrThrow<string>('SSO_TOKEN_URL'),
             userInfoURL: configService.getOrThrow<string>('SSO_USERINFO_URL'),
             clientID: configService.getOrThrow<string>('SSO_CLIENT_ID'),
-            clientSecret: configService.getOrThrow<string>(
-                'SSO_CLIENT_SECRET',
-            ),
+            clientSecret: configService.getOrThrow<string>('SSO_CLIENT_SECRET'),
             callbackURL: configService.getOrThrow<string>('SSO_CALLBACK_URL'),
             scope: 'openid profile email',
+            prompt: 'login',
         });
     }
 
-    validate(
-        _issuer: string,
-        profile: any,
-    ) {
+    validate(_issuer: string, profile: any) {
         return {
             email: (profile.emails?.[0]?.value ?? '').toLowerCase(),
             firstName:
