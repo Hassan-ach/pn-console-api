@@ -1,5 +1,11 @@
 export type InsightType = 'TASK' | 'URGENCY' | 'INFO' | 'DECISION';
 
+export interface UnresolvedOwnerRef {
+    platformUserId: string | null;
+    platformUsername: string | null;
+    pluginName: string;
+}
+
 export interface Insight {
     id: string | null;
     organizationId?: string;
@@ -8,6 +14,7 @@ export interface Insight {
     type: InsightType;
     content: string;
     owners: string[];
+    unresolvedOwnerRefs?: UnresolvedOwnerRef[];
     version?: number;
     createdAt?: Date;
     sourcePlugin?: string;
