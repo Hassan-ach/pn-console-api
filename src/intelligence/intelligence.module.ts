@@ -6,6 +6,8 @@ import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
+import { RepositoriesModule } from '../repositories/repositories.module';
+import { EnvelopeModule } from '../envelope/envelope.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
@@ -19,6 +21,8 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         StoreModule,
         MergeModule,
         ToolsModule,
+        RepositoriesModule,
+        EnvelopeModule,
     ],
     exports: [ContextModule, StoreModule, IntelligenceEngineService],
 })

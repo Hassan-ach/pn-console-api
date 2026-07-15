@@ -116,6 +116,18 @@ export class EnvelopeService {
         return 'PENDING';
     }
 
+    async markBulkStatus(
+        ids: string[],
+        status: 'READY' | 'FAILED',
+    ): Promise<number> {
+        if (ids.length === 0) return 0;
+        const result = await this.prisma.envelope.updateMany({
+            where: { id: { in: ids } },
+            data: { status },
+        });
+        return result.count;
+    }
+
     async findAll(query: EnvelopeQueryDto) {
         const where: Record<string, unknown> = {};
 

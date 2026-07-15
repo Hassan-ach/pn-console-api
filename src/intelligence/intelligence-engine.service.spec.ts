@@ -5,6 +5,8 @@ import { EnterpriseContextBuilder } from './context/builders/enterprise-context-
 import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
+import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
+import { EnvelopeService } from '../envelope/envelope.service';
 import type {
     EnterpriseContext,
     RetrievalWindow,
@@ -106,11 +108,13 @@ describe('IntelligenceEngineService', () => {
     let mockPipeline: jest.Mocked<ChunkingPipeline>;
     let mockCapabilityManager: jest.Mocked<CapabilityManager>;
     let mockPersistence: jest.Mocked<InsightPersistenceService>;
+    let mockFailureRepository: jest.Mocked<CapabilityFailureRepository>;
+    let mockEnvelopeService: jest.Mocked<EnvelopeService>;
 
     beforeEach(async () => {
         mockContextBuilder = {
             build: jest.fn(),
-        } as any;
+        };
 
         mockPipeline = {
             run: jest.fn(),
@@ -122,6 +126,21 @@ describe('IntelligenceEngineService', () => {
 
         mockPersistence = {
             persistAll: jest.fn().mockResolvedValue(undefined),
+        } as any;
+
+        mockFailureRepository = {
+            create: jest.fn().mockResolvedValue({} as any),
+            createMany: jest.fn().mockResolvedValue(0),
+            findByOrganizationId: jest.fn().mockResolvedValue([]),
+            markResolved: jest.fn().mockResolvedValue(0),
+        } as any;
+
+        mockEnvelopeService = {
+            markBulkStatus: jest.fn().mockResolvedValue(0),
+            bulkCreate: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            count: jest.fn(),
         } as any;
 
         const module: TestingModule = await Test.createTestingModule({
@@ -136,6 +155,14 @@ describe('IntelligenceEngineService', () => {
                 {
                     provide: InsightPersistenceService,
                     useValue: mockPersistence,
+                },
+                {
+                    provide: CapabilityFailureRepository,
+                    useValue: mockFailureRepository,
+                },
+                {
+                    provide: EnvelopeService,
+                    useValue: mockEnvelopeService,
                 },
             ],
         }).compile();
@@ -297,6 +324,19 @@ describe('IntelligenceEngineService', () => {
         expect(mockPersistence.persistAll).toHaveBeenCalledWith(
             [insight],
             'org-1',
+        );
+        expect(mockFailureRepository.createMany).toHaveBeenCalledWith([
+            {
+                capabilityName: 'cap-a',
+                chunkId: 'chunk-1',
+                errorMessage: 'something failed',
+                envelopeIds: ['e1'],
+                organizationId: 'org-1',
+            },
+        ]);
+        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+            ['e1'],
+            'READY',
         );
         expect(result).toEqual({ insightsPersisted: 1 });
     });
@@ -497,6 +537,140 @@ describe('IntelligenceEngineService', () => {
             scope: { sourcePlugin: 'telegram', channelId: 'c2', topicId: 't2' },
             limit: 5,
         });
+    });
+
+    it('records capability failure when errors occur', async () => {
+        const ctx = makeContext({ envelopes: [baseEnvelope] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [],
+            errors: [
+                {
+                    capabilityName: 'insights-extractor',
+                    error: 'LLM timeout',
+                },
+            ],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockFailureRepository.createMany).toHaveBeenCalledWith([
+            {
+                capabilityName: 'insights-extractor',
+                chunkId: 'chunk-1',
+                errorMessage: 'LLM timeout',
+                envelopeIds: ['e1'],
+                organizationId: 'org-1',
+            },
+        ]);
+    });
+
+    it('marks envelopes FAILED when all capabilities fail', async () => {
+        const ctx = makeContext({ envelopes: [baseEnvelope] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [
+                {
+                    capabilityName: 'insights-extractor',
+                    insights: [],
+                },
+            ],
+            errors: [
+                {
+                    capabilityName: 'insights-extractor',
+                    error: 'parse error',
+                },
+            ],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+            ['e1'],
+            'FAILED',
+        );
+    });
+
+    it('marks envelopes READY when capabilities succeed', async () => {
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'ok',
+            owners: [],
+        };
+        const ctx = makeContext({ envelopes: [baseEnvelope] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [
+                {
+                    capabilityName: 'insights-extractor',
+                    insights: [insight],
+                },
+            ],
+            errors: [],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+            ['e1'],
+            'READY',
+        );
+    });
+
+    it('marks envelopes READY on partial success', async () => {
+        const insight: Insight = {
+            id: null,
+            type: 'INFO',
+            content: 'ok',
+            owners: [],
+        };
+        const ctx = makeContext({ envelopes: [baseEnvelope] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [{ capabilityName: 'cap-good', insights: [insight] }],
+            errors: [{ capabilityName: 'cap-bad', error: 'failed' }],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+            ['e1'],
+            'READY',
+        );
+        expect(mockFailureRepository.createMany).toHaveBeenCalled();
+    });
+
+    it('does not record failures when none occur', async () => {
+        const ctx = makeContext({ envelopes: [baseEnvelope] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [{ capabilityName: 'cap-a', insights: [] }],
+            errors: [],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockFailureRepository.createMany).not.toHaveBeenCalled();
+    });
+
+    it('does not mark status when no envelope IDs', async () => {
+        const ctx = makeContext({ envelopes: [] });
+        mockContextBuilder.build.mockReturnValue(singleCtx(ctx));
+        mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
+        mockCapabilityManager.executeAll.mockResolvedValue({
+            results: [],
+            errors: [],
+        });
+
+        await engine.run('org-1');
+
+        expect(mockEnvelopeService.markBulkStatus).not.toHaveBeenCalled();
     });
 
     it('returns 0 when builder yields 0 contexts', async () => {
