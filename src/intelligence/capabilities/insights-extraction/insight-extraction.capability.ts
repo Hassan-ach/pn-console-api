@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import { distance } from 'fastest-levenshtein';
 import {
     InsightExtractionResult,
     InsightResultSchema,
@@ -183,7 +184,12 @@ export class InsightExtractionCapability implements ICapability {
         );
 
         const allMappings =
-            await this.platformUserMappingRepo.findByPluginName(pluginName);
+            await this.platformUserMappingRepo.findWithUser(pluginName);
+
+        const maxDistance = parseInt(
+            process.env.OWNER_RESOLVER_MAX_DISTANCE ?? '1',
+            10,
+        );
 
         const results = new Map<string, string | null>();
 
@@ -210,6 +216,38 @@ export class InsightExtractionCapability implements ICapability {
                 );
                 if (match) {
                     appUserId = match.appUserId;
+                }
+            }
+
+            if (!appUserId && ref.username) {
+                const query = ref.username.toLowerCase();
+                let bestDistance = Infinity;
+                let bestMatch: string | null = null;
+
+                for (const m of allMappings) {
+                    const firstName = m.user.firstName.toLowerCase();
+                    const lastName = (m.user.lastName ?? '').toLowerCase();
+                    const fullNameFL = `${firstName}${lastName}`;
+                    const fullNameLF = `${lastName}${firstName}`;
+
+                    const d = Math.min(
+                        distance(query, firstName),
+                        distance(query, lastName),
+                        distance(query, fullNameFL),
+                        distance(query, fullNameLF),
+                    );
+
+                    if (d < bestDistance) {
+                        bestDistance = d;
+                        bestMatch = m.appUserId;
+                    }
+                }
+
+                if (bestDistance <= maxDistance && bestMatch) {
+                    appUserId = bestMatch;
+                    this.logger.debug(
+                        `Fuzzy matched "${ref.username}" to distance ${bestDistance}`,
+                    );
                 }
             }
 
