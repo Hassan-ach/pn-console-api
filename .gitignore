@@ -71,3 +71,5 @@ reports/
 token-optimizer
 AGENTS.md
 user_stories/
+.plan/
+docs/
