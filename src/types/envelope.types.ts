@@ -18,6 +18,7 @@ export interface MessagePayloadData {
     groupId: string | null;
     channelId: string | null;
     replyTo: string | null;
+    topicId: string | null;
     reactions: Record<string, unknown>;
     pinned: boolean;
     editedDate: Date | null;

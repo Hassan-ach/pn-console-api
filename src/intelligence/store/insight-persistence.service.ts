@@ -8,7 +8,10 @@ export class InsightPersistenceService {
 
     constructor(private readonly repo: InsightRepository) {}
 
-    async persistAll(insights: Insight[]): Promise<void> {
+    async persistAll(
+        insights: Insight[],
+        organizationId: string,
+    ): Promise<void> {
         if (insights.length === 0) return;
 
         const newCount = insights.filter((i) => i.id === null).length;
@@ -21,12 +24,16 @@ export class InsightPersistenceService {
             insights.map((insight) => {
                 if (insight.id === null) {
                     return this.repo.create({
-                        organizationId: insight.organizationId,
+                        organizationId,
                         type: insight.type,
                         content: insight.content,
                         owners: insight.owners,
                         envolopsRef: insight.envolopsRef,
                         broadcasted: insight.broadcasted,
+                        sourcePlugin: insight.sourcePlugin,
+                        groupId: insight.groupId,
+                        channelId: insight.channelId,
+                        topicId: insight.topicId,
                     });
                 }
 
@@ -36,6 +43,10 @@ export class InsightPersistenceService {
                     owners: insight.owners,
                     envolopsRef: insight.envolopsRef,
                     broadcasted: insight.broadcasted,
+                    sourcePlugin: insight.sourcePlugin,
+                    groupId: insight.groupId,
+                    channelId: insight.channelId,
+                    topicId: insight.topicId,
                 });
             }),
         );
@@ -43,7 +54,7 @@ export class InsightPersistenceService {
         this.logger.log(`Persistence complete: ${insights.length} insights`);
     }
 
-    async persist(insight: Insight): Promise<void> {
-        return this.persistAll([insight]);
+    async persist(insight: Insight, organizationId: string): Promise<void> {
+        return this.persistAll([insight], organizationId);
     }
 }

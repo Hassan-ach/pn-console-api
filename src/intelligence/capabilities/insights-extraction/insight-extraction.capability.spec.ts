@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RunnableLambda } from '@langchain/core/runnables';
 import { InsightExtractionCapability } from './insight-extraction.capability';
 import { LlmService } from '../../llm/llm.service';
-import { InsightResultSchema } from './insight-schema';
+import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { CapabilityInput } from '../capability.interface';
 
 const sampleInput: CapabilityInput = {
@@ -26,6 +25,7 @@ const sampleInput: CapabilityInput = {
                     groupId: null,
                     channelId: null,
                     replyTo: null,
+                    topicId: null,
                     reactions: {},
                     pinned: false,
                     editedDate: null,
@@ -75,35 +75,38 @@ const sampleResult = {
 
 describe('InsightExtractionCapability', () => {
     let service: InsightExtractionCapability;
-    let modelInvoke: jest.Mock<Promise<unknown>, []>;
+    let llmInvoke: jest.Mock;
+    let platformRepoMock: { findByPluginName: jest.Mock };
 
     beforeEach(async () => {
-        modelInvoke = jest.fn().mockResolvedValue(sampleResult);
-
-        const fakeStructuredLlm = RunnableLambda.from(async () => {
-            const value = await modelInvoke();
-            return InsightResultSchema.parse(value);
+        llmInvoke = jest.fn().mockResolvedValue({
+            content: JSON.stringify(sampleResult),
         });
 
-        const fakeLlm = {
-            withStructuredOutput: jest.fn().mockReturnValue(fakeStructuredLlm),
+        const llmServiceMock = {
+            createLLM: jest.fn().mockResolvedValue({
+                invoke: llmInvoke,
+            }),
         };
 
-        const llmServiceMock = {
-            createLLM: jest.fn().mockResolvedValue(fakeLlm),
+        platformRepoMock = {
+            findByPluginName: jest.fn().mockResolvedValue([]),
         };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 InsightExtractionCapability,
                 { provide: LlmService, useValue: llmServiceMock },
+                {
+                    provide: PlatformUserMappingRepository,
+                    useValue: platformRepoMock,
+                },
             ],
         }).compile();
 
         service = module.get<InsightExtractionCapability>(
             InsightExtractionCapability,
         );
-        await service.onModuleInit();
     });
 
     it('should connect to llm', async () => {
@@ -132,7 +135,7 @@ describe('InsightExtractionCapability', () => {
     });
 
     it('should throw because LLM service is unreachable', async () => {
-        modelInvoke.mockRejectedValue(new Error('network error'));
+        llmInvoke.mockRejectedValue(new Error('network error'));
 
         const input: CapabilityInput = {
             chunk: {
@@ -146,12 +149,14 @@ describe('InsightExtractionCapability', () => {
             previousIntelligence: [],
         };
         await expect(service.execute(input)).rejects.toThrow(
-            'insights extraction failed after 3 attempts',
+            'insights extraction failed',
         );
     }, 10_000);
 
     it('should throw because of unstructured output', async () => {
-        modelInvoke.mockResolvedValue({ newInsights: {} });
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify({ newInsights: {} }),
+        });
 
         const input: CapabilityInput = {
             chunk: {
@@ -165,7 +170,148 @@ describe('InsightExtractionCapability', () => {
             previousIntelligence: [],
         };
         await expect(service.execute(input)).rejects.toThrow(
-            'insights extraction failed after 3 attempts',
+            'insights extraction failed',
         );
     }, 10_000);
+
+    it('should resolve owner references via PlatformUserMappingRepository', async () => {
+        const resultWithOwners = {
+            updatedInsights: [],
+            newInsights: [
+                {
+                    type: 'TASK',
+                    content: 'Alice needs to review the PR.',
+                    owners: [{ username: 'alice_dev' }, { id: 'tg-123' }],
+                    envolopsRef: ['1'],
+                    broadcasted: false,
+                },
+            ],
+        };
+
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify(resultWithOwners),
+        });
+
+        platformRepoMock.findByPluginName.mockResolvedValue([
+            {
+                platformUserId: 'tg-123',
+                appUserId: 'app-user-bob',
+                pluginName: 'telegram',
+                platformUsername: 'bob_ops',
+            },
+            {
+                platformUserId: 'tg-456',
+                appUserId: 'app-user-alice',
+                pluginName: 'telegram',
+                platformUsername: 'alice_dev',
+            },
+        ]);
+
+        const input: CapabilityInput = {
+            chunk: {
+                id: 'c',
+                envelopes: [
+                    {
+                        envelope: {
+                            id: '1',
+                            sourcePlugin: 'telegram',
+                            sourceId: 'src-1',
+                            type: 'message',
+                            hasAttachment: false,
+                            authorId: null,
+                            occurredAt: new Date(),
+                        },
+                        payload: {
+                            type: 'direct',
+                            content: 'test',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
+                    },
+                ],
+                metadata: {
+                    timeRange: { start: new Date(), end: new Date() },
+                    envelopeCount: 1,
+                },
+            },
+            previousIntelligence: [],
+        };
+
+        const result = await service.execute(input);
+
+        expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].owners).toEqual(
+            expect.arrayContaining(['app-user-alice', 'app-user-bob']),
+        );
+    });
+
+    it('should skip unresolvable owners', async () => {
+        const resultWithOwners = {
+            updatedInsights: [],
+            newInsights: [
+                {
+                    type: 'TASK',
+                    content: 'Unknown user task.',
+                    owners: [{ username: 'unknown_user' }],
+                    envolopsRef: ['1'],
+                    broadcasted: false,
+                },
+            ],
+        };
+
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify(resultWithOwners),
+        });
+
+        platformRepoMock.findByPluginName.mockResolvedValue([]);
+
+        const input: CapabilityInput = {
+            chunk: {
+                id: 'c',
+                envelopes: [
+                    {
+                        envelope: {
+                            id: '1',
+                            sourcePlugin: 'telegram',
+                            sourceId: 'src-1',
+                            type: 'message',
+                            hasAttachment: false,
+                            authorId: null,
+                            occurredAt: new Date(),
+                        },
+                        payload: {
+                            type: 'direct',
+                            content: 'test',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
+                    },
+                ],
+                metadata: {
+                    timeRange: { start: new Date(), end: new Date() },
+                    envelopeCount: 1,
+                },
+            },
+            previousIntelligence: [],
+        };
+
+        const result = await service.execute(input);
+
+        expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].owners).toEqual([]);
+    });
 });

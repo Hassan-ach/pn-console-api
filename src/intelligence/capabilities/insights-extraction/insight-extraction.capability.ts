@@ -1,10 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Runnable } from '@langchain/core/runnables';
-import { InsightExtractionResult, InsightResultSchema } from './insight-schema';
-import InsightExtractionPrompt from './insight-extraction-prompt';
+import { Injectable, Logger } from '@nestjs/common';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+import { InsightExtractionResult, InsightResultSchema, OwnerRef } from './insight-schema';
+import { SYSTEM_PROMPT } from './insight-extraction-prompt';
 import { InputMessage } from './types';
 import { Insight } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
+import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import {
     ICapability,
     CapabilityInput,
@@ -12,28 +13,20 @@ import {
 } from '../capability.interface';
 
 @Injectable()
-export class InsightExtractionCapability implements OnModuleInit, ICapability {
+export class InsightExtractionCapability implements ICapability {
     readonly name = 'insights-extractor';
 
-    private chain: Runnable;
+    private readonly logger = new Logger(InsightExtractionCapability.name);
 
-    constructor(private readonly llmService: LlmService) {}
-
-    async onModuleInit() {
-        const llm = await this.llmService.createLLM();
-        const llmWithStructuredOutput =
-            llm.withStructuredOutput(InsightResultSchema);
-
-        this.chain = InsightExtractionPrompt.pipe(
-            llmWithStructuredOutput,
-        ).withRetry({
-            stopAfterAttempt: 3,
-        });
-    }
+    constructor(
+        private readonly llmService: LlmService,
+        private readonly platformUserMappingRepo: PlatformUserMappingRepository,
+    ) {}
 
     async execute(input: CapabilityInput): Promise<CapabilityResult> {
         const messages: InputMessage[] = input.chunk.envelopes.map((env) => ({
             envolopId: env.envelope.id ?? '',
+            sourcePlugin: env.envelope.sourcePlugin,
             type: env.payload.type,
             content: env.payload.content,
             groupId: env.payload.groupId,
@@ -47,39 +40,138 @@ export class InsightExtractionCapability implements OnModuleInit, ICapability {
             entities: env.payload.entities,
         }));
 
-        const history = input.previousIntelligence;
+        const pluginName = messages[0]?.sourcePlugin ?? 'unknown';
 
-        let result: InsightExtractionResult;
-        try {
-            result = await this.chain.invoke({
-                history: JSON.stringify(history),
-                messages: JSON.stringify(messages),
-            });
-        } catch (error) {
-            throw new Error('insights extraction failed after 3 attempts', {
-                cause: error,
-            });
+        const history = input.previousIntelligence;
+        const llm = await this.llmService.createLLM();
+
+        const chainInput = [
+            new SystemMessage(SYSTEM_PROMPT),
+            new HumanMessage(
+                `Current insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
+            ),
+        ];
+
+        const MAX_RETRIES = 3;
+        let result: InsightExtractionResult = {
+            updatedInsights: [],
+            newInsights: [],
+        };
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const response = await llm.invoke(chainInput);
+                result = InsightResultSchema.parse(
+                    JSON.parse(response.content as string),
+                );
+                break;
+            } catch (error) {
+                if (attempt === MAX_RETRIES) {
+                    throw new Error(
+                        `insights extraction failed: ${error.message}`,
+                    );
+                }
+            }
         }
+
+        const firstEnv = input.chunk.envelopes[0];
+        const chunkSourcePlugin = firstEnv?.envelope.sourcePlugin;
+        const chunkGroupId = firstEnv?.payload.groupId ?? undefined;
+        const chunkChannelId = firstEnv?.payload.channelId ?? undefined;
+        const chunkTopicId = firstEnv?.payload.topicId ?? undefined;
+
+        const allRawInsights = [
+            ...result.updatedInsights,
+            ...result.newInsights,
+        ];
+
+        const allOwnerRefs = [
+            ...new Map(
+                allRawInsights
+                    .flatMap((i) => i.owners)
+                    .map((o) => [JSON.stringify(o), o]),
+            ).values(),
+        ];
+
+        const resolvedMap =
+            allOwnerRefs.length > 0
+                ? await this.resolveOwnersBatch(allOwnerRefs, pluginName)
+                : new Map<string, string | null>();
+
+        const resolveOwners = (owners: OwnerRef[]): string[] =>
+            owners
+                .map((o) => resolvedMap.get(JSON.stringify(o)))
+                .filter((id): id is string => id !== null && id !== undefined);
 
         const insights: Insight[] = [
             ...result.updatedInsights.map((u) => ({
                 id: u.id,
                 type: u.type,
                 content: u.content,
-                owners: u.owners,
+                owners: resolveOwners(u.owners),
                 envolopsRef: u.envolopsRef,
                 broadcasted: u.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
             ...result.newInsights.map((n) => ({
                 id: null,
                 type: n.type,
                 content: n.content,
-                owners: n.owners,
+                owners: resolveOwners(n.owners),
                 envolopsRef: n.envolopsRef,
                 broadcasted: n.broadcasted,
+                sourcePlugin: chunkSourcePlugin,
+                groupId: chunkGroupId,
+                channelId: chunkChannelId,
+                topicId: chunkTopicId,
             })),
         ];
 
         return { capabilityName: this.name, insights };
+    }
+
+    //TODO: improve error handling for unresolvable users — currently silently skipped
+    private async resolveOwnersBatch(
+        allOwnerRefs: OwnerRef[],
+        pluginName: string,
+    ): Promise<Map<string, string | null>> {
+        const allMappings =
+            await this.platformUserMappingRepo.findByPluginName(pluginName);
+
+        const results = new Map<string, string | null>();
+
+        for (const ref of allOwnerRefs) {
+            const key = JSON.stringify(ref);
+            if (results.has(key)) continue;
+
+            let appUserId: string | null = null;
+
+            if (ref.id) {
+                const mapping = allMappings.find(
+                    (m) => m.platformUserId === ref.id,
+                );
+                if (mapping) {
+                    appUserId = mapping.appUserId;
+                }
+            }
+
+            if (!appUserId && ref.username) {
+                const match = allMappings.find(
+                    (m) =>
+                        m.platformUsername.toLowerCase() ===
+                        ref.username!.toLowerCase(),
+                );
+                if (match) {
+                    appUserId = match.appUserId;
+                }
+            }
+
+            results.set(key, appUserId);
+        }
+
+        return results;
     }
 }

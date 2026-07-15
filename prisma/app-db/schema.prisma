@@ -24,14 +24,22 @@ model InsightVersion {
   version   Int
   type      InsightType
   content   String
-  owners    String[]
+  owners    User[]      @relation("InsightVersionOwners")
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
+
+  sourcePlugin   String?   @map("source_plugin")
+  groupId        String?   @map("group_id")
+  channelId      String?   @map("channel_id")
+  topicId        String?   @map("topic_id")
+
   createdAt DateTime    @default(now()) @map("created_at")
   insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@unique([insightId, version])
   @@index([insightId])
+  @@index([sourcePlugin, channelId, topicId, createdAt])
+  @@index([sourcePlugin, groupId, createdAt])
   @@map("insight_versions")
 }
 
@@ -43,16 +51,32 @@ enum ProviderType {
 }
 
 model User {
-  id           String       @id @default(uuid()) @db.Uuid
-  firstName    String       @map("first_name")
-  lastName     String?      @map("last_name")
-  email        String       @unique
-  passwordHash String?      @map("password_hash")
-  providerType ProviderType @default(EMAIL) @map("provider_type")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id               String                  @id @default(uuid()) @db.Uuid
+  firstName        String                  @map("first_name")
+  lastName         String?                 @map("last_name")
+  email            String                  @unique
+  passwordHash     String?                 @map("password_hash")
+  providerType     ProviderType            @default(EMAIL) @map("provider_type")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  platformMappings PlatformUserMapping[]
+  insightVersions  InsightVersion[]        @relation("InsightVersionOwners")
 
   @@map("users")
+}
+
+model PlatformUserMapping {
+  id               String @id @default(uuid()) @db.Uuid
+  platformUserId   String @map("platform_user_id")
+  appUserId        String @map("app_user_id") @db.Uuid
+  pluginName       String @map("plugin_name")
+  platformUsername String @map("platform_username")
+
+  user User @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+
+  @@unique([platformUserId, pluginName])
+  @@index([appUserId])
+  @@map("platform_user_mappings")
 }
 
 enum InsightType {

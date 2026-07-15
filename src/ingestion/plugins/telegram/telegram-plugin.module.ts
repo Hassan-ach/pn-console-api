@@ -5,6 +5,7 @@ import { TelegramPluginService } from './telegram-plugin.service';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramSessionStore } from './telegram-session.store';
+import { TelegramTopicStore } from './telegram-topic.store';
 import { PendingAuthStore } from './pending-auth.store';
 
 @Module({
@@ -13,6 +14,7 @@ import { PendingAuthStore } from './pending-auth.store';
         TelegramClientFactory,
         TelegramAuthService,
         TelegramSessionStore,
+        TelegramTopicStore,
         PendingAuthStore,
         TelegramPluginService,
     ],

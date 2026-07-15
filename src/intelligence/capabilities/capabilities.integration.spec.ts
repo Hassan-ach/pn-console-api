@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RunnableLambda } from '@langchain/core/runnables';
 import { CapabilitiesModule } from './capabilities.module';
 import { CapabilityManager } from './capability-manager.service';
 import { InsightExtractionCapability } from './insights-extraction/insight-extraction.capability';
@@ -10,13 +9,13 @@ describe('CapabilitiesModule — injection', () => {
     let module: TestingModule;
 
     beforeAll(async () => {
-        const fakeStructuredLlm = RunnableLambda.from(async () => ({
-            updatedInsights: [],
-            newInsights: [],
-        }));
-
-        const fakeLlm = {
-            withStructuredOutput: jest.fn().mockReturnValue(fakeStructuredLlm),
+        const mockLlm = {
+            invoke: jest.fn().mockResolvedValue({
+                content: JSON.stringify({
+                    updatedInsights: [],
+                    newInsights: [],
+                }),
+            }),
         };
 
         module = await Test.createTestingModule({
@@ -24,7 +23,7 @@ describe('CapabilitiesModule — injection', () => {
         })
             .overrideProvider(LlmService)
             .useValue({
-                createLLM: jest.fn().mockResolvedValue(fakeLlm),
+                createLLM: jest.fn().mockResolvedValue(mockLlm),
             })
             .compile();
 

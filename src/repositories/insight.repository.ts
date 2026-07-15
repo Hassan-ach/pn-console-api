@@ -13,6 +13,10 @@ export class InsightRepository {
         owners: string[];
         envolopsRef?: string[];
         broadcasted?: boolean;
+        sourcePlugin?: string;
+        groupId?: string;
+        channelId?: string;
+        topicId?: string;
     }): Promise<Insight> {
         const insight = await this.prisma.insight.create({
             data: {
@@ -22,9 +26,15 @@ export class InsightRepository {
                         version: 1,
                         type: data.type,
                         content: data.content,
-                        owners: data.owners,
+                        owners: {
+                            connect: data.owners.map((id) => ({ id })),
+                        },
                         broadcasted: data.broadcasted ?? false,
                         envolopsRef: data.envolopsRef ?? [],
+                        sourcePlugin: data.sourcePlugin ?? null,
+                        groupId: data.groupId ?? null,
+                        channelId: data.channelId ?? null,
+                        topicId: data.topicId ?? null,
                     },
                 },
             },
@@ -32,6 +42,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -47,6 +58,10 @@ export class InsightRepository {
             owners: string[];
             envolopsRef?: string[];
             broadcasted?: boolean;
+            sourcePlugin?: string;
+            groupId?: string;
+            channelId?: string;
+            topicId?: string;
         },
     ): Promise<Insight> {
         return this.prisma.$transaction(async (tx) => {
@@ -66,9 +81,15 @@ export class InsightRepository {
                     version: maxVersion + 1,
                     type: data.type,
                     content: data.content,
-                    owners: data.owners,
+                    owners: {
+                        connect: data.owners.map((id) => ({ id })),
+                    },
                     broadcasted: data.broadcasted ?? false,
                     envolopsRef: data.envolopsRef ?? [],
+                    sourcePlugin: data.sourcePlugin ?? null,
+                    groupId: data.groupId ?? null,
+                    channelId: data.channelId ?? null,
+                    topicId: data.topicId ?? null,
                 },
             });
 
@@ -78,6 +99,7 @@ export class InsightRepository {
                     versions: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
+                        include: { owners: true },
                     },
                 },
             });
@@ -92,6 +114,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
@@ -106,11 +129,56 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
+                    include: { owners: true },
                 },
             },
         });
 
         return insights.map((i) => this.toInsight(i));
+    }
+
+    async findByScope(
+        organizationId: string,
+        scope: {
+            sourcePlugin?: string;
+            groupId?: string | null;
+            channelId?: string | null;
+            topicId?: string | null;
+        },
+        limit: number,
+    ): Promise<Insight[]> {
+        const where: Record<string, unknown> = { organizationId };
+
+        if (scope.sourcePlugin) where.sourcePlugin = scope.sourcePlugin;
+
+        if (scope.channelId || scope.topicId || scope.groupId) {
+            if (scope.channelId) where.channelId = scope.channelId;
+            if (scope.topicId) where.topicId = scope.topicId;
+            if (scope.groupId) where.groupId = scope.groupId;
+        }
+
+        const versions = await this.prisma.insightVersion.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: { owners: true },
+        });
+
+        return versions.map((v) => ({
+            id: v.insightId,
+            organizationId,
+            type: v.type as Insight['type'],
+            content: v.content,
+            owners: v.owners.map((u) => u.id),
+            envolopsRef: [...v.envolopsRef],
+            broadcasted: v.broadcasted,
+            version: v.version,
+            createdAt: v.createdAt,
+            sourcePlugin: v.sourcePlugin ?? undefined,
+            groupId: v.groupId ?? undefined,
+            channelId: v.channelId ?? undefined,
+            topicId: v.topicId ?? undefined,
+        }));
     }
 
     private toInsight(row: {
@@ -120,10 +188,14 @@ export class InsightRepository {
             version: number;
             type: string;
             content: string;
-            owners: string[];
+            owners: { id: string }[];
             envolopsRef: string[];
             broadcasted: boolean;
             createdAt: Date;
+            sourcePlugin: string | null;
+            groupId: string | null;
+            channelId: string | null;
+            topicId: string | null;
         }[];
     }): Insight {
         const latest = row.versions[0];
@@ -132,11 +204,15 @@ export class InsightRepository {
             organizationId: row.organizationId ?? undefined,
             type: latest.type as Insight['type'],
             content: latest.content,
-            owners: [...latest.owners],
+            owners: latest.owners.map((u) => u.id),
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
             version: latest.version,
             createdAt: latest.createdAt,
+            sourcePlugin: latest.sourcePlugin ?? undefined,
+            groupId: latest.groupId ?? undefined,
+            channelId: latest.channelId ?? undefined,
+            topicId: latest.topicId ?? undefined,
         };
     }
 }
