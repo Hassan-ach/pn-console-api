@@ -20,6 +20,7 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -29,6 +30,7 @@ export class AuthController {
         private readonly configService: ConfigService,
     ) {}
 
+    @Public()
     @Post('signup')
     @ApiOperation({ summary: 'Create a new account with email and password' })
     @ApiCreatedResponse({ description: 'User registered successfully' })
@@ -37,6 +39,7 @@ export class AuthController {
         return this.authService.signup(dto);
     }
 
+    @Public()
     @Post('login')
     @ApiOperation({ summary: 'Log in with email and password' })
     @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
@@ -44,6 +47,7 @@ export class AuthController {
         return this.authService.login(dto);
     }
 
+    @Public()
     @Get('google')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Initiate Google OAuth login' })
@@ -51,6 +55,7 @@ export class AuthController {
         // Passport handles the redirect — no implementation needed
     }
 
+    @Public()
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Google OAuth callback' })
@@ -64,14 +69,15 @@ export class AuthController {
         });
         const successParam = result.is_new_user ? 'google_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
-            req,
             result.access_token,
             successParam,
             frontendUrl,
+            result.is_new_user,
         );
         res.redirect(redirectUrl);
     }
 
+    @Public()
     @Get('microsoft')
     @UseGuards(AuthGuard('microsoft'))
     @ApiOperation({ summary: 'Initiate Microsoft OAuth login' })
@@ -79,6 +85,7 @@ export class AuthController {
         // Passport handles the redirect — no implementation needed
     }
 
+    @Public()
     @Get('microsoft/callback')
     @UseGuards(AuthGuard('microsoft'))
     @ApiOperation({ summary: 'Microsoft OAuth callback' })
@@ -92,14 +99,15 @@ export class AuthController {
         });
         const successParam = result.is_new_user ? 'microsoft_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
-            req,
             result.access_token,
             successParam,
             frontendUrl,
+            result.is_new_user,
         );
         res.redirect(redirectUrl);
     }
 
+    @Public()
     @Get('sso')
     @UseGuards(AuthGuard('sso'))
     @ApiOperation({ summary: 'Initiate SSO (OIDC) login' })
@@ -107,6 +115,7 @@ export class AuthController {
         // Passport handles the redirect — no implementation needed
     }
 
+    @Public()
     @Get('sso/callback')
     @UseGuards(AuthGuard('sso'))
     @ApiOperation({ summary: 'SSO (OIDC) callback' })
@@ -120,21 +129,22 @@ export class AuthController {
         });
         const successParam = result.is_new_user ? 'sso_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
-            req,
             result.access_token,
             successParam,
             frontendUrl,
+            result.is_new_user,
         );
         res.redirect(redirectUrl);
     }
 
     private oauthRedirectUrl(
-        _req: any,
         token: string,
         successParam: string,
         fallbackUrl: string,
+        isNewUser: boolean,
     ): string {
         const query = successParam ? `&${successParam}` : '';
-        return `${fallbackUrl}/#signup?access_token=${token}${query}`;
+        const target = isNewUser ? 'signup' : 'dashboard';
+        return `${fallbackUrl}/#${target}?access_token=${token}${query}`;
     }
 }

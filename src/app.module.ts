@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { EnvelopeModule } from './envelope/envelope.module';
 import { PluginsModule } from './ingestion/plugins/plugins.module';
@@ -25,5 +27,11 @@ import { AppController } from './app.controller';
         DemoModule,
     ],
     controllers: [AppController],
+    providers: [
+        {
+            provide: APP_GUARD,
+            useClass: JwtAuthGuard,
+        },
+    ],
 })
 export class AppModule {}
