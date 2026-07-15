@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
-import { InsightExtractionResult, InsightResultSchema, OwnerRef } from './insight-schema';
+import {
+    InsightExtractionResult,
+    InsightResultSchema,
+    OwnerRef,
+} from './insight-schema';
 import { SYSTEM_PROMPT } from './insight-extraction-prompt';
 import { InputMessage } from './types';
 import { Insight } from 'src/types/insight.types';
@@ -42,6 +46,10 @@ export class InsightExtractionCapability implements ICapability {
 
         const pluginName = messages[0]?.sourcePlugin ?? 'unknown';
 
+        this.logger.log(
+            `Extracting insights: ${messages.length} envelopes, plugin=${pluginName}`,
+        );
+
         const history = input.previousIntelligence;
         const llm = await this.llmService.createLLM();
 
@@ -52,7 +60,7 @@ export class InsightExtractionCapability implements ICapability {
             ),
         ];
 
-        const MAX_RETRIES = 3;
+        const MAX_RETRIES = parseInt(process.env.LLM_MAX_RETRIES ?? '3', 10);
         let result: InsightExtractionResult = {
             updatedInsights: [],
             newInsights: [],
@@ -64,8 +72,14 @@ export class InsightExtractionCapability implements ICapability {
                 result = InsightResultSchema.parse(
                     JSON.parse(response.content as string),
                 );
+                this.logger.debug(
+                    `LLM returned ${result.updatedInsights.length} updated, ${result.newInsights.length} new insights`,
+                );
                 break;
             } catch (error) {
+                this.logger.warn(
+                    `LLM invocation failed (attempt ${attempt}/${MAX_RETRIES}): ${error.message}`,
+                );
                 if (attempt === MAX_RETRIES) {
                     throw new Error(
                         `insights extraction failed: ${error.message}`,
@@ -130,14 +144,22 @@ export class InsightExtractionCapability implements ICapability {
             })),
         ];
 
+        this.logger.log(
+            `Extraction complete: ${insights.length} insights (${insights.filter((i) => i.id === null).length} new, ${insights.filter((i) => i.id !== null).length} updates)`,
+        );
+
         return { capabilityName: this.name, insights };
     }
 
-    //TODO: improve error handling for unresolvable users — currently silently skipped
+    //TODO: insights with unresolvable owners are currently skipped — find a solution to handle or notify about missing user mappings
     private async resolveOwnersBatch(
         allOwnerRefs: OwnerRef[],
         pluginName: string,
     ): Promise<Map<string, string | null>> {
+        this.logger.debug(
+            `Resolving ${allOwnerRefs.length} unique owner refs for plugin=${pluginName}`,
+        );
+
         const allMappings =
             await this.platformUserMappingRepo.findByPluginName(pluginName);
 
@@ -169,8 +191,20 @@ export class InsightExtractionCapability implements ICapability {
                 }
             }
 
+            if (!appUserId) {
+                this.logger.warn(`Could not resolve owner: ${key}`);
+            }
+
             results.set(key, appUserId);
         }
+
+        const resolvedCount = [...results.values()].filter(
+            (v) => v !== null,
+        ).length;
+
+        this.logger.debug(
+            `Owner resolution complete: ${resolvedCount}/${allOwnerRefs.length} resolved`,
+        );
 
         return results;
     }

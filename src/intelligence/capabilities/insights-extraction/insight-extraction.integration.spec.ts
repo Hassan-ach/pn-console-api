@@ -166,151 +166,129 @@ describe('InsightExtraction — integration (real LLM + real DB)', () => {
         await module.close();
     });
 
-    it(
-        'should extract new insights from messages and persist them',
-        async () => {
-            const env1 = makeEnvelope(
-                'env-basic-1',
-                'The database migration for v2.3 has been completed successfully, all tests passing.',
-                null,
-            );
-            const env2 = makeEnvelope(
-                'env-basic-2',
-                'We need to update the API rate limits before the product launch next week. This is urgent.',
-                USER_A_PLATFORM_ID,
-            );
+    it('should extract new insights from messages and persist them', async () => {
+        const env1 = makeEnvelope(
+            'env-basic-1',
+            'The database migration for v2.3 has been completed successfully, all tests passing.',
+            null,
+        );
+        const env2 = makeEnvelope(
+            'env-basic-2',
+            'We need to update the API rate limits before the product launch next week. This is urgent.',
+            USER_A_PLATFORM_ID,
+        );
 
-            const chunk = makeChunk([env1, env2]);
-            const result = await capability.execute({
-                chunk,
-                previousIntelligence: [],
-            });
+        const chunk = makeChunk([env1, env2]);
+        const result = await capability.execute({
+            chunk,
+            previousIntelligence: [],
+        });
 
-            expect(result.capabilityName).toBe('insights-extractor');
-            expect(result.insights.length).toBeGreaterThanOrEqual(1);
+        expect(result.capabilityName).toBe('insights-extractor');
+        expect(result.insights.length).toBeGreaterThanOrEqual(1);
+
+        await persistence.persistAll(result.insights, TEST_ORG_ID);
+        const persisted = await insightRepo.getAllByOrganizationId(TEST_ORG_ID);
+
+        expect(persisted.length).toBeGreaterThanOrEqual(1);
+
+        for (const insight of persisted) {
+            expect(['TASK', 'URGENCY', 'INFO', 'DECISION']).toContain(
+                insight.type,
+            );
+            expect(insight.content).toBeTruthy();
+            expect(insight.envolopsRef).toBeDefined();
+            expect(insight.envolopsRef!.length).toBeGreaterThanOrEqual(1);
+
+            const validEnvIds = ['env-basic-1', 'env-basic-2'];
+            const hasValidRef = insight.envolopsRef!.some((ref) =>
+                validEnvIds.includes(ref),
+            );
+            expect(hasValidRef).toBe(true);
+        }
+    }, 86_400_000);
+
+    it('should update an existing insight and create new ones', async () => {
+        const existing = await insightRepo.getAllByOrganizationId(TEST_ORG_ID);
+        const seedInsight = existing.find((i) =>
+            i.content.includes('monitoring dashboard'),
+        );
+        expect(seedInsight).toBeDefined();
+
+        const env1 = makeEnvelope(
+            'env-update-1',
+            `Update on the monitoring dashboard: it's fully deployed and live in production. All metrics are green.`,
+            USER_A_PLATFORM_ID,
+        );
+        const env2 = makeEnvelope(
+            'env-update-2',
+            'New task: schedule a security audit for the authentication module by end of month.',
+            null,
+        );
+
+        const chunk = makeChunk([env1, env2]);
+        const result = await capability.execute({
+            chunk,
+            previousIntelligence: existing,
+        });
+
+        expect(result.insights.length).toBeGreaterThanOrEqual(1);
+
+        const updatedOnes = result.insights.filter(
+            (i) => i.id === seedInsight!.id,
+        );
+        const newOnes = result.insights.filter((i) => i.id !== seedInsight!.id);
+
+        expect(updatedOnes.length + newOnes.length).toBeGreaterThanOrEqual(1);
+
+        await persistence.persistAll(result.insights, TEST_ORG_ID);
+        const allInsights =
+            await insightRepo.getAllByOrganizationId(TEST_ORG_ID);
+        expect(allInsights.length).toBeGreaterThanOrEqual(2);
+    }, 86_400_000);
+
+    it('should resolve platform user IDs to app user IDs via local resolution', async () => {
+        const env1 = makeEnvelope(
+            'env-resolve-1',
+            `${USER_A_USERNAME} needs to finish the API refactor and ${USER_B_USERNAME} should review the deployment pipeline.`,
+            USER_A_PLATFORM_ID,
+        );
+
+        const chunk = makeChunk([env1]);
+        const result = await capability.execute({
+            chunk,
+            previousIntelligence: [],
+        });
+
+        expect(result.insights.length).toBeGreaterThanOrEqual(1);
+
+        const insightsWithOwners = result.insights.filter(
+            (i) => i.owners.length > 0,
+        );
+
+        if (insightsWithOwners.length > 0) {
+            const allOwnerIds = insightsWithOwners.flatMap((i) => i.owners);
+            const resolvedUserIds: string[] = [USER_A_ID, USER_B_ID];
+
+            const hasResolvedUser = allOwnerIds.some((ownerId) =>
+                resolvedUserIds.includes(ownerId),
+            );
+            expect(hasResolvedUser).toBe(true);
 
             await persistence.persistAll(result.insights, TEST_ORG_ID);
-            const persisted = await insightRepo.getAllByOrganizationId(
-                TEST_ORG_ID,
-            );
+            const persisted =
+                await insightRepo.getAllByOrganizationId(TEST_ORG_ID);
 
-            expect(persisted.length).toBeGreaterThanOrEqual(1);
-
-            for (const insight of persisted) {
-                expect(['TASK', 'URGENCY', 'INFO', 'DECISION']).toContain(
-                    insight.type,
-                );
-                expect(insight.content).toBeTruthy();
-                expect(insight.envolopsRef).toBeDefined();
-                expect(insight.envolopsRef!.length).toBeGreaterThanOrEqual(1);
-
-                const validEnvIds = ['env-basic-1', 'env-basic-2'];
-                const hasValidRef = insight.envolopsRef!.some((ref) =>
-                    validEnvIds.includes(ref),
-                );
-                expect(hasValidRef).toBe(true);
-            }
-        },
-        86_400_000,
-    );
-
-    it(
-        'should update an existing insight and create new ones',
-        async () => {
-            const existing = await insightRepo.getAllByOrganizationId(
-                TEST_ORG_ID,
-            );
-            const seedInsight = existing.find(
-                (i) => i.content.includes('monitoring dashboard'),
-            );
-            expect(seedInsight).toBeDefined();
-
-            const env1 = makeEnvelope(
-                'env-update-1',
-                `Update on the monitoring dashboard: it's fully deployed and live in production. All metrics are green.`,
-                USER_A_PLATFORM_ID,
-            );
-            const env2 = makeEnvelope(
-                'env-update-2',
-                'New task: schedule a security audit for the authentication module by end of month.',
-                null,
-            );
-
-            const chunk = makeChunk([env1, env2]);
-            const result = await capability.execute({
-                chunk,
-                previousIntelligence: existing,
-            });
-
-            expect(result.insights.length).toBeGreaterThanOrEqual(1);
-
-            const updatedOnes = result.insights.filter(
-                (i) => i.id === seedInsight!.id,
-            );
-            const newOnes = result.insights.filter(
-                (i) => i.id !== seedInsight!.id,
-            );
-
-            expect(updatedOnes.length + newOnes.length).toBeGreaterThanOrEqual(
-                1,
-            );
-
-            await persistence.persistAll(result.insights, TEST_ORG_ID);
-            const allInsights = await insightRepo.getAllByOrganizationId(
-                TEST_ORG_ID,
-            );
-            expect(allInsights.length).toBeGreaterThanOrEqual(2);
-        },
-        86_400_000,
-    );
-
-    it(
-        'should resolve platform user IDs to app user IDs via local resolution',
-        async () => {
-            const env1 = makeEnvelope(
-                'env-resolve-1',
-                `${USER_A_USERNAME} needs to finish the API refactor and ${USER_B_USERNAME} should review the deployment pipeline.`,
-                USER_A_PLATFORM_ID,
-            );
-
-            const chunk = makeChunk([env1]);
-            const result = await capability.execute({
-                chunk,
-                previousIntelligence: [],
-            });
-
-            expect(result.insights.length).toBeGreaterThanOrEqual(1);
-
-            const insightsWithOwners = result.insights.filter(
+            const persistedWithOwners = persisted.filter(
                 (i) => i.owners.length > 0,
             );
+            expect(persistedWithOwners.length).toBeGreaterThanOrEqual(1);
 
-            if (insightsWithOwners.length > 0) {
-                const allOwnerIds = insightsWithOwners.flatMap((i) => i.owners);
-                const resolvedUserIds: string[] = [USER_A_ID, USER_B_ID];
-
-                const hasResolvedUser = allOwnerIds.some((ownerId) =>
-                    resolvedUserIds.includes(ownerId),
-                );
-                expect(hasResolvedUser).toBe(true);
-
-                await persistence.persistAll(result.insights, TEST_ORG_ID);
-                const persisted = await insightRepo.getAllByOrganizationId(
-                    TEST_ORG_ID,
-                );
-
-                const persistedWithOwners = persisted.filter(
-                    (i) => i.owners.length > 0,
-                );
-                expect(persistedWithOwners.length).toBeGreaterThanOrEqual(1);
-
-                for (const insight of persistedWithOwners) {
-                    for (const ownerId of insight.owners) {
-                        expect(resolvedUserIds).toContain(ownerId);
-                    }
+            for (const insight of persistedWithOwners) {
+                for (const ownerId of insight.owners) {
+                    expect(resolvedUserIds).toContain(ownerId);
                 }
             }
-        },
-        86_400_000,
-    );
+        }
+    }, 86_400_000);
 });

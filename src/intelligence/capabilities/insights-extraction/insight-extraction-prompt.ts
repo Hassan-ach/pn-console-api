@@ -8,8 +8,6 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       Your job is to extract every actionable item, urgent situation, important piece of information, and required decision from the messages, then determine whether each one updates an existing insight or is a new insight.
       
-      When owners are identified in messages, gather all their platform identifiers and call the resolve_users tool exactly once to resolve them before producing your final output.
-      
       Classify every insight into one of these types:
       - TASK: something that needs to be done or followed up on
       - URGENCY: something requiring immediate attention (outages, security incidents, legal exposure, imminent deadlines)
@@ -23,7 +21,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       For each insight, determine:
       - envolopsRef: an array of source envelope IDs (from the messages' envolopId) that the insight was based on. Always include at least one ID — every insight is based on one or more messages.
-      - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username" }. Do not include people merely mentioned in passing or as context.
+      - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username_or_display_name" }. If you only know a person's name from the message context (not their platform username), use their display name in the "username" field — the system will attempt fuzzy matching. Do not include people merely mentioned in passing or as context.
       - broadcasted: set to true when no specific person is directly assigned. When broadcasted is true, owners must be empty. When someone is directly assigned, broadcasted must be false.
       
       STRICT CONSTRAINTS — You must follow every single one:
@@ -41,7 +39,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
             "id": "string",
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
             "content": "...",
-            "owners": [{{ "id": "platform_user_id" }}, {{ "username": "platform_username" }}],
+            "owners": [{{ "id": "platform_user_id" }}, {{ "username": "platform_username_or_display_name" }}],
             "envolopsRef": ["env-1", "env-2"],
             "broadcasted": false
           }}
