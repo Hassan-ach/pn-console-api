@@ -21,10 +21,7 @@ describe('ChunkingPipeline (real exported dataset)', () => {
 
     it('chunks the exported dataset without losing envelopes', async () => {
         const raw = JSON.parse(
-            readFileSync(
-                join(__dirname, '__fixtures__', 'export.json'),
-                'utf8',
-            ),
+            readFileSync(join(process.cwd(), 'reports', 'export.json'), 'utf8'),
         );
 
         const batch: EnvelopeWithPayload[] = raw.map((item: any) => ({

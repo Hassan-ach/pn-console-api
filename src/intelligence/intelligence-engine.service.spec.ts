@@ -6,7 +6,7 @@ import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
-import { EnvelopeService } from '../envelope/envelope.service';
+import { EnvelopeRepository } from '../repositories/envelope.repository';
 import type {
     EnterpriseContext,
     RetrievalWindow,
@@ -109,7 +109,7 @@ describe('IntelligenceEngineService', () => {
     let mockCapabilityManager: jest.Mocked<CapabilityManager>;
     let mockPersistence: jest.Mocked<InsightPersistenceService>;
     let mockFailureRepository: jest.Mocked<CapabilityFailureRepository>;
-    let mockEnvelopeService: jest.Mocked<EnvelopeService>;
+    let mockEnvelopeRepo: jest.Mocked<EnvelopeRepository>;
 
     beforeEach(async () => {
         mockContextBuilder = {
@@ -135,11 +135,9 @@ describe('IntelligenceEngineService', () => {
             markResolved: jest.fn().mockResolvedValue(0),
         } as any;
 
-        mockEnvelopeService = {
-            markBulkStatus: jest.fn().mockResolvedValue(0),
-            bulkCreate: jest.fn(),
-            findAll: jest.fn(),
-            findOne: jest.fn(),
+        mockEnvelopeRepo = {
+            markStatus: jest.fn().mockResolvedValue(0),
+            createManyWithPayload: jest.fn(),
             count: jest.fn(),
         } as any;
 
@@ -161,8 +159,8 @@ describe('IntelligenceEngineService', () => {
                     useValue: mockFailureRepository,
                 },
                 {
-                    provide: EnvelopeService,
-                    useValue: mockEnvelopeService,
+                    provide: EnvelopeRepository,
+                    useValue: mockEnvelopeRepo,
                 },
             ],
         }).compile();
@@ -334,7 +332,7 @@ describe('IntelligenceEngineService', () => {
                 organizationId: 'org-1',
             },
         ]);
-        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+        expect(mockEnvelopeRepo.markStatus).toHaveBeenCalledWith(
             ['e1'],
             'READY',
         );
@@ -587,7 +585,7 @@ describe('IntelligenceEngineService', () => {
 
         await engine.run('org-1');
 
-        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+        expect(mockEnvelopeRepo.markStatus).toHaveBeenCalledWith(
             ['e1'],
             'FAILED',
         );
@@ -615,7 +613,7 @@ describe('IntelligenceEngineService', () => {
 
         await engine.run('org-1');
 
-        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+        expect(mockEnvelopeRepo.markStatus).toHaveBeenCalledWith(
             ['e1'],
             'READY',
         );
@@ -638,7 +636,7 @@ describe('IntelligenceEngineService', () => {
 
         await engine.run('org-1');
 
-        expect(mockEnvelopeService.markBulkStatus).toHaveBeenCalledWith(
+        expect(mockEnvelopeRepo.markStatus).toHaveBeenCalledWith(
             ['e1'],
             'READY',
         );
@@ -670,7 +668,7 @@ describe('IntelligenceEngineService', () => {
 
         await engine.run('org-1');
 
-        expect(mockEnvelopeService.markBulkStatus).not.toHaveBeenCalled();
+        expect(mockEnvelopeRepo.markStatus).not.toHaveBeenCalled();
     });
 
     it('returns 0 when builder yields 0 contexts', async () => {
