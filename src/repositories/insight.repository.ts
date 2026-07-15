@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
-import { Insight, InsightType } from 'src/types/insight.types';
+import {
+    Insight,
+    InsightType,
+    UnresolvedOwnerRef,
+} from 'src/types/insight.types';
 
 @Injectable()
 export class InsightRepository {
@@ -11,6 +15,7 @@ export class InsightRepository {
         type: InsightType;
         content: string;
         owners: string[];
+        unresolvedOwners?: UnresolvedOwnerRef[];
         envolopsRef?: string[];
         broadcasted?: boolean;
         sourcePlugin?: string;
@@ -29,6 +34,13 @@ export class InsightRepository {
                         owners: {
                             connect: data.owners.map((id) => ({ id })),
                         },
+                        unresolvedOwners: {
+                            create: (data.unresolvedOwners ?? []).map((u) => ({
+                                platformUserId: u.platformUserId,
+                                platformUsername: u.platformUsername,
+                                pluginName: u.pluginName,
+                            })),
+                        },
                         broadcasted: data.broadcasted ?? false,
                         envolopsRef: data.envolopsRef ?? [],
                         sourcePlugin: data.sourcePlugin ?? null,
@@ -42,7 +54,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true },
+                    include: { owners: true, unresolvedOwners: true },
                 },
             },
         });
@@ -56,6 +68,7 @@ export class InsightRepository {
             type: InsightType;
             content: string;
             owners: string[];
+            unresolvedOwners?: UnresolvedOwnerRef[];
             envolopsRef?: string[];
             broadcasted?: boolean;
             sourcePlugin?: string;
@@ -84,6 +97,13 @@ export class InsightRepository {
                     owners: {
                         connect: data.owners.map((id) => ({ id })),
                     },
+                    unresolvedOwners: {
+                        create: (data.unresolvedOwners ?? []).map((u) => ({
+                            platformUserId: u.platformUserId,
+                            platformUsername: u.platformUsername,
+                            pluginName: u.pluginName,
+                        })),
+                    },
                     broadcasted: data.broadcasted ?? false,
                     envolopsRef: data.envolopsRef ?? [],
                     sourcePlugin: data.sourcePlugin ?? null,
@@ -99,7 +119,7 @@ export class InsightRepository {
                     versions: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
-                        include: { owners: true },
+                        include: { owners: true, unresolvedOwners: true },
                     },
                 },
             });
@@ -114,7 +134,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true },
+                    include: { owners: true, unresolvedOwners: true },
                 },
             },
         });
@@ -129,7 +149,7 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true },
+                    include: { owners: true, unresolvedOwners: true },
                 },
             },
         });
@@ -161,15 +181,20 @@ export class InsightRepository {
             where,
             orderBy: { createdAt: 'desc' },
             take: limit,
-            include: { owners: true },
+            include: { owners: true, unresolvedOwners: true },
         });
 
         return versions.map((v) => ({
             id: v.insightId,
             organizationId,
-            type: v.type as Insight['type'],
+            type: v.type,
             content: v.content,
             owners: v.owners.map((u) => u.id),
+            unresolvedOwnerRefs: v.unresolvedOwners.map((u) => ({
+                platformUserId: u.platformUserId,
+                platformUsername: u.platformUsername,
+                pluginName: u.pluginName,
+            })),
             envolopsRef: [...v.envolopsRef],
             broadcasted: v.broadcasted,
             version: v.version,
@@ -189,6 +214,11 @@ export class InsightRepository {
             type: string;
             content: string;
             owners: { id: string }[];
+            unresolvedOwners: {
+                platformUserId: string | null;
+                platformUsername: string | null;
+                pluginName: string;
+            }[];
             envolopsRef: string[];
             broadcasted: boolean;
             createdAt: Date;
@@ -205,6 +235,11 @@ export class InsightRepository {
             type: latest.type as Insight['type'],
             content: latest.content,
             owners: latest.owners.map((u) => u.id),
+            unresolvedOwnerRefs: latest.unresolvedOwners.map((u) => ({
+                platformUserId: u.platformUserId,
+                platformUsername: u.platformUsername,
+                pluginName: u.pluginName,
+            })),
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
             version: latest.version,

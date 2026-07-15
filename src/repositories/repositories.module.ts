@@ -4,6 +4,7 @@ import { RawDbModule } from 'src/prisma/raw-db/raw-db.module';
 import { InsightRepository } from './insight.repository';
 import { PlatformUserMappingRepository } from './platform-user-mapping.repository';
 import { CapabilityFailureRepository } from './capability-failure.repository';
+import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -11,11 +12,13 @@ import { CapabilityFailureRepository } from './capability-failure.repository';
         InsightRepository,
         PlatformUserMappingRepository,
         CapabilityFailureRepository,
+        UnresolvedOwnerRepository,
     ],
     exports: [
         InsightRepository,
         PlatformUserMappingRepository,
         CapabilityFailureRepository,
+        UnresolvedOwnerRepository,
     ],
 })
 export class RepositoriesModule {}

@@ -24,7 +24,8 @@ model InsightVersion {
   version   Int
   type      InsightType
   content   String
-  owners    User[]      @relation("InsightVersionOwners")
+  owners              User[]               @relation("InsightVersionOwners")
+  unresolvedOwners    UnresolvedOwner[]
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
 
@@ -85,4 +86,18 @@ enum InsightType {
   INFO
   URGENCY
   DECISION
+}
+
+model UnresolvedOwner {
+  id               String @id @default(uuid()) @db.Uuid
+  platformUserId   String? @map("platform_user_id")
+  platformUsername String? @map("platform_username")
+  pluginName       String @map("plugin_name")
+  insightVersionId String @map("insight_version_id") @db.Uuid
+  insightVersion   InsightVersion @relation(fields: [insightVersionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([insightVersionId])
+  @@index([pluginName, platformUserId])
+  @@map("unresolved_owners")
 }
