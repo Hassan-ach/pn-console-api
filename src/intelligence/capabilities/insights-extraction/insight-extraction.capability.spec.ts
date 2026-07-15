@@ -76,7 +76,10 @@ const sampleResult = {
 describe('InsightExtractionCapability', () => {
     let service: InsightExtractionCapability;
     let llmInvoke: jest.Mock;
-    let platformRepoMock: { findByPluginName: jest.Mock };
+    let platformRepoMock: {
+        findByPluginName: jest.Mock;
+        findWithUser: jest.Mock;
+    };
 
     beforeEach(async () => {
         llmInvoke = jest.fn().mockResolvedValue({
@@ -91,6 +94,7 @@ describe('InsightExtractionCapability', () => {
 
         platformRepoMock = {
             findByPluginName: jest.fn().mockResolvedValue([]),
+            findWithUser: jest.fn().mockResolvedValue([]),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -252,6 +256,86 @@ describe('InsightExtractionCapability', () => {
         );
     });
 
+    it('should resolve display name via Levenshtein distance', async () => {
+        const resultWithOwners = {
+            updatedInsights: [],
+            newInsights: [
+                {
+                    type: 'TASK',
+                    content: 'Alice needs to review the PR.',
+                    owners: [{ username: 'Alice' }],
+                    envolopsRef: ['1'],
+                    broadcasted: false,
+                },
+            ],
+        };
+
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify(resultWithOwners),
+        });
+
+        platformRepoMock.findByPluginName.mockResolvedValue([
+            {
+                platformUserId: 'tg-456',
+                appUserId: 'app-user-alice',
+                pluginName: 'telegram',
+                platformUsername: 'alice_dev',
+            },
+        ]);
+
+        platformRepoMock.findWithUser.mockResolvedValue([
+            {
+                platformUserId: 'tg-456',
+                appUserId: 'app-user-alice',
+                pluginName: 'telegram',
+                platformUsername: 'alice_dev',
+                user: { firstName: 'Alice', lastName: 'Dev' },
+            },
+        ]);
+
+        const input: CapabilityInput = {
+            chunk: {
+                id: 'c',
+                envelopes: [
+                    {
+                        envelope: {
+                            id: '1',
+                            sourcePlugin: 'telegram',
+                            sourceId: 'src-1',
+                            type: 'message',
+                            hasAttachment: false,
+                            authorId: null,
+                            occurredAt: new Date(),
+                        },
+                        payload: {
+                            type: 'direct',
+                            content: 'test',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
+                    },
+                ],
+                metadata: {
+                    timeRange: { start: new Date(), end: new Date() },
+                    envelopeCount: 1,
+                },
+            },
+            previousIntelligence: [],
+        };
+
+        const result = await service.execute(input);
+
+        expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].owners).toEqual(['app-user-alice']);
+    });
+
     it('should skip unresolvable owners', async () => {
         const resultWithOwners = {
             updatedInsights: [],
@@ -259,7 +343,7 @@ describe('InsightExtractionCapability', () => {
                 {
                     type: 'TASK',
                     content: 'Unknown user task.',
-                    owners: [{ username: 'unknown_user' }],
+                    owners: [{ username: 'xyz_unknown' }],
                     envolopsRef: ['1'],
                     broadcasted: false,
                 },
@@ -271,6 +355,7 @@ describe('InsightExtractionCapability', () => {
         });
 
         platformRepoMock.findByPluginName.mockResolvedValue([]);
+        platformRepoMock.findWithUser.mockResolvedValue([]);
 
         const input: CapabilityInput = {
             chunk: {

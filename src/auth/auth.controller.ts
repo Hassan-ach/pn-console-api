@@ -44,9 +44,9 @@ export class AuthController {
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
-        res.redirect(
-            `${frontendUrl}/#signup?access_token=${result.access_token}&google_success=1`,
-        );
+        const successParam = result.is_new_user ? 'google_success=1' : '';
+        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        res.redirect(redirectUrl);
     }
 
     @Get('microsoft')
@@ -66,9 +66,9 @@ export class AuthController {
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
-        res.redirect(
-            `${frontendUrl}/#signup?access_token=${result.access_token}&microsoft_success=1`,
-        );
+        const successParam = result.is_new_user ? 'microsoft_success=1' : '';
+        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        res.redirect(redirectUrl);
     }
 
     @Get('sso')
@@ -88,8 +88,13 @@ export class AuthController {
             firstName: req.user.firstName,
             lastName: req.user.lastName,
         });
-        res.redirect(
-            `${frontendUrl}/#signup?access_token=${result.access_token}&sso_success=1`,
-        );
+        const successParam = result.is_new_user ? 'sso_success=1' : '';
+        const redirectUrl = this.oauthRedirectUrl(req, result.access_token, successParam, frontendUrl);
+        res.redirect(redirectUrl);
+    }
+
+    private oauthRedirectUrl(_req: any, token: string, successParam: string, fallbackUrl: string): string {
+        const query = successParam ? `&${successParam}` : '';
+        return `${fallbackUrl}/#signup?access_token=${token}${query}`;
     }
 }
