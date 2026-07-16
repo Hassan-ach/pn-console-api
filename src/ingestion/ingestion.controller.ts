@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
 import { IngestionService } from './ingestion.service';
 
@@ -17,6 +17,7 @@ export class IngestionController {
     constructor(private readonly ingestionService: IngestionService) {}
 
     @Post('backfill')
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Backfill historical data from a plugin' })
     async backfill(@Body() dto: BackfillDto) {
         return this.ingestionService.ingest({

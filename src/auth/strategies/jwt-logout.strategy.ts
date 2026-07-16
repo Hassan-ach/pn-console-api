@@ -4,8 +4,13 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppDbService } from '../../prisma/app-db/app-db.service';
 
+const MAX_TOKEN_AGE_DAYS = 30;
+
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtLogoutStrategy extends PassportStrategy(
+    Strategy,
+    'jwt-logout',
+) {
     constructor(
         configService: ConfigService,
         private readonly db: AppDbService,
@@ -13,6 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+            ignoreExpiration: true,
         });
     }
 
@@ -20,7 +26,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         sub: string;
         email: string;
         tokenVersion: number;
+        exp?: number;
     }) {
+        if (
+            payload.exp &&
+            Date.now() / 1000 - payload.exp > MAX_TOKEN_AGE_DAYS * 24 * 60 * 60
+        ) {
+            throw new UnauthorizedException('Token has been revoked.');
+        }
+
         const user = await this.db.user.findUnique({
             where: { id: payload.sub },
             select: { tokenVersion: true },
