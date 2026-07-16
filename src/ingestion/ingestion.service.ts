@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PluginManagerService } from './plugins/plugin-manager.service';
-import { EnvelopeService } from '../envelope/envelope.service';
+import { EnvelopeRepository } from '../repositories/envelope.repository';
+import type { CreateEnvelopeInput } from '../repositories/envelope.repository';
 import { IngestOptions } from './types/ingestion-options.type';
 import { EnvelopesIngestedEvent } from '../intelligence/triggers/envelopes-ingested.event';
 
@@ -11,7 +12,7 @@ export class IngestionService {
 
     constructor(
         private readonly pluginManager: PluginManagerService,
-        private readonly envelopeService: EnvelopeService,
+        private readonly envelopeRepo: EnvelopeRepository,
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
@@ -39,13 +40,24 @@ export class IngestionService {
             const pluginEnvelopeIds: string[] = [];
 
             for await (const chunk of plugin.backfill(options.limit)) {
-                const dto = chunk.map((item) => ({
-                    envelope: item.envelope,
+                const items: CreateEnvelopeInput[] = chunk.map((item) => ({
+                    envelope: {
+                        sourcePlugin: item.envelope.sourcePlugin,
+                        sourceId: item.envelope.sourceId,
+                        type: item.envelope.type,
+                        hasAttachment: item.envelope.hasAttachment,
+                        authorId: item.envelope.authorId,
+                        organizationId:
+                            item.envelope.organizationId ??
+                            options.organizationId,
+                        status: item.envelope.status ?? 'PENDING',
+                        permissions: item.envelope.permissions,
+                        occurredAt: item.envelope.occurredAt,
+                    },
                     payload: item.payload,
                 }));
-                const result = await this.envelopeService.bulkCreate(dto, {
-                    organizationId: options.organizationId,
-                });
+                const result =
+                    await this.envelopeRepo.createManyWithPayload(items);
                 pluginInserted += result.inserted;
                 totalInserted += result.inserted;
                 pluginEnvelopeIds.push(...result.ids);

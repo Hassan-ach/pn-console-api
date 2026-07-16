@@ -66,10 +66,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 
 
-.pr.json
 reports/
 token-optimizer
 AGENTS.md
 user_stories/
-.plan/
 docs/
+.pi/
