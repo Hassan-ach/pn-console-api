@@ -3,13 +3,11 @@ import { CapabilitiesModule } from '../intelligence/capabilities/capabilities.mo
 import { StoreModule } from '../intelligence/store/store.module';
 import { DemoGenerationController } from './demo-generation.controller';
 import { DemoPersistenceController } from './demo-persistence.controller';
-import { EnvelopeModule } from '../envelope/envelope.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
 import { DemoController } from './demo.controller';
 
 @Module({
     imports: [
-        EnvelopeModule,
         RepositoriesModule,
         CapabilitiesModule,
         StoreModule,
