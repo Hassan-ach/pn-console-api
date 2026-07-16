@@ -24,9 +24,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     validate(_accessToken: string, _refreshToken: string, profile: Profile) {
         return {
-            email: profile.emails?.[0]?.value,
-            firstName: profile.name?.givenName,
-            lastName: profile.name?.familyName,
+            email: (profile.emails?.[0]?.value ?? '').toLowerCase(),
+            firstName: profile.name?.givenName ?? '',
+            lastName: profile.name?.familyName ?? '',
         };
     }
 }
