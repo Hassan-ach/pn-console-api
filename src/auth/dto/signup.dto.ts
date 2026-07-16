@@ -1,4 +1,11 @@
-import { IsString, IsEmail, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
+import {
+    IsString,
+    IsEmail,
+    MinLength,
+    MaxLength,
+    IsNotEmpty,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SignupDto {
@@ -17,6 +24,9 @@ export class SignupDto {
     lastName: string;
 
     @ApiProperty()
+    @Transform(({ value }: { value: unknown }) =>
+        typeof value === 'string' ? value.toLowerCase().trim() : value,
+    )
     @IsEmail()
     @MaxLength(255)
     email: string;
