@@ -1,7 +1,7 @@
 import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { InsightType } from 'src/types/insight.types';
+import { InsightType } from 'src/types/insight.types';
 
 class PersistInsightDto {
     @ApiPropertyOptional({ example: 'abc-123' })
@@ -9,7 +9,7 @@ class PersistInsightDto {
     @IsString()
     id?: string;
 
-    @ApiProperty({ enum: ['TASK', 'URGENCY', 'INFO', 'DECISION'] })
+    @ApiProperty({ enum: InsightType })
     @IsString()
     type: InsightType;
 
