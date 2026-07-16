@@ -6,6 +6,7 @@ import { PlatformUserMappingRepository } from './platform-user-mapping.repositor
 import { CapabilityFailureRepository } from './capability-failure.repository';
 import { EnvelopeRepository } from './envelope.repository';
 import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
+import { PluginConfigRepository } from './plugin-config.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -15,6 +16,7 @@ import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
         CapabilityFailureRepository,
         EnvelopeRepository,
         UnresolvedOwnerRepository,
+        PluginConfigRepository,
     ],
     exports: [
         InsightRepository,
@@ -22,6 +24,7 @@ import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
         CapabilityFailureRepository,
         EnvelopeRepository,
         UnresolvedOwnerRepository,
+        PluginConfigRepository,
     ],
 })
 export class RepositoriesModule {}
