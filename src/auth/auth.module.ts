@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { JwtLogoutStrategy } from './strategies/jwt-logout.strategy';
 import { MicrosoftStrategy } from './strategies/microsoft.strategy';
 import { SsoStrategy } from './strategies/sso.strategy';
 
@@ -33,6 +34,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
     providers: [
         AuthService,
         JwtStrategy,
+        JwtLogoutStrategy,
         GoogleStrategy,
         MicrosoftStrategy,
         SsoStrategy,

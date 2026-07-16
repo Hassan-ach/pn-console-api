@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { InsightPersistenceService } from '../intelligence/store/insight-persistence.service';
 import { Insight } from '../types/insight.types';
@@ -14,6 +14,7 @@ export class DemoPersistenceController {
     ) {}
 
     @Post('persist')
+    @ApiBearerAuth()
     @ApiOperation({
         summary: 'Demo: persist extracted insights to the database',
     })
@@ -33,6 +34,7 @@ export class DemoPersistenceController {
     }
 
     @Get()
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Demo: fetch all insights from the database' })
     async getAll(): Promise<Insight[]> {
         const rows = await this.prisma.insight.findMany({
