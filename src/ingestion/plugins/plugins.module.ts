@@ -10,8 +10,7 @@ import { PluginContextService } from './plugin-context.service';
     providers: [
         PluginManagerService,
         PluginContextService,
-        { provide: 'PLUGIN_CONTEXT', useClass: PluginContextService },
     ],
-    exports: [PluginManagerService, 'PLUGIN_CONTEXT'],
+    exports: [PluginManagerService],
 })
 export class PluginsModule {}

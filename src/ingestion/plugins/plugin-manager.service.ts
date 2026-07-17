@@ -1,131 +1,126 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { IPlugin, PluginLoginResult } from './interfaces/plugin.interface';
-import { PluginState } from './interfaces/plugin-state.enum';
-
-interface PluginRecord {
-    instance: IPlugin;
-    state: PluginState;
-}
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { IPlugin, BackFillOpts } from './interfaces/plugin.interface';
+import type { PluginContext, StoreResult } from './interfaces/plugin-context.interface';
+import { PluginConfigRepository } from '../../repositories/plugin-config.repository';
+import { PluginContextService } from './plugin-context.service';
 
 @Injectable()
 export class PluginManagerService {
     private readonly logger = new Logger(PluginManagerService.name);
-    private plugins = new Map<string, PluginRecord>();
+    private instances = new Map<string, IPlugin>();
+
+    readonly context: PluginContext;
+
+    constructor(
+        private readonly configRepo: PluginConfigRepository,
+        contextService: PluginContextService,
+    ) {
+        this.context = contextService;
+    }
 
     register(plugin: IPlugin): void {
-        if (this.plugins.has(plugin.name)) {
+        if (this.instances.has(plugin.name)) {
             throw new Error(`Plugin "${plugin.name}" is already registered`);
         }
-        this.plugins.set(plugin.name, {
-            instance: plugin,
-            state: PluginState.CREATED,
-        });
+        this.instances.set(plugin.name, plugin);
         this.logger.log(`Plugin "${plugin.name}" registered`);
     }
 
     unregister(name: string): void {
-        this.plugins.delete(name);
+        this.instances.delete(name);
     }
 
     get(name: string): IPlugin | undefined {
-        return this.plugins.get(name)?.instance;
+        return this.instances.get(name);
     }
 
-    getState(name: string): PluginState | undefined {
-        return this.plugins.get(name)?.state;
+    getContext(): PluginContext {
+        return this.context;
     }
 
-    list(): Array<{ name: string; state: PluginState }> {
-        return Array.from(this.plugins.entries()).map(([name, record]) => ({
+    async *backfill(
+        name: string,
+        opts: BackFillOpts,
+    ): AsyncIterable<StoreResult> {
+        const plugin = this.getInstance(name);
+        yield* plugin.backfill(opts, this.context);
+    }
+
+    async getState(
+        name: string,
+        userId: string,
+    ): Promise<{ initialized: boolean; hasSession: boolean } | null> {
+        if (!this.instances.has(name)) return null;
+        const config = await this.configRepo.findUnique(
+            userId,
             name,
-            state: record.state,
-        }));
+        );
+        if (!config) return { initialized: false, hasSession: false };
+        const cfg = config.config as Record<string, unknown>;
+        return {
+            initialized: true,
+            hasSession: !!cfg.sessionString,
+        };
     }
 
-    async initPlugin(
+    async list(
+        userId: string,
+    ): Promise<
+        Array<{ name: string; connected: boolean; hasConfig: boolean }>
+    > {
+        const configs = await this.configRepo.findMany();
+        const pluginNames = Array.from(this.instances.keys());
+        return pluginNames.map((name) => {
+            const dbConfig = configs.find((c) => c.pluginName === name);
+            const cfg = (dbConfig?.config ?? {}) as Record<string, unknown>;
+            return {
+                name,
+                connected: !!cfg.sessionString,
+                hasConfig: !!dbConfig,
+            };
+        });
+    }
+
+    async updateConfig(
         name: string,
         config: Record<string, unknown>,
+        userId: string,
     ): Promise<void> {
-        const record = this.getRecord(name);
-        this.assertState(record, PluginState.CREATED);
-        try {
-            await record.instance.initialize!(config);
-            record.state = PluginState.INITIALIZED;
-            this.logger.log(`Plugin "${name}" initialized`);
-        } catch (error) {
-            record.state = PluginState.ERROR;
-            throw error;
-        }
+        if (!this.instances.has(name))
+            throw new NotFoundException(`Plugin "${name}" not found`);
+        await this.configRepo.upsert({
+            userId,
+            pluginName: name,
+            config,
+        });
     }
 
-    async loginPlugin(
+    async getConfig(
         name: string,
-        credentials: Record<string, unknown>,
-    ): Promise<PluginLoginResult> {
-        const record = this.getRecord(name);
-        this.assertState(record, PluginState.INITIALIZED);
-        try {
-            const result = await record.instance.login!(credentials);
-            if (result.status === 'ok') {
-                record.state = PluginState.LOGGED_IN;
-                this.logger.log(`Plugin "${name}" logged in`);
-            }
-            return result;
-        } catch (error) {
-            record.state = PluginState.ERROR;
-            throw error;
-        }
+        userId: string,
+    ): Promise<Record<string, unknown> | null> {
+        if (!this.instances.has(name))
+            throw new NotFoundException(`Plugin "${name}" not found`);
+        const row = await this.configRepo.findUnique(
+            userId,
+            name,
+        );
+        return row?.config ?? null;
     }
 
-    async logoutPlugin(name: string): Promise<void> {
-        const record = this.getRecord(name);
-        if (record.state === PluginState.CREATED) {
-            throw new Error(`Plugin "${name}" is not logged in`);
-        }
-        try {
-            await record.instance.logout!();
-            record.state = PluginState.INITIALIZED;
-            this.logger.log(`Plugin "${name}" logged out`);
-        } catch (error) {
-            record.state = PluginState.ERROR;
-            throw error;
-        }
-    }
-
-    async handleAction(
+    async deleteConfig(
         name: string,
-        action: string,
-        params: Record<string, unknown>,
-    ): Promise<unknown> {
-        const record = this.getRecord(name);
-        const result = (await record.instance.handleAction!(
-            action,
-            params,
-        )) as Record<string, unknown> | null;
-
-        if (
-            action.startsWith('submit-') &&
-            result?.status === 'ok' &&
-            record.state === PluginState.INITIALIZED
-        ) {
-            record.state = PluginState.LOGGED_IN;
-            this.logger.log(`Plugin "${name}" logged in (via ${action})`);
-        }
-
-        return result;
+        userId: string,
+    ): Promise<void> {
+        if (!this.instances.has(name))
+            throw new NotFoundException(`Plugin "${name}" not found`);
+        await this.configRepo.remove(userId, name);
     }
 
-    private getRecord(name: string): PluginRecord {
-        const record = this.plugins.get(name);
-        if (!record) throw new Error(`Plugin "${name}" not found`);
-        return record;
-    }
-
-    private assertState(record: PluginRecord, expected: PluginState): void {
-        if (record.state !== expected) {
-            throw new Error(
-                `Plugin "${record.instance.name}" is in state ${record.state}, expected ${expected}`,
-            );
-        }
+    private getInstance(name: string): IPlugin {
+        const plugin = this.instances.get(name);
+        if (!plugin)
+            throw new NotFoundException(`Plugin "${name}" not found`);
+        return plugin;
     }
 }

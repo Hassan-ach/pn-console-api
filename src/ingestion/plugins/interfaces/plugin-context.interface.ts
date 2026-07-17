@@ -1,3 +1,10 @@
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+
+export interface StoreResult {
+    inserted: number;
+    ids: string[];
+}
+
 export interface PluginLogger {
     info(message: string, context?: Record<string, unknown>): void;
     warn(message: string, context?: Record<string, unknown>): void;
@@ -20,5 +27,9 @@ export interface PluginContext {
         pluginName: string,
         partial: Record<string, unknown>,
     ): Promise<void>;
+    storeEnvelopes(
+        items: EnvelopeWithPayload[],
+        userId: string,
+    ): Promise<StoreResult>;
     logger: PluginLogger;
 }

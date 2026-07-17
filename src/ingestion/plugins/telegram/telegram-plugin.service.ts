@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IPlugin, PluginLoginResult } from '../interfaces/plugin.interface';
-import { EnvelopeWithPayload } from '../../../types/envelope.types';
+import type { StoreResult } from '../interfaces/plugin-context.interface';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from './normalizer';
 import { resolveEntities, resolveTopicId } from './telegram-utils';
+import type { PluginContext } from '../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from './telegram.types';
 
 interface TelegramConfig {
@@ -107,7 +109,10 @@ export class TelegramPluginService implements IPlugin {
         await this.auth.logout(this.config.userId);
     }
 
-    async *backfill(limit: number): AsyncIterable<EnvelopeWithPayload[]> {
+    async *backfill(
+        { limit, userId }: { limit: number; userId: string },
+        context: PluginContext,
+    ): AsyncIterable<StoreResult> {
         if (!this.config) throw new Error('Plugin not initialized');
 
         const { client } = await this.auth.loadSession(
@@ -151,7 +156,6 @@ export class TelegramPluginService implements IPlugin {
                                 ? msg.date
                                 : new Date((msg.date as number) * 1000);
 
-                        // Resolve channel_id / group_id from peer_id
                         let channelId: string | null = null;
                         let groupId: string | null = null;
                         if (raw.peerId?.className === 'PeerChannel') {
@@ -163,7 +167,6 @@ export class TelegramPluginService implements IPlugin {
                             groupId = chatId;
                         }
 
-                        // Resolve author_id from from_id
                         let authorId: string | null = null;
                         if (raw.fromId?.userId) {
                             authorId = raw.fromId.userId.toString();
@@ -173,7 +176,6 @@ export class TelegramPluginService implements IPlugin {
                             authorId = raw.fromId.chatId.toString();
                         }
 
-                        // Resolve entities
                         const msgText = (msg.text ??
                             msg.message ??
                             '') as string;
@@ -182,7 +184,6 @@ export class TelegramPluginService implements IPlugin {
                             raw.entities ?? [],
                         );
 
-                        // Resolve topic_id
                         const topicId = resolveTopicId(
                             msg,
                             raw,
@@ -219,7 +220,12 @@ export class TelegramPluginService implements IPlugin {
                     }
 
                     if (chunk.length > 0) {
-                        yield chunk.map(normalizeTelegramMessage);
+                        const envelopes = chunk.map(normalizeTelegramMessage);
+                        const result = await context.storeEnvelopes(
+                            envelopes,
+                            userId,
+                        );
+                        yield result;
                     }
 
                     totalFetched += messages.length;

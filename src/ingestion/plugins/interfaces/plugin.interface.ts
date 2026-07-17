@@ -1,4 +1,5 @@
-import { EnvelopeWithPayload, Payload } from '../../../types/envelope.types';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+import type { PluginContext, StoreResult } from './plugin-context.interface';
 
 export type PluginLoginResult =
     | { status: 'ok' }
@@ -10,16 +11,17 @@ export interface BackFillOpts {
     userId: string;
 }
 
-export interface IPlugin<TPayload extends Payload = Payload> {
+export interface IPlugin {
     readonly name: string;
 
     backfill(
-        opts: BackFillOpts
-    ): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
+        opts: BackFillOpts,
+        context: PluginContext,
+    ): AsyncIterable<StoreResult>;
 
     startStream(
         signal?: AbortSignal,
-    ): AsyncIterable<EnvelopeWithPayload<TPayload>[]>;
+    ): AsyncIterable<EnvelopeWithPayload[]>;
 
     stopStream(): void;
 }
