@@ -1,20 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IPlugin, PluginLoginResult } from '../interfaces/plugin.interface';
+import { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
-import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from './normalizer';
 import { resolveEntities, resolveTopicId } from './telegram-utils';
 import type { PluginContext } from '../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from './telegram.types';
+import type { BackFillOpts } from '../interfaces/plugin.interface';
 
 interface TelegramConfig {
-    userId: string;
     apiId: number;
     apiHash: string;
+    sessionString: string;
     chats: string[];
+    phone?: string;
 }
 
 @Injectable()
@@ -22,111 +23,37 @@ export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
     private readonly logger = new Logger(TelegramPluginService.name);
 
-    private config: TelegramConfig | null = null;
-
-    constructor(
-        private readonly factory: TelegramClientFactory,
-        private readonly auth: TelegramAuthService,
-        private readonly topicStore: TelegramTopicStore,
-    ) {}
-
-    async initialize(config: Record<string, unknown>): Promise<void> {
-        this.config = config as unknown as TelegramConfig;
-        this.logger.log(
-            `Telegram plugin initialized for user ${this.config?.userId}`,
-        );
-    }
-
-    async login(
-        credentials: Record<string, unknown>,
-    ): Promise<PluginLoginResult> {
-        if (!this.config) throw new Error('Plugin not initialized');
-        const phone = (credentials as any).phoneNumber ?? '';
-
-        return this.auth.authenticate(
-            phone,
-            this.config.userId,
-            this.config.apiId,
-            this.config.apiHash,
-        );
-    }
-
-    async handleAction(
-        action: string,
-        params: Record<string, unknown>,
-    ): Promise<unknown> {
-        switch (action) {
-            case 'submit-code':
-                return this.submitCode(
-                    params['pendingId'] as string,
-                    params['code'] as string,
-                );
-            case 'submit-password':
-                return this.submitPassword(
-                    params['pendingId'] as string,
-                    params['password'] as string,
-                );
-            default:
-                throw new Error(
-                    `Unknown action "${action}" for plugin "${this.name}"`,
-                );
-        }
-    }
-
-    private async submitCode(
-        pendingId: string,
-        code: string,
-    ): Promise<PluginLoginResult> {
-        if (!this.config) throw new Error('Plugin not initialized');
-
-        return this.auth.verifyCode(
-            pendingId,
-            code,
-            this.config.userId,
-            this.config.apiId,
-            this.config.apiHash,
-        );
-    }
-
-    private async submitPassword(
-        pendingId: string,
-        password: string,
-    ): Promise<PluginLoginResult> {
-        if (!this.config) throw new Error('Plugin not initialized');
-
-        await this.auth.verifyPassword(
-            pendingId,
-            password,
-            this.config.userId,
-            this.config.apiId,
-            this.config.apiHash,
-        );
-        return { status: 'ok' };
-    }
-
-    async logout(): Promise<void> {
-        if (!this.config) throw new Error('Plugin not initialized');
-        await this.auth.logout(this.config.userId);
-    }
+    constructor(private readonly factory: TelegramClientFactory) {}
 
     async *backfill(
-        { limit, userId }: { limit: number; userId: string },
+        { limit, userId }: BackFillOpts,
         context: PluginContext,
     ): AsyncIterable<StoreResult> {
-        if (!this.config) throw new Error('Plugin not initialized');
+        const config = await context.getConfig(userId, this.name);
+        if (!config) {
+            throw new Error('Telegram not configured');
+        }
 
-        const { client } = await this.auth.loadSession(
-            this.config.userId,
-            this.config.apiId,
-            this.config.apiHash,
+        const cfg = config as unknown as TelegramConfig;
+        if (!cfg.sessionString) {
+            throw new Error('No session. Connect Telegram first.');
+        }
+
+        const client = this.factory.create(
+            cfg.apiId,
+            cfg.apiHash,
+            cfg.sessionString,
         );
 
+        const topicStore = new TelegramTopicStore();
+
         try {
-            for (const chatId of this.config.chats) {
+            await client.connect();
+
+            for (const chatId of cfg.chats ?? []) {
                 this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
 
-                const messageToTopicMap =
-                    await this.topicStore.prewarmChat(chatId);
+                const messageToTopicMap = await topicStore.prewarmChat(chatId);
                 const pendingTopicEntries: {
                     chatId: string;
                     messageId: number;
@@ -204,7 +131,8 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
+                                    | number
+                                    | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
@@ -234,7 +162,7 @@ export class TelegramPluginService implements IPlugin {
                 }
 
                 if (pendingTopicEntries.length > 0) {
-                    await this.topicStore.setBatch(pendingTopicEntries);
+                    await topicStore.setBatch(pendingTopicEntries);
                 }
             }
         } finally {
