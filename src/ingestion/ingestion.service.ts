@@ -39,7 +39,10 @@ export class IngestionService {
             let pluginInserted = 0;
             const pluginEnvelopeIds: string[] = [];
 
-            for await (const chunk of plugin.backfill(options.limit)) {
+            for await (const chunk of plugin.backfill({
+                limit: options.limit,
+                userId: options.organizationId,
+            })) {
                 const items: CreateEnvelopeInput[] = chunk.map((item) => ({
                     envelope: {
                         sourcePlugin: item.envelope.sourcePlugin,

@@ -49,7 +49,7 @@ export class PluginManagerService {
         const record = this.getRecord(name);
         this.assertState(record, PluginState.CREATED);
         try {
-            await record.instance.initialize(config);
+            await record.instance.initialize!(config);
             record.state = PluginState.INITIALIZED;
             this.logger.log(`Plugin "${name}" initialized`);
         } catch (error) {
@@ -65,7 +65,7 @@ export class PluginManagerService {
         const record = this.getRecord(name);
         this.assertState(record, PluginState.INITIALIZED);
         try {
-            const result = await record.instance.login(credentials);
+            const result = await record.instance.login!(credentials);
             if (result.status === 'ok') {
                 record.state = PluginState.LOGGED_IN;
                 this.logger.log(`Plugin "${name}" logged in`);
@@ -83,7 +83,7 @@ export class PluginManagerService {
             throw new Error(`Plugin "${name}" is not logged in`);
         }
         try {
-            await record.instance.logout();
+            await record.instance.logout!();
             record.state = PluginState.INITIALIZED;
             this.logger.log(`Plugin "${name}" logged out`);
         } catch (error) {
@@ -98,7 +98,7 @@ export class PluginManagerService {
         params: Record<string, unknown>,
     ): Promise<unknown> {
         const record = this.getRecord(name);
-        const result = (await record.instance.handleAction(
+        const result = (await record.instance.handleAction!(
             action,
             params,
         )) as Record<string, unknown> | null;
