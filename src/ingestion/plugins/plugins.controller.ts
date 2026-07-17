@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Post,
+    Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PluginManagerService } from './plugin-manager.service';
 import { InitializePluginDto } from './dto/initialize-plugin.dto';
@@ -12,50 +20,55 @@ export class PluginsController {
 
     @Get()
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'List all registered plugins and their states' })
-    list() {
-        return this.pluginManager.list();
+    @ApiOperation({ summary: 'List registered plugins with status from DB' })
+    async list(@Req() req) {
+        return this.pluginManager.list(this.userId(req));
     }
 
     @Get(':name')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get plugin state' })
-    getState(@Param('name') name: string) {
-        const state = this.pluginManager.getState(name);
+    @ApiOperation({ summary: 'Get plugin config/status' })
+    async getState(@Param('name') name: string, @Req() req) {
+        const state = await this.pluginManager.getState(name, this.userId(req));
         if (!state) throw new Error(`Plugin "${name}" not found`);
-        return { name, state };
+        return { name, ...state };
     }
 
     @Post(':name/initialize')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Initialize a plugin with config' })
+    @ApiOperation({ summary: 'Store plugin config (replaces init)' })
     async initialize(
         @Param('name') name: string,
         @Body() dto: InitializePluginDto,
+        @Req() req,
     ) {
-        await this.pluginManager.initPlugin(name, dto.config);
+        await this.pluginManager.updateConfig(
+            name,
+            dto.config,
+            this.userId(req),
+        );
         return { status: 'ok' };
     }
 
     @Post(':name/login')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Login/authenticate a plugin' })
-    async login(@Param('name') name: string, @Body() dto: LoginPluginDto) {
-        return this.pluginManager.loginPlugin(name, dto.credentials);
+    @ApiOperation({ summary: 'Deprecated — auth moved to frontend' })
+    async login(@Param('name') _name: string, @Body() _dto: LoginPluginDto) {
+        throw new Error('Login moved to frontend. Use config endpoints.');
     }
 
     @Post(':name/action')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Execute a plugin-specific action' })
-    async action(@Param('name') name: string, @Body() dto: PluginActionDto) {
-        return this.pluginManager.handleAction(name, dto.action, dto.params);
+    @ApiOperation({ summary: 'Deprecated — auth moved to frontend' })
+    async action(@Param('name') _name: string, @Body() _dto: PluginActionDto) {
+        throw new Error('Action endpoints removed. Auth runs in frontend.');
     }
 
     @Post(':name/logout')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Logout and disconnect a plugin' })
-    async logout(@Param('name') name: string) {
-        await this.pluginManager.logoutPlugin(name);
+    @ApiOperation({ summary: 'Clear plugin session/config' })
+    async logout(@Param('name') name: string, @Req() req) {
+        await this.pluginManager.deleteConfig(name, this.userId(req));
         return { status: 'ok' };
     }
 
@@ -65,5 +78,9 @@ export class PluginsController {
     unregister(@Param('name') name: string) {
         this.pluginManager.unregister(name);
         return { status: 'ok' };
+    }
+
+    private userId(req: any): string {
+        return (req as any).user?.id ?? 'org-1';
     }
 }

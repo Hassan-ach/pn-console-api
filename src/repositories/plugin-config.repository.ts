@@ -42,7 +42,8 @@ export class PluginConfigRepository {
         pluginName?: string;
     }): Promise<PluginConfigData[]> {
         const where: Record<string, unknown> = {};
-        if (filter?.organizationId) where.organizationId = filter.organizationId;
+        if (filter?.organizationId)
+            where.organizationId = filter.organizationId;
         if (filter?.pluginName) where.pluginName = filter.pluginName;
 
         const rows = await this.prisma.pluginConfig.findMany({ where });
@@ -62,7 +63,9 @@ export class PluginConfigRepository {
                 pluginName: data.pluginName,
                 organizationId: data.organizationId ?? null,
                 config: toJson(data.config),
-                metadata: data.metadata ? toJson(data.metadata) : Prisma.JsonNull,
+                metadata: data.metadata
+                    ? toJson(data.metadata)
+                    : Prisma.JsonNull,
             },
         });
         return this.toData(row);
@@ -80,9 +83,13 @@ export class PluginConfigRepository {
         const row = await this.prisma.pluginConfig.update({
             where: { userId_pluginName: { userId, pluginName } },
             data: {
-                ...(data.config !== undefined && { config: toJson(data.config) }),
+                ...(data.config !== undefined && {
+                    config: toJson(data.config),
+                }),
                 ...(data.metadata !== undefined && {
-                    metadata: data.metadata ? toJson(data.metadata) : Prisma.JsonNull,
+                    metadata: data.metadata
+                        ? toJson(data.metadata)
+                        : Prisma.JsonNull,
                 }),
                 ...(data.organizationId !== undefined && {
                     organizationId: data.organizationId,
@@ -100,18 +107,27 @@ export class PluginConfigRepository {
         metadata?: Record<string, unknown>;
     }): Promise<PluginConfigData> {
         const row = await this.prisma.pluginConfig.upsert({
-            where: { userId_pluginName: { userId: data.userId, pluginName: data.pluginName } },
+            where: {
+                userId_pluginName: {
+                    userId: data.userId,
+                    pluginName: data.pluginName,
+                },
+            },
             create: {
                 userId: data.userId,
                 pluginName: data.pluginName,
                 organizationId: data.organizationId ?? null,
                 config: toJson(data.config),
-                metadata: data.metadata ? toJson(data.metadata) : Prisma.JsonNull,
+                metadata: data.metadata
+                    ? toJson(data.metadata)
+                    : Prisma.JsonNull,
             },
             update: {
                 config: toJson(data.config),
                 ...(data.metadata !== undefined && {
-                    metadata: data.metadata ? toJson(data.metadata) : Prisma.JsonNull,
+                    metadata: data.metadata
+                        ? toJson(data.metadata)
+                        : Prisma.JsonNull,
                 }),
                 ...(data.organizationId !== undefined && {
                     organizationId: data.organizationId,
