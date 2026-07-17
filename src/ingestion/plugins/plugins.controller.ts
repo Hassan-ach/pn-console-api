@@ -2,7 +2,6 @@ import {
     Controller,
     Delete,
     Get,
-    GoneException,
     NotFoundException,
     Param,
     Patch,
@@ -24,7 +23,7 @@ export class PluginsController {
 
     @Get()
     @ApiOperation({ summary: 'List registered plugins with status from DB' })
-    async list(@Req() req: { user: { id: string } }) {
+    list(@Req() req: { user: { id: string } }) {
         return this.pluginManager.list(req.user.id);
     }
 
@@ -56,15 +55,13 @@ export class PluginsController {
         @Param('name') name: string,
         @Req() req: { user: { id: string } },
     ) {
-        const config = await this.pluginManager.getConfig(name, req.user.id);
+        const config = await this.pluginManager.getSanitizedConfig(
+            name,
+            req.user.id,
+        );
         if (!config)
             throw new NotFoundException(`No config for plugin "${name}"`);
-        const sanitized = { ...config };
-        if (typeof sanitized.sessionString === 'string') {
-            sanitized.sessionString =
-                sanitized.sessionString.slice(0, 8) + '...';
-        }
-        return sanitized;
+        return config;
     }
 
     @Patch(':name/config')
@@ -79,18 +76,12 @@ export class PluginsController {
     }
 
     @Post(':name/logout')
-    @ApiOperation({
-        summary: 'Disconnect plugin — clear sessionString from config',
-    })
+    @ApiOperation({ summary: 'Disconnect plugin — clear session' })
     async logout(
         @Param('name') name: string,
         @Req() req: { user: { id: string } },
     ) {
-        await this.pluginManager.updateConfig(
-            name,
-            { sessionString: null },
-            req.user.id,
-        );
+        await this.pluginManager.disconnect(name, req.user.id);
         return { status: 'ok' };
     }
 

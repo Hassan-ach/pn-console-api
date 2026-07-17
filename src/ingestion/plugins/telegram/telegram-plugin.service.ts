@@ -25,6 +25,30 @@ export class TelegramPluginService implements IPlugin {
 
     constructor(private readonly factory: TelegramClientFactory) {}
 
+    async isConnected(
+        context: PluginContext,
+        userId: string,
+    ): Promise<boolean> {
+        const config = await context.getConfig(userId, this.name);
+        if (!config) return false;
+        const cfg = config as unknown as TelegramConfig;
+        if (!cfg.sessionString) return false;
+
+        const client = this.factory.create(
+            cfg.apiId,
+            cfg.apiHash,
+            cfg.sessionString,
+        );
+        try {
+            await client.connect();
+            return client.connected ?? false;
+        } catch {
+            return false;
+        } finally {
+            await this.factory.destroy(client);
+        }
+    }
+
     async *backfill(
         { limit, userId }: BackFillOpts,
         context: PluginContext,
