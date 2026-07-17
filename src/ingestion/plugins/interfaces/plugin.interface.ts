@@ -19,9 +19,7 @@ export interface IPlugin {
         context: PluginContext,
     ): AsyncIterable<StoreResult>;
 
-    startStream(
-        signal?: AbortSignal,
-    ): AsyncIterable<EnvelopeWithPayload[]>;
+    startStream(signal?: AbortSignal): AsyncIterable<EnvelopeWithPayload[]>;
 
     stopStream(): void;
 }

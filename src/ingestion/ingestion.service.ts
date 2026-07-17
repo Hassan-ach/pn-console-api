@@ -42,9 +42,7 @@ export class IngestionService {
                 );
             }
 
-            this.logger.log(
-                `Plugin "${name}" backfill complete`,
-            );
+            this.logger.log(`Plugin "${name}" backfill complete`);
 
             this.eventEmitter.emit(
                 'envelopes.ingested',

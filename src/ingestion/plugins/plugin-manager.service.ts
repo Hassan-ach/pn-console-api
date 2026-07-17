@@ -1,6 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { IPlugin, BackFillOpts } from './interfaces/plugin.interface';
-import type { PluginContext, StoreResult } from './interfaces/plugin-context.interface';
+import type {
+    PluginContext,
+    StoreResult,
+} from './interfaces/plugin-context.interface';
 import { PluginConfigRepository } from '../../repositories/plugin-config.repository';
 import { PluginContextService } from './plugin-context.service';
 
@@ -51,10 +54,7 @@ export class PluginManagerService {
         userId: string,
     ): Promise<{ initialized: boolean; hasSession: boolean } | null> {
         if (!this.instances.has(name)) return null;
-        const config = await this.configRepo.findUnique(
-            userId,
-            name,
-        );
+        const config = await this.configRepo.findUnique(userId, name);
         if (!config) return { initialized: false, hasSession: false };
         const cfg = config.config as Record<string, unknown>;
         return {
@@ -101,17 +101,11 @@ export class PluginManagerService {
     ): Promise<Record<string, unknown> | null> {
         if (!this.instances.has(name))
             throw new NotFoundException(`Plugin "${name}" not found`);
-        const row = await this.configRepo.findUnique(
-            userId,
-            name,
-        );
+        const row = await this.configRepo.findUnique(userId, name);
         return row?.config ?? null;
     }
 
-    async deleteConfig(
-        name: string,
-        userId: string,
-    ): Promise<void> {
+    async deleteConfig(name: string, userId: string): Promise<void> {
         if (!this.instances.has(name))
             throw new NotFoundException(`Plugin "${name}" not found`);
         await this.configRepo.remove(userId, name);
@@ -119,8 +113,7 @@ export class PluginManagerService {
 
     private getInstance(name: string): IPlugin {
         const plugin = this.instances.get(name);
-        if (!plugin)
-            throw new NotFoundException(`Plugin "${name}" not found`);
+        if (!plugin) throw new NotFoundException(`Plugin "${name}" not found`);
         return plugin;
     }
 }

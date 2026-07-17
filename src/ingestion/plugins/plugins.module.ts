@@ -7,10 +7,7 @@ import { PluginContextService } from './plugin-context.service';
 @Module({
     imports: [RepositoriesModule],
     controllers: [PluginsController],
-    providers: [
-        PluginManagerService,
-        PluginContextService,
-    ],
+    providers: [PluginManagerService, PluginContextService],
     exports: [PluginManagerService],
 })
 export class PluginsModule {}

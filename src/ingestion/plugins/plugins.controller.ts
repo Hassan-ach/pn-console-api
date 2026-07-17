@@ -29,10 +29,7 @@ export class PluginsController {
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get plugin config/status' })
     async getState(@Param('name') name: string, @Req() req) {
-        const state = await this.pluginManager.getState(
-            name,
-            this.userId(req),
-        );
+        const state = await this.pluginManager.getState(name, this.userId(req));
         if (!state) throw new Error(`Plugin "${name}" not found`);
         return { name, ...state };
     }
