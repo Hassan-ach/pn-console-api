@@ -56,7 +56,7 @@ export class PluginManagerService {
         if (!this.instances.has(name)) return null;
         const config = await this.configRepo.findUnique(userId, name);
         if (!config) return { initialized: false, hasSession: false };
-        const cfg = config.config as Record<string, unknown>;
+        const cfg = config.config;
         return {
             initialized: true,
             hasSession: !!cfg.sessionString,
@@ -70,15 +70,22 @@ export class PluginManagerService {
     > {
         const configs = await this.configRepo.findMany();
         const pluginNames = Array.from(this.instances.keys());
-        return pluginNames.map((name) => {
-            const dbConfig = configs.find((c) => c.pluginName === name);
-            const cfg = (dbConfig?.config ?? {}) as Record<string, unknown>;
-            return {
-                name,
-                connected: !!cfg.sessionString,
-                hasConfig: !!dbConfig,
-            };
-        });
+
+        return Promise.all(
+            pluginNames.map(async (name) => {
+                const plugin = this.instances.get(name)!;
+                const dbConfig = configs.find((c) => c.pluginName === name);
+                const connected = await plugin.isConnected(
+                    this.context,
+                    userId,
+                );
+                return {
+                    name,
+                    connected,
+                    hasConfig: !!dbConfig,
+                };
+            }),
+        );
     }
 
     async updateConfig(
@@ -103,6 +110,24 @@ export class PluginManagerService {
             throw new NotFoundException(`Plugin "${name}" not found`);
         const row = await this.configRepo.findUnique(userId, name);
         return row?.config ?? null;
+    }
+
+    async getSanitizedConfig(
+        name: string,
+        userId: string,
+    ): Promise<Record<string, unknown> | null> {
+        const config = await this.getConfig(name, userId);
+        if (!config) return null;
+        const sanitized = { ...config };
+        if (typeof sanitized.sessionString === 'string') {
+            sanitized.sessionString =
+                sanitized.sessionString.slice(0, 8) + '...';
+        }
+        return sanitized;
+    }
+
+    async disconnect(name: string, userId: string): Promise<void> {
+        await this.updateConfig(name, { sessionString: null }, userId);
     }
 
     async deleteConfig(name: string, userId: string): Promise<void> {

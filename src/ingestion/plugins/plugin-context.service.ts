@@ -57,7 +57,7 @@ export class PluginContextService implements PluginContext {
             envelope: {
                 sourcePlugin: item.envelope.sourcePlugin,
                 sourceId: item.envelope.sourceId,
-                type: item.envelope.type as string,
+                type: item.envelope.type,
                 hasAttachment: item.envelope.hasAttachment,
                 authorId: item.envelope.authorId,
                 organizationId: item.envelope.organizationId ?? orgId,
@@ -70,7 +70,7 @@ export class PluginContextService implements PluginContext {
         return this.envelopeRepo.createManyWithPayload(inputs);
     }
 
-    private resolveOrgId(_userId: string): string {
+    private resolveOrgId(userId: string): string {
         return 'org-1';
     }
 }

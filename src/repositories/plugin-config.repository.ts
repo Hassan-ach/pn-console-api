@@ -38,10 +38,12 @@ export class PluginConfigRepository {
     }
 
     async findMany(filter?: {
+        userId?: string;
         organizationId?: string;
         pluginName?: string;
     }): Promise<PluginConfigData[]> {
         const where: Record<string, unknown> = {};
+        if (filter?.userId) where.userId = filter.userId;
         if (filter?.organizationId)
             where.organizationId = filter.organizationId;
         if (filter?.pluginName) where.pluginName = filter.pluginName;
