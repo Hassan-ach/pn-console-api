@@ -13,9 +13,11 @@ import type { Response } from 'express';
 import {
     ApiConflictResponse,
     ApiCreatedResponse,
+    ApiOkResponse,
     ApiOperation,
     ApiTags,
     ApiUnauthorizedResponse,
+    ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -45,6 +47,17 @@ export class AuthController {
     @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
     async login(@Body() dto: LoginDto) {
         return this.authService.login(dto);
+    }
+
+    @Public()
+    @Post('logout')
+    @UseGuards(AuthGuard('jwt-logout'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Log out and revoke current token' })
+    @ApiOkResponse({ description: 'Logged out successfully' })
+    @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
+    async logout(@Req() req: any) {
+        return this.authService.logout(req.user.id);
     }
 
     @Public()

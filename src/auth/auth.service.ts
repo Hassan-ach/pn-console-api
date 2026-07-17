@@ -70,7 +70,11 @@ export class AuthService {
             },
         });
 
-        const token = this.jwtService.sign({ sub: user.id, email: user.email });
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            tokenVersion: user.tokenVersion,
+        });
 
         return {
             access_token: token,
@@ -98,7 +102,9 @@ export class AuthService {
         });
 
         if (!user || !user.passwordHash) {
-            throw new UnauthorizedException('Incorrect email or password.');
+            throw new UnauthorizedException(
+                'Incorrect email or password. Please try again.',
+            );
         }
 
         const passwordValid = await bcrypt.compare(
@@ -106,10 +112,16 @@ export class AuthService {
             user.passwordHash,
         );
         if (!passwordValid) {
-            throw new UnauthorizedException('Incorrect email or password.');
+            throw new UnauthorizedException(
+                'Incorrect email or password. Please try again.',
+            );
         }
 
-        const token = this.jwtService.sign({ sub: user.id, email: user.email });
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            tokenVersion: user.tokenVersion,
+        });
 
         return {
             access_token: token,
@@ -122,6 +134,14 @@ export class AuthService {
                 providerType: user.providerType,
             },
         };
+    }
+
+    async logout(userId: string) {
+        await this.db.user.update({
+            where: { id: userId },
+            data: { tokenVersion: { increment: 1 } },
+        });
+        return { message: 'Logged out successfully' };
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -151,6 +171,7 @@ export class AuthService {
             const token = this.jwtService.sign({
                 sub: existing.id,
                 email: existing.email,
+                tokenVersion: existing.tokenVersion,
             });
             return {
                 access_token: token,
@@ -191,6 +212,7 @@ export class AuthService {
                     const token = this.jwtService.sign({
                         sub: raceCreated.id,
                         email: raceCreated.email,
+                        tokenVersion: raceCreated.tokenVersion,
                     });
                     return {
                         access_token: token,
@@ -208,7 +230,11 @@ export class AuthService {
             throw e;
         }
 
-        const token = this.jwtService.sign({ sub: user.id, email: user.email });
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            tokenVersion: user.tokenVersion,
+        });
 
         return {
             access_token: token,

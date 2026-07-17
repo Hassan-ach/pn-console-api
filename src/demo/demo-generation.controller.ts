@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CapabilityManager } from '../intelligence/capabilities/capability-manager.service';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { EnvelopeWithPayload } from '../types/envelope.types';
@@ -17,6 +17,7 @@ export class DemoGenerationController {
     ) {}
 
     @Post('generate')
+    @ApiBearerAuth()
     @ApiOperation({
         summary: 'Demo: extract insights from messages using the LLM',
     })
