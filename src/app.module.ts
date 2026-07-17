@@ -10,6 +10,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AuthModule } from './auth/auth.module';
 import { DemoModule } from './demo/demo.module';
+import { InsightsModule } from './insights/insights.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -23,6 +24,7 @@ import { AppController } from './app.controller';
         IntelligenceModule,
         AuthModule,
         DemoModule,
+        InsightsModule,
     ],
     controllers: [AppController],
     providers: [

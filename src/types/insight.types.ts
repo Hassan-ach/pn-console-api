@@ -1,4 +1,11 @@
-export type InsightType = 'TASK' | 'URGENCY' | 'INFO' | 'DECISION';
+export const InsightType = {
+    TASK: 'TASK',
+    URGENCY: 'URGENCY',
+    INFO: 'INFO',
+    DECISION: 'DECISION',
+} as const;
+
+export type InsightType = (typeof InsightType)[keyof typeof InsightType];
 
 export interface UnresolvedOwnerRef {
     platformUserId: string | null;

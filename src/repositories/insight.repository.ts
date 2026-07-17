@@ -206,6 +206,91 @@ export class InsightRepository {
         }));
     }
 
+    async findByOwnerId(
+        ownerId: string,
+        type?: InsightType,
+    ): Promise<
+        {
+            id: string;
+            type: InsightType;
+            content: string;
+        }[]
+    > {
+        const versions = await this.prisma.insightVersion.findMany({
+            where: {
+                OR: [
+                    { owners: { some: { id: ownerId } } },
+                    { broadcasted: true },
+                ],
+                ...(type && { type }),
+            },
+            select: {
+                insightId: true,
+                type: true,
+                content: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        const seen = new Set<string>();
+        const results: {
+            id: string;
+            type: InsightType;
+            content: string;
+        }[] = [];
+
+        for (const v of versions) {
+            if (!seen.has(v.insightId)) {
+                seen.add(v.insightId);
+                results.push({
+                    id: v.insightId,
+                    type: v.type,
+                    content: v.content,
+                });
+            }
+        }
+
+        return results;
+    }
+
+    async findById(
+        id: string,
+        ownerId: string,
+    ): Promise<Omit<Insight, 'unresolvedOwnerRefs'> | null> {
+        const insight = await this.prisma.insight.findUnique({
+            where: { id },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
+            },
+        });
+
+        if (!insight || insight.versions.length === 0) return null;
+
+        const latest = insight.versions[0];
+        const isOwner = latest.owners.some((u) => u.id === ownerId);
+
+        if (!isOwner && !latest.broadcasted) return null;
+
+        return {
+            id: insight.id,
+            organizationId: insight.organizationId ?? undefined,
+            type: latest.type,
+            content: latest.content,
+            envolopsRef: [...latest.envolopsRef],
+            broadcasted: latest.broadcasted,
+            version: latest.version,
+            createdAt: latest.createdAt,
+            sourcePlugin: latest.sourcePlugin ?? undefined,
+            groupId: latest.groupId ?? undefined,
+            channelId: latest.channelId ?? undefined,
+            topicId: latest.topicId ?? undefined,
+        };
+    }
+
     private toInsight(row: {
         id: string;
         organizationId: string | null;
