@@ -69,7 +69,7 @@ export class TelegramPluginService implements IPlugin {
             cfg.sessionString,
         );
 
-        const topicStore = new TelegramTopicStore();
+        const orgId = context.resolveOrgId(userId);
 
         try {
             await client.connect();
@@ -77,7 +77,12 @@ export class TelegramPluginService implements IPlugin {
             for (const chatId of cfg.chats ?? []) {
                 this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
 
-                const messageToTopicMap = await topicStore.prewarmChat(chatId);
+                const topicStore = new TelegramTopicStore(
+                    orgId,
+                    userId,
+                    chatId,
+                );
+                const messageToTopicMap = await topicStore.prewarmChat();
                 const pendingTopicEntries: {
                     chatId: string;
                     messageId: number;

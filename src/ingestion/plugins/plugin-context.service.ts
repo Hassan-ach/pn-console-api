@@ -70,7 +70,7 @@ export class PluginContextService implements PluginContext {
         return this.envelopeRepo.createManyWithPayload(inputs);
     }
 
-    private resolveOrgId(_userId: string): string {
+    private resolveOrgId(userId: string): string {
         return 'org-1';
     }
 }
