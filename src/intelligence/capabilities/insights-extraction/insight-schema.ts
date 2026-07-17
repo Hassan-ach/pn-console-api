@@ -1,6 +1,7 @@
 import z from 'zod';
+import { InsightType } from 'src/types/insight.types';
 
-const InsightTypeSchema = z.enum(['TASK', 'URGENCY', 'INFO', 'DECISION']);
+const InsightTypeSchema = z.enum(Object.values(InsightType));
 
 const OwnerRefSchema = z.object({
     id: z.string().optional(),
