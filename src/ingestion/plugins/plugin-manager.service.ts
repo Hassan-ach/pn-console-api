@@ -56,7 +56,7 @@ export class PluginManagerService {
         if (!this.instances.has(name)) return null;
         const config = await this.configRepo.findUnique(userId, name);
         if (!config) return { initialized: false, hasSession: false };
-        const cfg = config.config as Record<string, unknown>;
+        const cfg = config.config;
         return {
             initialized: true,
             hasSession: !!cfg.sessionString,
@@ -72,7 +72,7 @@ export class PluginManagerService {
         const pluginNames = Array.from(this.instances.keys());
         return pluginNames.map((name) => {
             const dbConfig = configs.find((c) => c.pluginName === name);
-            const cfg = (dbConfig?.config ?? {}) as Record<string, unknown>;
+            const cfg = dbConfig?.config ?? {};
             return {
                 name,
                 connected: !!cfg.sessionString,
