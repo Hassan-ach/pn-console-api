@@ -20,8 +20,8 @@ export class InsightDetailResponseDto {
     @ApiPropertyOptional()
     broadcasted?: boolean;
 
-    @ApiPropertyOptional()
-    version?: number;
+    @ApiProperty({ description: 'Version number (1, 2, 3...)' })
+    version: number;
 
     @ApiPropertyOptional()
     createdAt?: Date;
