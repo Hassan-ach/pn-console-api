@@ -7,11 +7,7 @@ import { RepositoriesModule } from '../repositories/repositories.module';
 import { DemoController } from './demo.controller';
 
 @Module({
-    imports: [
-        RepositoriesModule,
-        CapabilitiesModule,
-        StoreModule,
-    ],
+    imports: [RepositoriesModule, CapabilitiesModule, StoreModule],
     controllers: [
         DemoController,
         DemoGenerationController,

@@ -34,8 +34,14 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     ) {
         return {
             email: (profile.emails?.[0]?.value ?? '').toLowerCase(),
-            firstName: profile.name?.givenName ?? profile.displayName?.split(' ')[0] ?? '',
-            lastName: profile.name?.familyName ?? profile.displayName?.split(' ').slice(1).join(' ') ?? '',
+            firstName:
+                profile.name?.givenName ??
+                profile.displayName?.split(' ')[0] ??
+                '',
+            lastName:
+                profile.name?.familyName ??
+                profile.displayName?.split(' ').slice(1).join(' ') ??
+                '',
         };
     }
 }

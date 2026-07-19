@@ -5,10 +5,14 @@ import {
     InsightType,
     UnresolvedOwnerRef,
 } from 'src/types/insight.types';
+import { EnvelopeRepository } from './envelope.repository';
 
 @Injectable()
 export class InsightRepository {
-    constructor(private readonly prisma: AppDbService) {}
+    constructor(
+        private readonly prisma: AppDbService,
+        private readonly envelopeRepository: EnvelopeRepository,
+    ) {}
 
     async create(data: {
         organizationId?: string;
@@ -280,6 +284,7 @@ export class InsightRepository {
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
             version: latest.version,
+            latestVersionId: latest.id,
             createdAt: latest.createdAt,
             sourcePlugin: latest.sourcePlugin ?? undefined,
             groupId: latest.groupId ?? undefined,
@@ -387,6 +392,45 @@ export class InsightRepository {
             channelId: version.channelId ?? undefined,
             topicId: version.topicId ?? undefined,
         };
+    }
+
+    async findVersionEnvelopeRefs(
+        insightId: string,
+        versionId: string,
+        ownerId: string,
+    ): Promise<
+        | {
+              envolopId: string;
+              sourcePlugin: string;
+              occurredAt: Date;
+              content: string;
+          }[]
+        | null
+    > {
+        const insight = await this.prisma.insight.findUnique({
+            where: { id: insightId },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
+            },
+        });
+
+        if (!insight || insight.versions.length === 0) return null;
+
+        const latest = insight.versions[0];
+        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        if (!isOwner && !latest.broadcasted) return null;
+
+        const version = await this.prisma.insightVersion.findFirst({
+            where: { id: versionId, insightId },
+        });
+
+        if (!version) return null;
+
+        return this.envelopeRepository.findByIds([...version.envolopsRef]);
     }
 
     private toInsight(row: {

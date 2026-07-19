@@ -23,6 +23,9 @@ export class InsightDetailResponseDto {
     @ApiProperty({ description: 'Version number (1, 2, 3...)' })
     version: number;
 
+    @ApiPropertyOptional({ description: 'Latest version ID' })
+    latestVersionId?: string;
+
     @ApiPropertyOptional()
     createdAt?: Date;
 

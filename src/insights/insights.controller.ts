@@ -89,4 +89,26 @@ export class InsightsController {
 
         return version;
     }
+
+    @Get(':id/versions/:versionId/envelope-refs')
+    @ApiOperation({
+        summary: 'Get envelope refs for a specific insight version',
+    })
+    async findVersionEnvelopeRefs(
+        @Req() req: { user: { id: string } },
+        @Param('id') id: string,
+        @Param('versionId') versionId: string,
+    ) {
+        const refs = await this.insightRepository.findVersionEnvelopeRefs(
+            id,
+            versionId,
+            req.user.id,
+        );
+
+        if (refs === null) {
+            throw new NotFoundException('Insight version not found');
+        }
+
+        return refs;
+    }
 }
