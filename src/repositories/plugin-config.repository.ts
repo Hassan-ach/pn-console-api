@@ -1,4 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma } from 'generated/app-db-client';
 
@@ -52,7 +55,7 @@ export class PluginConfigRepository {
         return rows.map((r) => this.toData(r));
     }
 
-    async create(
+    async upsert(
         userId: string,
         pluginName: string,
         data: {
@@ -61,15 +64,24 @@ export class PluginConfigRepository {
             metadata?: Record<string, unknown>;
         },
     ): Promise<PluginConfigData> {
-        const row = await this.prisma.pluginConfig.create({
-            data: {
-                userId: userId,
-                pluginName: pluginName,
+        const row = await this.prisma.pluginConfig.upsert({
+            where: { userId_pluginName: { userId, pluginName } },
+            create: {
+                userId,
+                pluginName,
                 organizationId: data.organizationId ?? null,
                 config: toJson(data.config),
                 metadata: data.metadata
                     ? toJson(data.metadata)
                     : Prisma.JsonNull,
+            },
+            update: {
+                config: toJson(data.config),
+                ...(data.metadata !== undefined && {
+                    metadata: data.metadata
+                        ? toJson(data.metadata)
+                        : Prisma.JsonNull,
+                }),
             },
         });
         return this.toData(row);
@@ -92,8 +104,8 @@ export class PluginConfigRepository {
             });
 
             if (!current) {
-                throw new Error(
-                    `Plugin config not found for plugin name:${pluginName}`,
+                throw new NotFoundException(
+                    `Configuration not found for this plugin`,
                 );
             }
 
