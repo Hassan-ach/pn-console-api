@@ -42,6 +42,7 @@ export interface Insight {
     createdAt?: Date;
     sourcePlugin?: string;
     groupId?: string;
+    status?: InsightActionStatus;
     channelId?: string;
     topicId?: string;
 }
