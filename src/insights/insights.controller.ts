@@ -72,6 +72,7 @@ export class InsightsController {
         return insight;
     }
 
+    @Patch(':id')
     @Get(':id/versions')
     @ApiOperation({ summary: 'Get all versions of an insight' })
     @ApiOkResponse({ type: [InsightResponseDto] })
