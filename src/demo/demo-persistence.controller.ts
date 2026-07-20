@@ -52,7 +52,7 @@ export class DemoPersistenceController {
             return {
                 id: row.id,
                 organizationId: row.organizationId ?? undefined,
-                type: latest.type as Insight['type'],
+                type: latest.type,
                 content: latest.content,
                 owners: latest.owners.map((u) => u.id),
                 envolopsRef: [...latest.envolopsRef],

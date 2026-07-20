@@ -10,7 +10,6 @@ import { EnvelopeRepository } from '../repositories/envelope.repository';
 import type {
     EnterpriseContext,
     RetrievalWindow,
-    PreviousIntelligenceQuery,
 } from './context/types/enterprise-context.types';
 import type { Insight } from '../types/insight.types';
 import type { DataChunk } from './chunking/types/data-chunk.type';
