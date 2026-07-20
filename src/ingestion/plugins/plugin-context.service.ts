@@ -7,6 +7,7 @@ import type {
     PluginLogger,
     StoreResult,
 } from './interfaces/plugin-context.interface';
+import { unknown } from 'zod/v3';
 
 @Injectable()
 export class PluginContextService implements PluginContext {
@@ -37,7 +38,12 @@ export class PluginContextService implements PluginContext {
         pluginName: string,
         config: Record<string, unknown>,
     ): Promise<void> {
-        await this.configRepo.upsert({ userId, pluginName, config });
+        const orgId = this.resolveOrgId(userId);
+        await this.configRepo.create(userId, pluginName, {
+            organizationId: orgId,
+            config: config,
+            metadata: undefined,
+        });
     }
 
     async updateConfig(

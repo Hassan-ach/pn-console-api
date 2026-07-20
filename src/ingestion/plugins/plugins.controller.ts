@@ -1,4 +1,5 @@
 import {
+    Body,
     Controller,
     Delete,
     Get,
@@ -42,10 +43,13 @@ export class PluginsController {
     @ApiOperation({ summary: 'Create or fully replace plugin config' })
     async createConfig(
         @Param('name') name: string,
-        @Req() req: { user: { id: string } },
-        body: PluginConfigDto,
+        @Req() req: { user: { id: string; organizationId: string } },
+        @Body() body: PluginConfigDto,
     ) {
-        await this.pluginManager.updateConfig(name, body.config, req.user.id);
+        await this.pluginManager.createConfig(req.user.id, name, {
+            organizationId: req.user.organizationId,
+            config: body.config,
+        });
         return { status: 'ok' };
     }
 
@@ -69,7 +73,7 @@ export class PluginsController {
     async patchConfig(
         @Param('name') name: string,
         @Req() req: { user: { id: string } },
-        body: PluginConfigDto,
+        @Body() body: PluginConfigDto,
     ) {
         await this.pluginManager.updateConfig(name, body.config, req.user.id);
         return { status: 'ok' };
