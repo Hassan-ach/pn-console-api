@@ -52,17 +52,19 @@ export class PluginConfigRepository {
         return rows.map((r) => this.toData(r));
     }
 
-    async create(data: {
-        userId: string;
-        pluginName: string;
-        organizationId?: string;
-        config: Record<string, unknown>;
-        metadata?: Record<string, unknown>;
-    }): Promise<PluginConfigData> {
+    async create(
+        userId: string,
+        pluginName: string,
+        data: {
+            organizationId: string;
+            config: Record<string, unknown>;
+            metadata?: Record<string, unknown>;
+        },
+    ): Promise<PluginConfigData> {
         const row = await this.prisma.pluginConfig.create({
             data: {
-                userId: data.userId,
-                pluginName: data.pluginName,
+                userId: userId,
+                pluginName: pluginName,
                 organizationId: data.organizationId ?? null,
                 config: toJson(data.config),
                 metadata: data.metadata
@@ -82,61 +84,49 @@ export class PluginConfigRepository {
             organizationId?: string;
         },
     ): Promise<PluginConfigData> {
-        const row = await this.prisma.pluginConfig.update({
-            where: { userId_pluginName: { userId, pluginName } },
-            data: {
-                ...(data.config !== undefined && {
-                    config: toJson(data.config),
-                }),
-                ...(data.metadata !== undefined && {
-                    metadata: data.metadata
-                        ? toJson(data.metadata)
-                        : Prisma.JsonNull,
-                }),
-                ...(data.organizationId !== undefined && {
-                    organizationId: data.organizationId,
-                }),
-            },
-        });
-        return this.toData(row);
-    }
-
-    async upsert(data: {
-        userId: string;
-        pluginName: string;
-        organizationId?: string;
-        config: Record<string, unknown>;
-        metadata?: Record<string, unknown>;
-    }): Promise<PluginConfigData> {
-        const row = await this.prisma.pluginConfig.upsert({
-            where: {
-                userId_pluginName: {
-                    userId: data.userId,
-                    pluginName: data.pluginName,
+        return this.prisma.$transaction(async (tx) => {
+            const current = await tx.pluginConfig.findUnique({
+                where: {
+                    userId_pluginName: { userId, pluginName },
                 },
-            },
-            create: {
-                userId: data.userId,
-                pluginName: data.pluginName,
-                organizationId: data.organizationId ?? null,
-                config: toJson(data.config),
-                metadata: data.metadata
-                    ? toJson(data.metadata)
-                    : Prisma.JsonNull,
-            },
-            update: {
-                config: toJson(data.config),
-                ...(data.metadata !== undefined && {
-                    metadata: data.metadata
-                        ? toJson(data.metadata)
-                        : Prisma.JsonNull,
-                }),
-                ...(data.organizationId !== undefined && {
-                    organizationId: data.organizationId,
-                }),
-            },
+            });
+
+            if (!current) {
+                throw new Error(
+                    `Plugin config not found for plugin name:${pluginName}`,
+                );
+            }
+
+            const row = await tx.pluginConfig.update({
+                where: {
+                    userId_pluginName: { userId, pluginName },
+                },
+                data: {
+                    ...(data.config !== undefined && {
+                        config: toJson({
+                            ...(current.config as Record<string, unknown>),
+                            ...data.config,
+                        }),
+                    }),
+                    ...(data.metadata !== undefined && {
+                        metadata: data.metadata
+                            ? toJson({
+                                  ...((current.metadata as Record<
+                                      string,
+                                      unknown
+                                  >) ?? {}),
+                                  ...data.metadata,
+                              })
+                            : Prisma.JsonNull,
+                    }),
+                    ...(data.organizationId !== undefined && {
+                        organizationId: data.organizationId,
+                    }),
+                },
+            });
+
+            return this.toData(row);
         });
-        return this.toData(row);
     }
 
     async remove(

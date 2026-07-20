@@ -14,7 +14,11 @@ export interface BackFillOpts {
 export interface IPlugin {
     readonly name: string;
 
-    isConnected(context: PluginContext, userId: string): Promise<boolean>;
+    isConnected(
+        context: PluginContext,
+        userId: string,
+        config?: Record<string, unknown>,
+    ): Promise<boolean>;
 
     backfill(
         opts: BackFillOpts,

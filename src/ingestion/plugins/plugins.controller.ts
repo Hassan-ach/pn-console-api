@@ -1,4 +1,5 @@
 import {
+    Body,
     Controller,
     Delete,
     Get,
@@ -43,7 +44,7 @@ export class PluginsController {
     async createConfig(
         @Param('name') name: string,
         @Req() req: { user: { id: string } },
-        body: PluginConfigDto,
+        @Body() body: PluginConfigDto,
     ) {
         await this.pluginManager.updateConfig(name, body.config, req.user.id);
         return { status: 'ok' };
@@ -69,7 +70,7 @@ export class PluginsController {
     async patchConfig(
         @Param('name') name: string,
         @Req() req: { user: { id: string } },
-        body: PluginConfigDto,
+        @Body() body: PluginConfigDto,
     ) {
         await this.pluginManager.updateConfig(name, body.config, req.user.id);
         return { status: 'ok' };

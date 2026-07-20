@@ -28,17 +28,14 @@ export class TelegramPluginService implements IPlugin {
     async isConnected(
         context: PluginContext,
         userId: string,
+        config?: Record<string, unknown>,
     ): Promise<boolean> {
-        const config = await context.getConfig(userId, this.name);
-        if (!config) return false;
-        const cfg = config as unknown as TelegramConfig;
-        if (!cfg.sessionString) return false;
+        const cfg = config ?? (await context.getConfig(userId, this.name));
+        if (!cfg) return false;
+        const c = cfg as unknown as TelegramConfig;
+        if (!c.sessionString) return false;
 
-        const client = this.factory.create(
-            cfg.apiId,
-            cfg.apiHash,
-            cfg.sessionString,
-        );
+        const client = this.factory.create(c.apiId, c.apiHash, c.sessionString);
         try {
             await client.connect();
             return client.connected ?? false;
@@ -69,19 +66,13 @@ export class TelegramPluginService implements IPlugin {
             cfg.sessionString,
         );
 
-        const orgId = context.resolveOrgId(userId);
-
         try {
             await client.connect();
 
             for (const chatId of cfg.chats ?? []) {
                 this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
 
-                const topicStore = new TelegramTopicStore(
-                    orgId,
-                    userId,
-                    chatId,
-                );
+                const topicStore = new TelegramTopicStore(userId, chatId);
                 const messageToTopicMap = await topicStore.prewarmChat();
                 const pendingTopicEntries: {
                     chatId: string;

@@ -52,14 +52,28 @@ export class PluginManagerService {
     async getState(
         name: string,
         userId: string,
-    ): Promise<{ initialized: boolean; hasSession: boolean } | null> {
+    ): Promise<{
+        initialized: boolean;
+        hasSession: boolean;
+        isConnected: boolean;
+    } | null> {
         if (!this.instances.has(name)) return null;
         const config = await this.configRepo.findUnique(userId, name);
-        if (!config) return { initialized: false, hasSession: false };
+        if (!config)
+            return {
+                initialized: false,
+                hasSession: false,
+                isConnected: false,
+            };
         const cfg = config.config;
+        const isConnected = await this.getInstance(name).isConnected(
+            this.context,
+            userId,
+        );
         return {
             initialized: true,
             hasSession: !!cfg.sessionString,
+            isConnected: isConnected,
         };
     }
 
@@ -68,7 +82,7 @@ export class PluginManagerService {
     ): Promise<
         Array<{ name: string; connected: boolean; hasConfig: boolean }>
     > {
-        const configs = await this.configRepo.findMany();
+        const configs = await this.configRepo.findMany({ userId: userId });
         const pluginNames = Array.from(this.instances.keys());
 
         return Promise.all(
@@ -78,6 +92,7 @@ export class PluginManagerService {
                 const connected = await plugin.isConnected(
                     this.context,
                     userId,
+                    dbConfig?.config,
                 );
                 return {
                     name,
@@ -95,11 +110,7 @@ export class PluginManagerService {
     ): Promise<void> {
         if (!this.instances.has(name))
             throw new NotFoundException(`Plugin "${name}" not found`);
-        await this.configRepo.upsert({
-            userId,
-            pluginName: name,
-            config,
-        });
+        await this.configRepo.update(userId, name, { config: config });
     }
 
     async getConfig(
@@ -110,6 +121,18 @@ export class PluginManagerService {
             throw new NotFoundException(`Plugin "${name}" not found`);
         const row = await this.configRepo.findUnique(userId, name);
         return row?.config ?? null;
+    }
+
+    async createConfig(
+        userId: string,
+        pluginName: string,
+        data: {
+            organizationId: string;
+            config: Record<string, unknown>;
+            metadata?: Record<string, unknown>;
+        },
+    ): Promise<void> {
+        this.configRepo.create(userId, pluginName, data);
     }
 
     async getSanitizedConfig(
