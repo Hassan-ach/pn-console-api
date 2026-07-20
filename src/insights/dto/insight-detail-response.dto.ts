@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { InsightType } from 'src/types/insight.types';
+import { InsightActionStatus, InsightType } from 'src/types/insight.types';
 
 export class InsightDetailResponseDto {
     @ApiProperty()
@@ -40,4 +40,10 @@ export class InsightDetailResponseDto {
 
     @ApiPropertyOptional()
     topicId?: string;
+
+    @ApiPropertyOptional({
+        enum: InsightActionStatus,
+        description: 'Current user action status for this insight',
+    })
+    status?: InsightActionStatus;
 }
