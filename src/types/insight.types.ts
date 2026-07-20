@@ -23,6 +23,7 @@ export interface Insight {
     owners: string[];
     unresolvedOwnerRefs?: UnresolvedOwnerRef[];
     version?: number;
+    latestVersionId?: string;
     createdAt?: Date;
     sourcePlugin?: string;
     groupId?: string;

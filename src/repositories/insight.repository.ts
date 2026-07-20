@@ -5,10 +5,14 @@ import {
     InsightType,
     UnresolvedOwnerRef,
 } from 'src/types/insight.types';
+import { EnvelopeRepository } from './envelope.repository';
 
 @Injectable()
 export class InsightRepository {
-    constructor(private readonly prisma: AppDbService) {}
+    constructor(
+        private readonly prisma: AppDbService,
+        private readonly envelopeRepository: EnvelopeRepository,
+    ) {}
 
     async create(data: {
         organizationId?: string;
@@ -253,10 +257,7 @@ export class InsightRepository {
         return results;
     }
 
-    async findById(
-        id: string,
-        ownerId: string,
-    ): Promise<Omit<Insight, 'unresolvedOwnerRefs' | 'owners'> | null> {
+    async findById(id: string, ownerId: string): Promise<Insight | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id },
             include: {
@@ -283,12 +284,153 @@ export class InsightRepository {
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
             version: latest.version,
+            latestVersionId: latest.id,
             createdAt: latest.createdAt,
             sourcePlugin: latest.sourcePlugin ?? undefined,
             groupId: latest.groupId ?? undefined,
             channelId: latest.channelId ?? undefined,
+            owners: latest.owners.map((o) => o.id),
             topicId: latest.topicId ?? undefined,
         };
+    }
+
+    async findVersionsByInsightId(
+        insightId: string,
+        ownerId: string,
+    ): Promise<
+        | {
+              id: string;
+              version: number;
+              type: InsightType;
+              content: string;
+          }[]
+        | null
+    > {
+        const insight = await this.prisma.insight.findUnique({
+            where: { id: insightId },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
+            },
+        });
+
+        if (!insight || insight.versions.length === 0) return null;
+
+        const latest = insight.versions[0];
+        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        if (!isOwner && !latest.broadcasted) return null;
+
+        const allVersions = await this.prisma.insightVersion.findMany({
+            where: { insightId },
+            orderBy: { version: 'asc' },
+            select: {
+                id: true,
+                version: true,
+                type: true,
+                content: true,
+            },
+        });
+
+        return allVersions;
+    }
+
+    async findVersionById(
+        insightId: string,
+        versionId: string,
+        ownerId: string,
+    ): Promise<{
+        id: string;
+        organizationId?: string;
+        type: InsightType;
+        content: string;
+        envolopsRef: string[];
+        broadcasted: boolean;
+        version: number;
+        createdAt: Date;
+        sourcePlugin?: string;
+        groupId?: string;
+        channelId?: string;
+        topicId?: string;
+    } | null> {
+        const insight = await this.prisma.insight.findUnique({
+            where: { id: insightId },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
+            },
+        });
+
+        if (!insight || insight.versions.length === 0) return null;
+
+        const latest = insight.versions[0];
+        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        if (!isOwner && !latest.broadcasted) return null;
+
+        const version = await this.prisma.insightVersion.findFirst({
+            where: { id: versionId, insightId },
+        });
+
+        if (!version) return null;
+
+        return {
+            id: version.id,
+            organizationId: insight.organizationId ?? undefined,
+            type: version.type,
+            content: version.content,
+            envolopsRef: [...version.envolopsRef],
+            broadcasted: version.broadcasted,
+            version: version.version,
+            createdAt: version.createdAt,
+            sourcePlugin: version.sourcePlugin ?? undefined,
+            groupId: version.groupId ?? undefined,
+            channelId: version.channelId ?? undefined,
+            topicId: version.topicId ?? undefined,
+        };
+    }
+
+    async findVersionEnvelopeRefs(
+        insightId: string,
+        versionId: string,
+        ownerId: string,
+    ): Promise<
+        | {
+              envolopId: string;
+              sourcePlugin: string;
+              occurredAt: Date;
+              content: string;
+          }[]
+        | null
+    > {
+        const insight = await this.prisma.insight.findUnique({
+            where: { id: insightId },
+            include: {
+                versions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { owners: true },
+                },
+            },
+        });
+
+        if (!insight || insight.versions.length === 0) return null;
+
+        const latest = insight.versions[0];
+        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        if (!isOwner && !latest.broadcasted) return null;
+
+        const version = await this.prisma.insightVersion.findFirst({
+            where: { id: versionId, insightId },
+        });
+
+        if (!version) return null;
+
+        return this.envelopeRepository.findByIds([...version.envolopsRef]);
     }
 
     private toInsight(row: {

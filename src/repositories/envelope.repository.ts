@@ -153,6 +153,36 @@ export class EnvelopeRepository {
         return result.count;
     }
 
+    async findByIds(ids: string[]): Promise<
+        {
+            envolopId: string;
+            sourcePlugin: string;
+            occurredAt: Date;
+            content: string;
+        }[]
+    > {
+        if (ids.length === 0) return [];
+
+        const envelopes = await this.rawDb.envelope.findMany({
+            where: { id: { in: ids } },
+            select: {
+                id: true,
+                sourcePlugin: true,
+                occurredAt: true,
+                payload: {
+                    select: { content: true },
+                },
+            },
+        });
+
+        return envelopes.map((e) => ({
+            envolopId: e.id,
+            sourcePlugin: e.sourcePlugin,
+            occurredAt: e.occurredAt,
+            content: e.payload.content,
+        }));
+    }
+
     async count(sourcePlugin?: string): Promise<number> {
         const where: Record<string, unknown> = {};
         if (sourcePlugin) where.sourcePlugin = sourcePlugin;
