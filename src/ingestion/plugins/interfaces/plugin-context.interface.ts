@@ -31,5 +31,6 @@ export interface PluginContext {
         items: EnvelopeWithPayload[],
         userId: string,
     ): Promise<StoreResult>;
+    resolveOrgId(userId: string): string;
     logger: PluginLogger;
 }

@@ -12,13 +12,23 @@ interface TopicMappingEntry {
 
 @Injectable()
 export class TelegramTopicStore extends JsonStore<TopicMappingEntry> {
-    constructor() {
-        const filePath = path.join(
+    constructor(
+        orgId: string,
+        userId: string,
+        chatId: string,
+        basePath?: string,
+    ) {
+        const base = basePath ?? path.join(
             os.homedir(),
             '.pn-console',
             'plugins',
             'telegram',
-            'topic-map.json',
+        );
+        const filePath = path.join(
+            base,
+            orgId,
+            userId,
+            `${chatId}__topics.json`,
         );
         super(filePath);
     }
@@ -63,13 +73,11 @@ export class TelegramTopicStore extends JsonStore<TopicMappingEntry> {
         await this.flush();
     }
 
-    async prewarmChat(chatId: string): Promise<Map<number, number>> {
+    async prewarmChat(): Promise<Map<number, number>> {
         const all = await this.getAll();
         const map = new Map<number, number>();
         for (const entry of all) {
-            if (entry.chatId === chatId) {
-                map.set(entry.messageId, entry.topicId);
-            }
+            map.set(entry.messageId, entry.topicId);
         }
         return map;
     }

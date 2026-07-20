@@ -256,7 +256,7 @@ export class InsightRepository {
     async findById(
         id: string,
         ownerId: string,
-    ): Promise<Omit<Insight, 'unresolvedOwnerRefs'> | null> {
+    ): Promise<Omit<Insight, 'unresolvedOwnerRefs' | 'owners'> | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id },
             include: {
