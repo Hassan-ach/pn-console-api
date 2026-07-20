@@ -13,6 +13,21 @@ export interface UnresolvedOwnerRef {
     pluginName: string;
 }
 
+export const InsightActionStatus = {
+    PENDING: 'PENDING',
+    NOTED: 'NOTED',
+    DONE: 'DONE',
+    BLOCKED: 'BLOCKED',
+    IN_REVIEW: 'IN_REVIEW',
+    DECIDED: 'DECIDED',
+    DELEGATED: 'DELEGATED',
+    DELAYED: 'DELAYED',
+    HIDDEN: 'HIDDEN',
+} as const;
+
+export type InsightActionStatus =
+    (typeof InsightActionStatus)[keyof typeof InsightActionStatus];
+
 export interface Insight {
     id: string | null;
     organizationId?: string;

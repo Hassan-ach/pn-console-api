@@ -196,18 +196,20 @@ describe('InsightExtractionCapability', () => {
             content: JSON.stringify(resultWithOwners),
         });
 
-        platformRepoMock.findByPluginName.mockResolvedValue([
+        platformRepoMock.findWithUser.mockResolvedValue([
             {
                 platformUserId: 'tg-123',
                 appUserId: 'app-user-bob',
                 pluginName: 'telegram',
                 platformUsername: 'bob_ops',
+                user: { firstName: 'Bob', lastName: 'Ops' },
             },
             {
                 platformUserId: 'tg-456',
                 appUserId: 'app-user-alice',
                 pluginName: 'telegram',
                 platformUsername: 'alice_dev',
+                user: { firstName: 'Alice', lastName: 'Dev' },
             },
         ]);
 

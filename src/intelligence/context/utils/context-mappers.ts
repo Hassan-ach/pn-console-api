@@ -7,7 +7,7 @@ export function toInsight(v: any): Insight {
         organizationId: v.insight?.organizationId ?? undefined,
         type: v.type as InsightType,
         content: v.content,
-        owners: v.owners?.map((u: any) => u.id) ?? [],
+        owners: v.owners?.map((o: any) => o.userId) ?? [],
         envolopsRef: v.envolopsRef ? [...v.envolopsRef] : [],
         broadcasted: v.broadcasted,
         version: v.version,
