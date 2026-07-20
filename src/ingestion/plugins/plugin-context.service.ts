@@ -39,7 +39,7 @@ export class PluginContextService implements PluginContext {
         config: Record<string, unknown>,
     ): Promise<void> {
         const orgId = this.resolveOrgId(userId);
-        await this.configRepo.create(userId, pluginName, {
+        await this.configRepo.upsert(userId, pluginName, {
             organizationId: orgId,
             config: config,
             metadata: undefined,

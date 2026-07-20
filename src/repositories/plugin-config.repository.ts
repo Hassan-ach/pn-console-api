@@ -1,5 +1,4 @@
 import {
-    ConflictException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
@@ -56,7 +55,7 @@ export class PluginConfigRepository {
         return rows.map((r) => this.toData(r));
     }
 
-    async create(
+    async upsert(
         userId: string,
         pluginName: string,
         data: {
@@ -65,31 +64,27 @@ export class PluginConfigRepository {
             metadata?: Record<string, unknown>;
         },
     ): Promise<PluginConfigData> {
-        try {
-            const row = await this.prisma.pluginConfig.create({
-                data: {
-                    userId: userId,
-                    pluginName: pluginName,
-                    organizationId: data.organizationId ?? null,
-                    config: toJson(data.config),
+        const row = await this.prisma.pluginConfig.upsert({
+            where: { userId_pluginName: { userId, pluginName } },
+            create: {
+                userId,
+                pluginName,
+                organizationId: data.organizationId ?? null,
+                config: toJson(data.config),
+                metadata: data.metadata
+                    ? toJson(data.metadata)
+                    : Prisma.JsonNull,
+            },
+            update: {
+                config: toJson(data.config),
+                ...(data.metadata !== undefined && {
                     metadata: data.metadata
                         ? toJson(data.metadata)
                         : Prisma.JsonNull,
-                },
-            });
-            return this.toData(row);
-        } catch (err) {
-            if (
-                typeof err === 'object' &&
-                err !== null &&
-                (err as Record<string, unknown>).code === 'P2002'
-            ) {
-                throw new ConflictException(
-                    `Configuration already exists for this plugin`,
-                );
-            }
-            throw err;
-        }
+                }),
+            },
+        });
+        return this.toData(row);
     }
 
     async update(

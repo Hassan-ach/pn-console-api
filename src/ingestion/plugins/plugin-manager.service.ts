@@ -139,7 +139,7 @@ export class PluginManagerService {
             metadata?: Record<string, unknown>;
         },
     ): Promise<void> {
-        await this.configRepo.create(userId, pluginName, data);
+        await this.configRepo.upsert(userId, pluginName, data);
     }
 
     async getSanitizedConfig(
