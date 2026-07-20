@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotImplementedException,
+} from '@nestjs/common';
 import { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
@@ -21,8 +25,6 @@ interface TelegramConfig {
 @Injectable()
 export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
-    private readonly logger = new Logger(TelegramPluginService.name);
-
     constructor(private readonly factory: TelegramClientFactory) {}
 
     async isConnected(
@@ -50,14 +52,27 @@ export class TelegramPluginService implements IPlugin {
         { limit, userId }: BackFillOpts,
         context: PluginContext,
     ): AsyncIterable<StoreResult> {
+        context.logger.debug(
+            `Starting backfill for user ${userId} with limit ${limit}`,
+        );
         const config = await context.getConfig(userId, this.name);
         if (!config) {
-            throw new Error('Telegram not configured');
+            throw new BadRequestException(
+                'Telegram not configured — please add your API credentials in Settings',
+            );
         }
 
         const cfg = config as unknown as TelegramConfig;
         if (!cfg.sessionString) {
-            throw new Error('No session. Connect Telegram first.');
+            throw new BadRequestException(
+                'No active Telegram session — please log in via Settings first',
+            );
+        }
+
+        if (!cfg.chats?.length) {
+            throw new BadRequestException(
+                'No chats configured for Telegram backfill — add chat IDs/usernames in plugin settings',
+            );
         }
 
         const client = this.factory.create(
@@ -70,7 +85,9 @@ export class TelegramPluginService implements IPlugin {
             await client.connect();
 
             for (const chatId of cfg.chats ?? []) {
-                this.logger.log(`Backfilling chat ${chatId} limit ${limit}`);
+                context.logger.info(
+                    `Backfilling chat ${chatId} limit ${limit}`,
+                );
 
                 const topicStore = new TelegramTopicStore(userId, chatId);
                 const messageToTopicMap = await topicStore.prewarmChat();
@@ -151,7 +168,8 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
+                                    | number
+                                    | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
@@ -190,7 +208,7 @@ export class TelegramPluginService implements IPlugin {
     }
 
     async *startStream(): AsyncIterable<EnvelopeWithPayload[]> {
-        throw new Error('Streaming not implemented yet');
+        throw new NotImplementedException('Streaming not implemented yet');
     }
 
     stopStream(): void {
