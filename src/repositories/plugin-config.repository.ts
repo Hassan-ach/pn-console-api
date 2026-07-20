@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma } from 'generated/app-db-client';
 
@@ -61,18 +65,31 @@ export class PluginConfigRepository {
             metadata?: Record<string, unknown>;
         },
     ): Promise<PluginConfigData> {
-        const row = await this.prisma.pluginConfig.create({
-            data: {
-                userId: userId,
-                pluginName: pluginName,
-                organizationId: data.organizationId ?? null,
-                config: toJson(data.config),
-                metadata: data.metadata
-                    ? toJson(data.metadata)
-                    : Prisma.JsonNull,
-            },
-        });
-        return this.toData(row);
+        try {
+            const row = await this.prisma.pluginConfig.create({
+                data: {
+                    userId: userId,
+                    pluginName: pluginName,
+                    organizationId: data.organizationId ?? null,
+                    config: toJson(data.config),
+                    metadata: data.metadata
+                        ? toJson(data.metadata)
+                        : Prisma.JsonNull,
+                },
+            });
+            return this.toData(row);
+        } catch (err) {
+            if (
+                typeof err === 'object' &&
+                err !== null &&
+                (err as Record<string, unknown>).code === 'P2002'
+            ) {
+                throw new ConflictException(
+                    `Configuration already exists for this plugin`,
+                );
+            }
+            throw err;
+        }
     }
 
     async update(
@@ -92,8 +109,8 @@ export class PluginConfigRepository {
             });
 
             if (!current) {
-                throw new Error(
-                    `Plugin config not found for plugin name:${pluginName}`,
+                throw new NotFoundException(
+                    `Configuration not found for this plugin`,
                 );
             }
 

@@ -24,8 +24,9 @@ export class PluginsController {
 
     @Get()
     @ApiOperation({ summary: 'List registered plugins with status from DB' })
-    list(@Req() req: { user: { id: string } }) {
-        return this.pluginManager.list(req.user.id);
+    async list(@Req() req: { user: { id: string } }) {
+        const data = await this.pluginManager.list(req.user.id);
+        return { success: true, message: 'Plugins loaded successfully', data };
     }
 
     @Get(':name')
@@ -36,7 +37,7 @@ export class PluginsController {
     ) {
         const state = await this.pluginManager.getState(name, req.user.id);
         if (!state) throw new NotFoundException(`Plugin "${name}" not found`);
-        return { name, ...state };
+        return { success: true, message: `Plugin status loaded`, data: { name, ...state } };
     }
 
     @Post(':name/config')
@@ -50,7 +51,7 @@ export class PluginsController {
             organizationId: req.user.organizationId,
             config: body.config,
         });
-        return { status: 'ok' };
+        return { success: true, message: 'Configuration saved' };
     }
 
     @Get(':name/config')
@@ -65,7 +66,7 @@ export class PluginsController {
         );
         if (!config)
             throw new NotFoundException(`No config for plugin "${name}"`);
-        return config;
+        return { success: true, message: 'Configuration loaded', data: config };
     }
 
     @Patch(':name/config')
@@ -76,7 +77,7 @@ export class PluginsController {
         @Body() body: PluginConfigDto,
     ) {
         await this.pluginManager.updateConfig(name, body.config, req.user.id);
-        return { status: 'ok' };
+        return { success: true, message: 'Configuration updated' };
     }
 
     @Post(':name/logout')
@@ -86,13 +87,13 @@ export class PluginsController {
         @Req() req: { user: { id: string } },
     ) {
         await this.pluginManager.disconnect(name, req.user.id);
-        return { status: 'ok' };
+        return { success: true, message: 'Disconnected successfully' };
     }
 
     @Delete(':name')
     @ApiOperation({ summary: 'Unregister a plugin instance' })
     unregister(@Param('name') name: string) {
         this.pluginManager.unregister(name);
-        return { status: 'ok' };
+        return { success: true, message: 'Plugin removed' };
     }
 }

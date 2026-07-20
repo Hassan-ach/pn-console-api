@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from '@nestjs/common';
 import { IPlugin, BackFillOpts } from './interfaces/plugin.interface';
 import type {
     PluginContext,
@@ -23,7 +28,9 @@ export class PluginManagerService {
 
     register(plugin: IPlugin): void {
         if (this.instances.has(plugin.name)) {
-            throw new Error(`Plugin "${plugin.name}" is already registered`);
+            throw new ConflictException(
+                `Plugin "${plugin.name}" is already registered`,
+            );
         }
         this.instances.set(plugin.name, plugin);
         this.logger.log(`Plugin "${plugin.name}" registered`);
@@ -87,18 +94,18 @@ export class PluginManagerService {
 
         return Promise.all(
             pluginNames.map(async (name) => {
-                const plugin = this.instances.get(name)!;
-                const dbConfig = configs.find((c) => c.pluginName === name);
-                const connected = await plugin.isConnected(
-                    this.context,
-                    userId,
-                    dbConfig?.config,
-                );
-                return {
-                    name,
-                    connected,
-                    hasConfig: !!dbConfig,
-                };
+                try {
+                    const plugin = this.instances.get(name)!;
+                    const dbConfig = configs.find((c) => c.pluginName === name);
+                    const connected = await plugin.isConnected(
+                        this.context,
+                        userId,
+                        dbConfig?.config,
+                    );
+                    return { name, connected, hasConfig: !!dbConfig };
+                } catch {
+                    return { name, connected: false, hasConfig: !!configs.find((c) => c.pluginName === name) };
+                }
             }),
         );
     }
@@ -132,7 +139,7 @@ export class PluginManagerService {
             metadata?: Record<string, unknown>;
         },
     ): Promise<void> {
-        this.configRepo.create(userId, pluginName, data);
+        await this.configRepo.create(userId, pluginName, data);
     }
 
     async getSanitizedConfig(
