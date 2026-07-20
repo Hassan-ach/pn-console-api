@@ -80,9 +80,23 @@ model User {
   updatedAt        DateTime                @updatedAt @map("updated_at")
   platformMappings PlatformUserMapping[]
   insightOwnerships InsightVersionOwner[]
+  insightVersions  InsightVersion[]      @relation("InsightVersionOwners")
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([email, providerType])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model PlatformUserMapping {
