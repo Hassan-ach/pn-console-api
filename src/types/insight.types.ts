@@ -28,6 +28,24 @@ export const InsightActionStatus = {
 export type InsightActionStatus =
     (typeof InsightActionStatus)[keyof typeof InsightActionStatus];
 
+export const INSIGHT_ACTION_MAP: Record<
+    InsightType,
+    readonly InsightActionStatus[]
+> = {
+    INFO: [InsightActionStatus.NOTED],
+    TASK: [
+        InsightActionStatus.DONE,
+        InsightActionStatus.BLOCKED,
+        InsightActionStatus.IN_REVIEW,
+    ],
+    DECISION: [
+        InsightActionStatus.DECIDED,
+        InsightActionStatus.DELEGATED,
+        InsightActionStatus.DELAYED,
+    ],
+    URGENCY: [InsightActionStatus.HIDDEN],
+};
+
 export interface Insight {
     id: string | null;
     organizationId?: string;

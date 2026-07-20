@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import {
     Insight,
+    InsightActionStatus,
     InsightType,
     UnresolvedOwnerRef,
 } from 'src/types/insight.types';
@@ -239,6 +240,7 @@ export class InsightRepository {
             id: string;
             type: InsightType;
             content: string;
+            status: InsightActionStatus | null;
         }[]
     > {
         const versions = await this.prisma.insightVersion.findMany({
@@ -250,6 +252,7 @@ export class InsightRepository {
                 ...(type && { type }),
             },
             select: {
+                id: true,
                 insightId: true,
                 type: true,
                 content: true,
@@ -258,19 +261,52 @@ export class InsightRepository {
         });
 
         const seen = new Set<string>();
-        const results: {
-            id: string;
-            type: InsightType;
-            content: string;
-        }[] = [];
+        const latestVersionIds: { insightId: string; versionId: string }[] = [];
 
         for (const v of versions) {
             if (!seen.has(v.insightId)) {
                 seen.add(v.insightId);
+                latestVersionIds.push({
+                    insightId: v.insightId,
+                    versionId: v.id,
+                });
+            }
+        }
+
+        if (latestVersionIds.length === 0) return [];
+
+        const ownerRows = await this.prisma.insightVersionOwner.findMany({
+            where: {
+                userId: ownerId,
+                insightVersionId: {
+                    in: latestVersionIds.map((v) => v.versionId),
+                },
+            },
+            select: {
+                insightVersionId: true,
+                status: true,
+            },
+        });
+
+        const statusMap = new Map(
+            ownerRows.map((r) => [r.insightVersionId, r.status]),
+        );
+
+        const results: {
+            id: string;
+            type: InsightType;
+            content: string;
+            status: InsightActionStatus | null;
+        }[] = [];
+
+        for (const v of versions) {
+            if (seen.has(v.insightId)) {
+                seen.delete(v.insightId);
                 results.push({
                     id: v.insightId,
                     type: v.type,
                     content: v.content,
+                    status: statusMap.get(v.id) ?? null,
                 });
             }
         }
@@ -297,6 +333,8 @@ export class InsightRepository {
 
         if (!isOwner && !latest.broadcasted) return null;
 
+        const ownerRow = latest.owners.find((o) => o.userId === ownerId);
+
         return {
             id: insight.id,
             organizationId: insight.organizationId ?? undefined,
@@ -312,6 +350,7 @@ export class InsightRepository {
             channelId: latest.channelId ?? undefined,
             owners: latest.owners.map((o) => o.userId),
             topicId: latest.topicId ?? undefined,
+            status: ownerRow?.status ?? undefined,
         };
     }
 
