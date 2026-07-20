@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotImplementedException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotImplementedException,
+} from '@nestjs/common';
 import { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
@@ -48,15 +52,26 @@ export class TelegramPluginService implements IPlugin {
         { limit, userId }: BackFillOpts,
         context: PluginContext,
     ): AsyncIterable<StoreResult> {
+        context.logger.debug(
+            `Starting backfill for user ${userId} with limit ${limit}`,
+        );
         const config = await context.getConfig(userId, this.name);
         if (!config) {
-            throw new BadRequestException('Telegram not configured');
+            throw new BadRequestException(
+                'Telegram not configured — please add your API credentials in Settings',
+            );
         }
 
         const cfg = config as unknown as TelegramConfig;
         if (!cfg.sessionString) {
             throw new BadRequestException(
-                'No session. Connect Telegram first.',
+                'No active Telegram session — please log in via Settings first',
+            );
+        }
+
+        if (!cfg.chats?.length) {
+            throw new BadRequestException(
+                'No chats configured for Telegram backfill — add chat IDs/usernames in plugin settings',
             );
         }
 

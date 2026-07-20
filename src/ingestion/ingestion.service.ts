@@ -18,7 +18,9 @@ export class IngestionService {
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
-    async ingest(options: IngestOptions): Promise<{ inserted: number; errors: IngestError[] }> {
+    async ingest(
+        options: IngestOptions,
+    ): Promise<{ inserted: number; errors: IngestError[] }> {
         const pluginNames =
             typeof options.plugins === 'string'
                 ? [options.plugins]
@@ -39,7 +41,7 @@ export class IngestionService {
             try {
                 for await (const result of this.pluginManager.backfill(name, {
                     limit: options.limit,
-                    userId: options.organizationId,
+                    userId: options.userId,
                 })) {
                     totalInserted += result.inserted;
                     this.logger.debug(
@@ -48,7 +50,8 @@ export class IngestionService {
                 }
                 this.logger.log(`Plugin "${name}" backfill complete`);
             } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Unknown error';
+                const msg =
+                    err instanceof Error ? err.message : 'Unknown error';
                 this.logger.error(`Plugin "${name}" backfill failed: ${msg}`);
                 errors.push({ plugin: name, message: msg });
             }
