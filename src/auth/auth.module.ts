@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppDbModule } from '../prisma/app-db/app-db.module';
+import { MailModule } from '../mail/mail.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -15,6 +16,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
     imports: [
         AppDbModule,
         PassportModule,
+        MailModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService): JwtModuleOptions => ({

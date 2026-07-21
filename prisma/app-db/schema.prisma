@@ -25,6 +25,7 @@ model InsightVersion {
   type      InsightType
   content   String
   owners              InsightVersionOwner[]
+  users               User[]               @relation("InsightVersionOwners")
   unresolvedOwners    UnresolvedOwner[]
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
