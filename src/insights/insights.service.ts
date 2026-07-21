@@ -6,6 +6,7 @@ import {
 import { InsightActionRepository } from '../repositories/insight-action.repository';
 import { InsightRepository } from '../repositories/insight.repository';
 import {
+    Insight,
     InsightActionStatus,
     InsightType,
     INSIGHT_ACTION_MAP,
@@ -18,19 +19,35 @@ export class InsightsService {
         private readonly insightActionRepository: InsightActionRepository,
     ) {}
 
-    async findAll(userId: string, type?: InsightType) {
+    async findAllForUser(
+        userId: string,
+        type?: InsightType,
+    ): Promise<
+        {
+            id: string;
+            type: InsightType;
+            content: string;
+            status: InsightActionStatus;
+        }[]
+    > {
         return this.insightRepository.findByOwnerId(userId, type);
     }
 
-    async findOne(id: string, userId: string) {
-        return this.insightRepository.findById(id, userId);
+    async findOneForUser(id: string, userId: string): Promise<Insight> {
+        const insight = await this.insightRepository.findById(id, userId);
+
+        if (!insight) {
+            throw new NotFoundException('Insight not found');
+        }
+
+        return insight;
     }
 
     async updateActionStatus(
         id: string,
         userId: string,
         action: InsightActionStatus,
-    ) {
+    ): Promise<Insight> {
         const insight = await this.insightRepository.findById(id, userId);
 
         if (!insight) {
@@ -57,26 +74,88 @@ export class InsightsService {
             action,
         );
 
-        return this.insightRepository.findById(id, userId);
+        return this.insightRepository.findById(id, userId) as Promise<Insight>;
     }
 
-    async findVersions(id: string, userId: string) {
-        return this.insightRepository.findVersionsByInsightId(id, userId);
+    async findVersionsForUser(
+        id: string,
+        userId: string,
+    ): Promise<
+        {
+            id: string;
+            version: number;
+            type: InsightType;
+            content: string;
+            status?: InsightActionStatus;
+        }[]
+    > {
+        const versions = await this.insightRepository.findVersionsByInsightId(
+            id,
+            userId,
+        );
+
+        if (!versions) {
+            throw new NotFoundException('Insight not found');
+        }
+
+        return versions;
     }
 
-    async findVersion(id: string, versionId: string, userId: string) {
-        return this.insightRepository.findVersionById(id, versionId, userId);
+    async findVersionForUser(
+        id: string,
+        versionId: string,
+        userId: string,
+    ): Promise<{
+        id: string;
+        organizationId?: string;
+        type: InsightType;
+        content: string;
+        envolopsRef: string[];
+        broadcasted: boolean;
+        version: number;
+        latestVersionId?: string;
+        createdAt: Date;
+        sourcePlugin?: string;
+        groupId?: string;
+        channelId?: string;
+        topicId?: string;
+        status?: InsightActionStatus;
+    }> {
+        const version = await this.insightRepository.findVersionById(
+            id,
+            versionId,
+            userId,
+        );
+
+        if (!version) {
+            throw new NotFoundException('Insight version not found');
+        }
+
+        return version;
     }
 
     async findVersionEnvelopeRefs(
         id: string,
         versionId: string,
         userId: string,
-    ) {
-        return this.insightRepository.findVersionEnvelopeRefs(
+    ): Promise<
+        {
+            envolopId: string;
+            sourcePlugin: string;
+            occurredAt: Date;
+            content: string;
+        }[]
+    > {
+        const refs = await this.insightRepository.findVersionEnvelopeRefs(
             id,
             versionId,
             userId,
         );
+
+        if (refs === null) {
+            throw new NotFoundException('Insight version not found');
+        }
+
+        return refs;
     }
 }

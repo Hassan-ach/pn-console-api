@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
 import { IngestionService } from './ingestion.service';
 
-class BackfillDto {
+class BackfillItemDto {
     @IsString()
     plugin: string;
 
@@ -18,14 +18,13 @@ export class IngestionController {
 
     @Post('backfill')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Backfill historical data from a plugin' })
+    @ApiOperation({ summary: 'Backfill historical data from plugins' })
     async backfill(
-        @Body() dto: BackfillDto,
+        @Body() dtos: BackfillItemDto[],
         @Req() req: { user: { id: string; organizationId: string } },
     ) {
         const result = await this.ingestionService.ingest({
-            plugins: dto.plugin,
-            limit: dto.limit,
+            plugins: dtos.map((d) => ({ name: d.plugin, limit: d.limit })),
             userId: req.user.id,
             organizationId: 'org-1',
             triggeredBy: 'user',

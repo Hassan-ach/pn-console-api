@@ -14,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PluginManagerService } from './plugin-manager.service';
 import { PluginConfigDto } from './dto/plugin-config.dto';
+import { PluginLoginDto } from './dto/plugin-login.dto';
 
 @ApiTags('Plugins')
 @ApiBearerAuth()
@@ -37,7 +38,11 @@ export class PluginsController {
     ) {
         const state = await this.pluginManager.getState(name, req.user.id);
         if (!state) throw new NotFoundException(`Plugin "${name}" not found`);
-        return { success: true, message: `Plugin status loaded`, data: { name, ...state } };
+        return {
+            success: true,
+            message: `Plugin status loaded`,
+            data: { name, ...state },
+        };
     }
 
     @Post(':name/config')
@@ -78,6 +83,25 @@ export class PluginsController {
     ) {
         await this.pluginManager.updateConfig(name, body.config, req.user.id);
         return { success: true, message: 'Configuration updated' };
+    }
+
+    @Post(':name/login')
+    @ApiOperation({ summary: 'Authenticate with the plugin platform' })
+    async login(
+        @Param('name') name: string,
+        @Req() req: { user: { id: string } },
+        @Body() body: PluginLoginDto,
+    ) {
+        const userInfo = await this.pluginManager.login(
+            name,
+            req.user.id,
+            body.config,
+        );
+        return {
+            success: true,
+            message: `Logged in to ${name}`,
+            data: userInfo,
+        };
     }
 
     @Post(':name/logout')
