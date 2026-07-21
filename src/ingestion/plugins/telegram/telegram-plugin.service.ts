@@ -157,11 +157,14 @@ export class TelegramPluginService implements IPlugin {
 
                 while (totalFetched < maxLimit) {
                     const batchSize = Math.min(100, maxLimit - totalFetched);
-                    const messages: any[] = await client.getMessages(chatEntity, {
-                        limit: batchSize,
-                        offsetId,
-                        reverse: true,
-                    });
+                    const messages: any[] = await client.getMessages(
+                        chatEntity,
+                        {
+                            limit: batchSize,
+                            offsetId,
+                            reverse: true,
+                        },
+                    );
 
                     if (messages.length === 0) break;
 
