@@ -9,6 +9,7 @@ import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plug
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AuthModule } from './auth/auth.module';
+import { MailModule } from './mail/mail.module';
 import { DemoModule } from './demo/demo.module';
 import { InsightsModule } from './insights/insights.module';
 import { AppController } from './app.controller';
@@ -23,6 +24,7 @@ import { AppController } from './app.controller';
         IngestionModule,
         IntelligenceModule,
         AuthModule,
+        MailModule,
         DemoModule,
         InsightsModule,
     ],

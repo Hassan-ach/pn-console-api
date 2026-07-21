@@ -24,7 +24,7 @@ model InsightVersion {
   version   Int
   type      InsightType
   content   String
-  owners              User[]               @relation("InsightVersionOwners")
+  owners              InsightVersionOwner[]
   unresolvedOwners    UnresolvedOwner[]
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
@@ -42,6 +42,23 @@ model InsightVersion {
   @@index([sourcePlugin, channelId, topicId, createdAt])
   @@index([sourcePlugin, groupId, createdAt])
   @@map("insight_versions")
+}
+
+model InsightVersionOwner {
+  id               String   @id @default(uuid()) @db.Uuid
+  insightVersionId String   @map("insight_version_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  status           InsightActionStatus @default(PENDING)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  insightVersion   InsightVersion @relation(fields: [insightVersionId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([insightVersionId, userId])
+  @@index([insightVersionId])
+  @@index([userId])
+  @@map("insight_version_owners")
 }
 
 enum ProviderType {
@@ -62,10 +79,24 @@ model User {
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
   platformMappings PlatformUserMapping[]
-  insightVersions  InsightVersion[]        @relation("InsightVersionOwners")
+  insightOwnerships InsightVersionOwner[]
+  insightVersions  InsightVersion[]      @relation("InsightVersionOwners")
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([email, providerType])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model PlatformUserMapping {
@@ -87,6 +118,18 @@ enum InsightType {
   INFO
   URGENCY
   DECISION
+}
+
+enum InsightActionStatus {
+  PENDING
+  NOTED
+  DONE
+  BLOCKED
+  IN_REVIEW
+  DECIDED
+  DELEGATED
+  DELAYED
+  HIDDEN
 }
 
 model UnresolvedOwner {

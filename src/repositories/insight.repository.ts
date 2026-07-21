@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import {
     Insight,
+    InsightActionStatus,
     InsightType,
     UnresolvedOwnerRef,
 } from 'src/types/insight.types';
@@ -36,7 +37,10 @@ export class InsightRepository {
                         type: data.type,
                         content: data.content,
                         owners: {
-                            connect: data.owners.map((id) => ({ id })),
+                            create: data.owners.map((userId) => ({
+                                userId,
+                                status: 'PENDING' as const,
+                            })),
                         },
                         unresolvedOwners: {
                             create: (data.unresolvedOwners ?? []).map((u) => ({
@@ -58,7 +62,10 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true, unresolvedOwners: true },
+                    include: {
+                        owners: true,
+                        unresolvedOwners: true,
+                    },
                 },
             },
         });
@@ -99,7 +106,10 @@ export class InsightRepository {
                     type: data.type,
                     content: data.content,
                     owners: {
-                        connect: data.owners.map((id) => ({ id })),
+                        create: data.owners.map((userId) => ({
+                            userId,
+                            status: 'PENDING' as const,
+                        })),
                     },
                     unresolvedOwners: {
                         create: (data.unresolvedOwners ?? []).map((u) => ({
@@ -123,7 +133,10 @@ export class InsightRepository {
                     versions: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
-                        include: { owners: true, unresolvedOwners: true },
+                        include: {
+                            owners: true,
+                            unresolvedOwners: true,
+                        },
                     },
                 },
             });
@@ -138,7 +151,10 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true, unresolvedOwners: true },
+                    include: {
+                        owners: true,
+                        unresolvedOwners: true,
+                    },
                 },
             },
         });
@@ -153,7 +169,10 @@ export class InsightRepository {
                 versions: {
                     orderBy: { createdAt: 'desc' },
                     take: 1,
-                    include: { owners: true, unresolvedOwners: true },
+                    include: {
+                        owners: true,
+                        unresolvedOwners: true,
+                    },
                 },
             },
         });
@@ -185,7 +204,10 @@ export class InsightRepository {
             where,
             orderBy: { createdAt: 'desc' },
             take: limit,
-            include: { owners: true, unresolvedOwners: true },
+            include: {
+                owners: true,
+                unresolvedOwners: true,
+            },
         });
 
         return versions.map((v) => ({
@@ -193,7 +215,7 @@ export class InsightRepository {
             organizationId,
             type: v.type,
             content: v.content,
-            owners: v.owners.map((u) => u.id),
+            owners: v.owners.map((o) => o.userId),
             unresolvedOwnerRefs: v.unresolvedOwners.map((u) => ({
                 platformUserId: u.platformUserId,
                 platformUsername: u.platformUsername,
@@ -218,17 +240,19 @@ export class InsightRepository {
             id: string;
             type: InsightType;
             content: string;
+            status: InsightActionStatus | null;
         }[]
     > {
         const versions = await this.prisma.insightVersion.findMany({
             where: {
                 OR: [
-                    { owners: { some: { id: ownerId } } },
+                    { owners: { some: { userId: ownerId } } },
                     { broadcasted: true },
                 ],
                 ...(type && { type }),
             },
             select: {
+                id: true,
                 insightId: true,
                 type: true,
                 content: true,
@@ -237,19 +261,52 @@ export class InsightRepository {
         });
 
         const seen = new Set<string>();
-        const results: {
-            id: string;
-            type: InsightType;
-            content: string;
-        }[] = [];
+        const latestVersionIds: { insightId: string; versionId: string }[] = [];
 
         for (const v of versions) {
             if (!seen.has(v.insightId)) {
                 seen.add(v.insightId);
+                latestVersionIds.push({
+                    insightId: v.insightId,
+                    versionId: v.id,
+                });
+            }
+        }
+
+        if (latestVersionIds.length === 0) return [];
+
+        const ownerRows = await this.prisma.insightVersionOwner.findMany({
+            where: {
+                userId: ownerId,
+                insightVersionId: {
+                    in: latestVersionIds.map((v) => v.versionId),
+                },
+            },
+            select: {
+                insightVersionId: true,
+                status: true,
+            },
+        });
+
+        const statusMap = new Map(
+            ownerRows.map((r) => [r.insightVersionId, r.status]),
+        );
+
+        const results: {
+            id: string;
+            type: InsightType;
+            content: string;
+            status: InsightActionStatus | null;
+        }[] = [];
+
+        for (const v of versions) {
+            if (seen.has(v.insightId)) {
+                seen.delete(v.insightId);
                 results.push({
                     id: v.insightId,
                     type: v.type,
                     content: v.content,
+                    status: statusMap.get(v.id) ?? null,
                 });
             }
         }
@@ -272,9 +329,11 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        const isOwner = latest.owners.some((o) => o.userId === ownerId);
 
         if (!isOwner && !latest.broadcasted) return null;
+
+        const ownerRow = latest.owners.find((o) => o.userId === ownerId);
 
         return {
             id: insight.id,
@@ -289,8 +348,9 @@ export class InsightRepository {
             sourcePlugin: latest.sourcePlugin ?? undefined,
             groupId: latest.groupId ?? undefined,
             channelId: latest.channelId ?? undefined,
-            owners: latest.owners.map((o) => o.id),
+            owners: latest.owners.map((o) => o.userId),
             topicId: latest.topicId ?? undefined,
+            status: ownerRow?.status ?? undefined,
         };
     }
 
@@ -320,7 +380,7 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        const isOwner = latest.owners.some((o) => o.userId === ownerId);
         if (!isOwner && !latest.broadcasted) return null;
 
         const allVersions = await this.prisma.insightVersion.findMany({
@@ -369,7 +429,7 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        const isOwner = latest.owners.some((o) => o.userId === ownerId);
         if (!isOwner && !latest.broadcasted) return null;
 
         const version = await this.prisma.insightVersion.findFirst({
@@ -421,7 +481,7 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((u) => u.id === ownerId);
+        const isOwner = latest.owners.some((o) => o.userId === ownerId);
         if (!isOwner && !latest.broadcasted) return null;
 
         const version = await this.prisma.insightVersion.findFirst({
@@ -433,6 +493,16 @@ export class InsightRepository {
         return this.envelopeRepository.findByIds([...version.envolopsRef]);
     }
 
+    async getLatestVersionId(insightId: string): Promise<string | null> {
+        const version = await this.prisma.insightVersion.findFirst({
+            where: { insightId },
+            orderBy: { version: 'desc' },
+            select: { id: true },
+        });
+
+        return version?.id ?? null;
+    }
+
     private toInsight(row: {
         id: string;
         organizationId: string | null;
@@ -440,7 +510,7 @@ export class InsightRepository {
             version: number;
             type: string;
             content: string;
-            owners: { id: string }[];
+            owners: { userId: string }[];
             unresolvedOwners: {
                 platformUserId: string | null;
                 platformUsername: string | null;
@@ -461,7 +531,7 @@ export class InsightRepository {
             organizationId: row.organizationId ?? undefined,
             type: latest.type as Insight['type'],
             content: latest.content,
-            owners: latest.owners.map((u) => u.id),
+            owners: latest.owners.map((o) => o.userId),
             unresolvedOwnerRefs: latest.unresolvedOwners.map((u) => ({
                 platformUserId: u.platformUserId,
                 platformUsername: u.platformUsername,

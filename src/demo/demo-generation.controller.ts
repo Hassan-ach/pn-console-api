@@ -75,7 +75,7 @@ export class DemoGenerationController {
                 organizationId: row.organizationId ?? undefined,
                 type: latest.type,
                 content: latest.content,
-                owners: latest.owners.map((u) => u.id),
+                owners: latest.owners.map((o) => o.userId),
                 envolopsRef: [...latest.envolopsRef],
                 broadcasted: latest.broadcasted,
                 version: latest.version,
