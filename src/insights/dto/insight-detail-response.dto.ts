@@ -21,11 +21,11 @@ export class InsightDetailResponseDto {
 
     @Expose()
     @ApiPropertyOptional({ type: [String] })
-    envolopsRef?: string[];
+    envolopsRef: string[];
 
     @Expose()
     @ApiPropertyOptional()
-    broadcasted?: boolean;
+    broadcasted: boolean;
 
     @Expose()
     @ApiProperty({ description: 'Version number (1, 2, 3...)' })
@@ -33,32 +33,20 @@ export class InsightDetailResponseDto {
 
     @Expose()
     @ApiPropertyOptional({ description: 'Latest version ID' })
-    latestVersionId?: string;
+    latestVersionId: string;
 
     @Expose()
     @ApiPropertyOptional()
-    createdAt?: Date;
+    createdAt: Date;
 
     @Expose()
     @ApiPropertyOptional()
-    sourcePlugin?: string;
-
-    @Expose()
-    @ApiPropertyOptional()
-    groupId?: string;
-
-    @Expose()
-    @ApiPropertyOptional()
-    channelId?: string;
-
-    @Expose()
-    @ApiPropertyOptional()
-    topicId?: string;
+    sourcePlugin: string;
 
     @Expose()
     @ApiPropertyOptional({
         enum: InsightActionStatus,
         description: 'Current user action status for this insight',
     })
-    status?: InsightActionStatus;
+    status: InsightActionStatus;
 }

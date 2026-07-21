@@ -40,8 +40,17 @@ export class InsightsController {
 
     @Get(':id')
     @ApiOperation({ summary: 'Get insight by ID' })
-    findOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-        return this.insightsService.findOneForUser(id, req.user.id);
+    @ApiOkResponse({ type: InsightDetailResponseDto })
+    async findOne(
+        @Req() req: { user: { id: string } },
+        @Param('id') id: string,
+    ): Promise<InsightDetailResponseDto> {
+        const insight = await this.insightsService.findOneForUser(
+            id,
+            req.user.id,
+        );
+
+        return plainToInstance(InsightDetailResponseDto, insight);
     }
 
     @Patch(':id')
