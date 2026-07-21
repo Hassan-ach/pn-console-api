@@ -1,18 +1,29 @@
 import {
+    BadRequestException,
     ConflictException,
     Injectable,
+    Logger,
     UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { AppDbService } from '../prisma/app-db/app-db.service';
+import { MailService } from '../mail/mail.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SignupDto } from './dto/signup.dto';
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private readonly db: AppDbService,
         private readonly jwtService: JwtService,
+        private readonly mailService: MailService,
+        private readonly configService: ConfigService,
     ) {}
 
     async loginOrCreateGoogleUser(profile: {
@@ -142,6 +153,81 @@ export class AuthService {
             data: { tokenVersion: { increment: 1 } },
         });
         return { message: 'Logged out successfully' };
+    }
+
+    async forgotPassword(dto: ForgotPasswordDto) {
+        const normalizedEmail = dto.email.toLowerCase().trim();
+        const genericMessage =
+            'If an account with that email exists, a reset link has been sent.';
+
+        const user = await this.db.user.findUnique({
+            where: {
+                email_providerType: {
+                    email: normalizedEmail,
+                    providerType: 'EMAIL',
+                },
+            },
+        });
+
+        if (user) {
+            await this.db.passwordResetToken.deleteMany({
+                where: { userId: user.id },
+            });
+
+            const token = randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+            await this.db.passwordResetToken.create({
+                data: {
+                    token,
+                    userId: user.id,
+                    expiresAt,
+                },
+            });
+
+            const resetUrl = `${this.configService.getOrThrow<string>('FRONTEND_URL')}/#reset-password?token=${token}`;
+
+            try {
+                await this.mailService.sendPasswordResetEmail(
+                    normalizedEmail,
+                    resetUrl,
+                );
+            } catch (err) {
+                this.logger.warn(
+                    `Failed to send reset email to ${normalizedEmail}: ${err}`,
+                );
+            }
+        }
+
+        return { message: genericMessage };
+    }
+
+    async resetPassword(dto: ResetPasswordDto) {
+        const resetToken = await this.db.passwordResetToken.findUnique({
+            where: { token: dto.token },
+        });
+
+        if (!resetToken || resetToken.expiresAt < new Date()) {
+            throw new BadRequestException(
+                'Invalid or expired reset link. Please request a new one.',
+            );
+        }
+
+        const passwordHash = await bcrypt.hash(dto.password, 10);
+
+        await this.db.user.update({
+            where: { id: resetToken.userId },
+            data: {
+                passwordHash,
+                tokenVersion: { increment: 1 },
+            },
+        });
+
+        await this.db.passwordResetToken.deleteMany({
+            where: { userId: resetToken.userId },
+        });
+
+        return { message: 'Password updated successfully.' };
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
