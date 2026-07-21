@@ -25,7 +25,6 @@ model InsightVersion {
   type      InsightType
   content   String
   owners              InsightVersionOwner[]
-  users               User[]               @relation("InsightVersionOwners")
   unresolvedOwners    UnresolvedOwner[]
   broadcasted Boolean   @default(false)
   envolopsRef    String[]  @default([])
@@ -81,7 +80,6 @@ model User {
   updatedAt        DateTime                @updatedAt @map("updated_at")
   platformMappings PlatformUserMapping[]
   insightOwnerships InsightVersionOwner[]
-  insightVersions  InsightVersion[]      @relation("InsightVersionOwners")
   passwordResetTokens PasswordResetToken[]
 
   @@unique([email, providerType])
