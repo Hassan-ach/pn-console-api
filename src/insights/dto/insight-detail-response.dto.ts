@@ -1,49 +1,52 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 import { InsightActionStatus, InsightType } from 'src/types/insight.types';
 
 export class InsightDetailResponseDto {
+    @Expose()
     @ApiProperty()
     id: string;
 
+    @Expose()
     @ApiPropertyOptional()
     organizationId?: string;
 
+    @Expose()
     @ApiProperty({ enum: InsightType })
     type: InsightType;
 
+    @Expose()
     @ApiProperty()
     content: string;
 
+    @Expose()
     @ApiPropertyOptional({ type: [String] })
-    envolopsRef?: string[];
+    envolopsRef: string[];
 
+    @Expose()
     @ApiPropertyOptional()
-    broadcasted?: boolean;
+    broadcasted: boolean;
 
+    @Expose()
     @ApiProperty({ description: 'Version number (1, 2, 3...)' })
     version: number;
 
+    @Expose()
     @ApiPropertyOptional({ description: 'Latest version ID' })
-    latestVersionId?: string;
+    latestVersionId: string;
 
+    @Expose()
     @ApiPropertyOptional()
-    createdAt?: Date;
+    createdAt: Date;
 
+    @Expose()
     @ApiPropertyOptional()
-    sourcePlugin?: string;
+    sourcePlugin: string;
 
-    @ApiPropertyOptional()
-    groupId?: string;
-
-    @ApiPropertyOptional()
-    channelId?: string;
-
-    @ApiPropertyOptional()
-    topicId?: string;
-
+    @Expose()
     @ApiPropertyOptional({
         enum: InsightActionStatus,
         description: 'Current user action status for this insight',
     })
-    status?: InsightActionStatus;
+    status: InsightActionStatus;
 }

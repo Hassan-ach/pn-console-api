@@ -28,6 +28,18 @@ export class InsightRepository {
         channelId?: string;
         topicId?: string;
     }): Promise<Insight> {
+        const isBroadcasted = data.broadcasted ?? false;
+
+        let ownerIds: string[];
+        if (isBroadcasted) {
+            const allUsers = await this.prisma.user.findMany({
+                select: { id: true },
+            });
+            ownerIds = allUsers.map((u) => u.id);
+        } else {
+            ownerIds = data.owners;
+        }
+
         const insight = await this.prisma.insight.create({
             data: {
                 organizationId: data.organizationId ?? null,
@@ -37,7 +49,7 @@ export class InsightRepository {
                         type: data.type,
                         content: data.content,
                         owners: {
-                            create: data.owners.map((userId) => ({
+                            create: ownerIds.map((userId) => ({
                                 userId,
                                 status: 'PENDING' as const,
                             })),
@@ -49,7 +61,7 @@ export class InsightRepository {
                                 pluginName: u.pluginName,
                             })),
                         },
-                        broadcasted: data.broadcasted ?? false,
+                        broadcasted: isBroadcasted,
                         envolopsRef: data.envolopsRef ?? [],
                         sourcePlugin: data.sourcePlugin ?? null,
                         groupId: data.groupId ?? null,
@@ -99,6 +111,18 @@ export class InsightRepository {
 
             const maxVersion = latestVersions[0]?._max.version ?? 0;
 
+            const isBroadcasted = data.broadcasted ?? false;
+
+            let ownerIds: string[];
+            if (isBroadcasted) {
+                const allUsers = await tx.user.findMany({
+                    select: { id: true },
+                });
+                ownerIds = allUsers.map((u) => u.id);
+            } else {
+                ownerIds = data.owners;
+            }
+
             await tx.insightVersion.create({
                 data: {
                     insightId: id,
@@ -106,7 +130,7 @@ export class InsightRepository {
                     type: data.type,
                     content: data.content,
                     owners: {
-                        create: data.owners.map((userId) => ({
+                        create: ownerIds.map((userId) => ({
                             userId,
                             status: 'PENDING' as const,
                         })),
@@ -118,7 +142,7 @@ export class InsightRepository {
                             pluginName: u.pluginName,
                         })),
                     },
-                    broadcasted: data.broadcasted ?? false,
+                    broadcasted: isBroadcasted,
                     envolopsRef: data.envolopsRef ?? [],
                     sourcePlugin: data.sourcePlugin ?? null,
                     groupId: data.groupId ?? null,
@@ -240,7 +264,7 @@ export class InsightRepository {
             id: string;
             type: InsightType;
             content: string;
-            status: InsightActionStatus | null;
+            status: InsightActionStatus;
         }[]
     > {
         const versions = await this.prisma.insightVersion.findMany({
@@ -296,7 +320,7 @@ export class InsightRepository {
             id: string;
             type: InsightType;
             content: string;
-            status: InsightActionStatus | null;
+            status: InsightActionStatus;
         }[] = [];
 
         for (const v of versions) {
@@ -306,7 +330,7 @@ export class InsightRepository {
                     id: v.insightId,
                     type: v.type,
                     content: v.content,
-                    status: statusMap.get(v.id) ?? null,
+                    status: statusMap.get(v.id) ?? 'PENDING',
                 });
             }
         }
@@ -350,7 +374,7 @@ export class InsightRepository {
             channelId: latest.channelId ?? undefined,
             owners: latest.owners.map((o) => o.userId),
             topicId: latest.topicId ?? undefined,
-            status: ownerRow?.status ?? undefined,
+            status: ownerRow?.status ?? 'PENDING',
         };
     }
 
@@ -363,6 +387,7 @@ export class InsightRepository {
               version: number;
               type: InsightType;
               content: string;
+              status?: InsightActionStatus;
           }[]
         | null
     > {
@@ -394,7 +419,25 @@ export class InsightRepository {
             },
         });
 
-        return allVersions;
+        const ownerRows = await this.prisma.insightVersionOwner.findMany({
+            where: {
+                userId: ownerId,
+                insightVersionId: { in: allVersions.map((v) => v.id) },
+            },
+            select: {
+                insightVersionId: true,
+                status: true,
+            },
+        });
+
+        const statusMap = new Map(
+            ownerRows.map((r) => [r.insightVersionId, r.status]),
+        );
+
+        return allVersions.map((v) => ({
+            ...v,
+            status: statusMap.get(v.id) ?? 'PENDING',
+        }));
     }
 
     async findVersionById(
@@ -409,11 +452,13 @@ export class InsightRepository {
         envolopsRef: string[];
         broadcasted: boolean;
         version: number;
+        latestVersionId?: string;
         createdAt: Date;
         sourcePlugin?: string;
         groupId?: string;
         channelId?: string;
         topicId?: string;
+        status?: InsightActionStatus;
     } | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id: insightId },
@@ -438,6 +483,18 @@ export class InsightRepository {
 
         if (!version) return null;
 
+        const latestVersionId = await this.getLatestVersionId(insightId);
+
+        const ownerRow = await this.prisma.insightVersionOwner.findUnique({
+            where: {
+                insightVersionId_userId: {
+                    insightVersionId: versionId,
+                    userId: ownerId,
+                },
+            },
+            select: { status: true },
+        });
+
         return {
             id: version.id,
             organizationId: insight.organizationId ?? undefined,
@@ -446,11 +503,13 @@ export class InsightRepository {
             envolopsRef: [...version.envolopsRef],
             broadcasted: version.broadcasted,
             version: version.version,
+            latestVersionId: latestVersionId ?? undefined,
             createdAt: version.createdAt,
             sourcePlugin: version.sourcePlugin ?? undefined,
             groupId: version.groupId ?? undefined,
             channelId: version.channelId ?? undefined,
             topicId: version.topicId ?? undefined,
+            status: ownerRow?.status ?? 'PENDING',
         };
     }
 
