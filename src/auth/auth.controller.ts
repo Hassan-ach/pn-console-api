@@ -3,6 +3,7 @@ import {
     Controller,
     Get,
     Post,
+    Query,
     Req,
     Res,
     UseGuards,
@@ -78,6 +79,26 @@ export class AuthController {
     @ApiBadRequestResponse({ description: 'Invalid or expired token' })
     async resetPassword(@Body() dto: ResetPasswordDto) {
         return this.authService.resetPassword(dto);
+    }
+
+    @Public()
+    @Get('relay-reset-token')
+    @ApiOperation({ summary: 'Relay reset token from browser to backend' })
+    async relayResetToken(@Query('token') token: string, @Res() res: Response) {
+        await this.authService.relayResetToken(token);
+        res.send(
+            '<html><body style="font-family:Arial;text-align:center;padding:80px;"><p>You can close this tab and return to the desktop app.</p></body></html>',
+        );
+    }
+
+    @Public()
+    @Get('pending-reset')
+    @ApiOperation({
+        summary: 'Check for a pending reset token relayed from browser',
+    })
+    @ApiOkResponse({ description: 'Returns token if pending, null otherwise' })
+    async getPendingReset(@Query('email') email: string) {
+        return this.authService.getPendingReset(email);
     }
 
     @Public()
