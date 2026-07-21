@@ -2,8 +2,9 @@ import {
     BadRequestException,
     Injectable,
     NotImplementedException,
+    UnauthorizedException,
 } from '@nestjs/common';
-import { IPlugin } from '../interfaces/plugin.interface';
+import { IPlugin, PlatformUserInfo } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
@@ -14,11 +15,16 @@ import type { PluginContext } from '../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from './telegram.types';
 import type { BackFillOpts } from '../interfaces/plugin.interface';
 
+interface TelegramChat {
+    name: string;
+    id: string;
+}
+
 interface TelegramConfig {
     apiId: number;
     apiHash: string;
     sessionString: string;
-    chats: string[];
+    chats: TelegramChat[];
     phone?: string;
 }
 
@@ -26,6 +32,49 @@ interface TelegramConfig {
 export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
     constructor(private readonly factory: TelegramClientFactory) {}
+
+    async validateAuth(
+        sessionString: string,
+        context: PluginContext,
+        userId: string,
+    ): Promise<PlatformUserInfo> {
+        const config = await context.getConfig(userId, this.name);
+        if (!config) {
+            throw new BadRequestException(
+                'Plugin not configured — save API credentials first',
+            );
+        }
+
+        const cfg = config as unknown as TelegramConfig;
+        const client = this.factory.create(
+            cfg.apiId,
+            cfg.apiHash,
+            sessionString,
+        );
+
+        try {
+            await client.connect();
+            const me = await client.getMe();
+            const platformUserId = String(me.id);
+            const platformUsername =
+                (me.username as string) ||
+                (me.firstName as string) ||
+                platformUserId;
+
+            await context.storeUserMapping(userId, this.name, {
+                platformUserId,
+                platformUsername,
+            });
+
+            return { platformUserId, platformUsername };
+        } catch (err) {
+            throw new UnauthorizedException(
+                `Invalid Telegram session: ${err instanceof Error ? err.message : 'unknown error'}`,
+            );
+        } finally {
+            await this.factory.destroy(client);
+        }
+    }
 
     async isConnected(
         context: PluginContext,
@@ -84,9 +133,10 @@ export class TelegramPluginService implements IPlugin {
         try {
             await client.connect();
 
-            for (const chatId of cfg.chats ?? []) {
+            for (const chat of cfg.chats) {
+                const chatId = chat.id;
                 context.logger.info(
-                    `Backfilling chat ${chatId} limit ${limit}`,
+                    `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
                 );
 
                 const topicStore = new TelegramTopicStore(userId, chatId);
@@ -97,18 +147,24 @@ export class TelegramPluginService implements IPlugin {
                     topicId: number;
                 }[] = [];
 
-                const chat = await client.getEntity(chatId);
+                const resolvedChatId = /^-?\d+$/.test(chatId)
+                    ? Number(chatId)
+                    : chatId;
+                const chatEntity = await client.getEntity(resolvedChatId);
                 let offsetId = 1;
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
                 while (totalFetched < maxLimit) {
                     const batchSize = Math.min(100, maxLimit - totalFetched);
-                    const messages: any[] = await client.getMessages(chat, {
-                        limit: batchSize,
-                        offsetId,
-                        reverse: true,
-                    });
+                    const messages: any[] = await client.getMessages(
+                        chatEntity,
+                        {
+                            limit: batchSize,
+                            offsetId,
+                            reverse: true,
+                        },
+                    );
 
                     if (messages.length === 0) break;
 
@@ -168,8 +224,7 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    | number
-                                    | undefined) ?? null,
+                                    number | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
