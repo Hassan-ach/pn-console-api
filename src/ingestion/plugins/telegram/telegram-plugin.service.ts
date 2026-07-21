@@ -15,11 +15,16 @@ import type { PluginContext } from '../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from './telegram.types';
 import type { BackFillOpts } from '../interfaces/plugin.interface';
 
+interface TelegramChat {
+    name: string;
+    id: string;
+}
+
 interface TelegramConfig {
     apiId: number;
     apiHash: string;
     sessionString: string;
-    chats: string[];
+    chats: TelegramChat[];
     phone?: string;
 }
 
@@ -128,9 +133,10 @@ export class TelegramPluginService implements IPlugin {
         try {
             await client.connect();
 
-            for (const chatId of cfg.chats ?? []) {
+            for (const chat of cfg.chats) {
+                const chatId = chat.id;
                 context.logger.info(
-                    `Backfilling chat ${chatId} limit ${limit}`,
+                    `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
                 );
 
                 const topicStore = new TelegramTopicStore(userId, chatId);
@@ -144,14 +150,14 @@ export class TelegramPluginService implements IPlugin {
                 const resolvedChatId = /^-?\d+$/.test(chatId)
                     ? Number(chatId)
                     : chatId;
-                const chat = await client.getEntity(resolvedChatId);
+                const chatEntity = await client.getEntity(resolvedChatId);
                 let offsetId = 1;
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
                 while (totalFetched < maxLimit) {
                     const batchSize = Math.min(100, maxLimit - totalFetched);
-                    const messages: any[] = await client.getMessages(chat, {
+                    const messages: any[] = await client.getMessages(chatEntity, {
                         limit: batchSize,
                         offsetId,
                         reverse: true,
