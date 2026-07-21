@@ -37,7 +37,11 @@ export class PluginsController {
     ) {
         const state = await this.pluginManager.getState(name, req.user.id);
         if (!state) throw new NotFoundException(`Plugin "${name}" not found`);
-        return { success: true, message: `Plugin status loaded`, data: { name, ...state } };
+        return {
+            success: true,
+            message: `Plugin status loaded`,
+            data: { name, ...state },
+        };
     }
 
     @Post(':name/config')

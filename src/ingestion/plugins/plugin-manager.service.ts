@@ -104,7 +104,11 @@ export class PluginManagerService {
                     );
                     return { name, connected, hasConfig: !!dbConfig };
                 } catch {
-                    return { name, connected: false, hasConfig: !!configs.find((c) => c.pluginName === name) };
+                    return {
+                        name,
+                        connected: false,
+                        hasConfig: !!configs.find((c) => c.pluginName === name),
+                    };
                 }
             }),
         );

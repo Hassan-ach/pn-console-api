@@ -21,26 +21,24 @@ export class IngestionService {
     async ingest(
         options: IngestOptions,
     ): Promise<{ inserted: number; errors: IngestError[] }> {
-        const pluginNames =
-            typeof options.plugins === 'string'
-                ? [options.plugins]
-                : options.plugins;
-
         const startedAt = Date.now();
 
         this.logger.log(
-            `Backfill starting: plugins=${pluginNames.join(', ')}, limit=${options.limit}, org=${options.organizationId}`,
+            `Backfill starting: plugins=${options.plugins.map((p) => `${p.name}:${p.limit}`).join(', ')}, org=${options.organizationId}`,
         );
 
         let totalInserted = 0;
         const errors: IngestError[] = [];
 
-        for (const name of pluginNames) {
-            this.logger.log(`Plugin "${name}" backfill starting`);
+        for (const plugin of options.plugins) {
+            const { name, limit } = plugin;
+            this.logger.log(
+                `Plugin "${name}" backfill starting (limit=${limit})`,
+            );
 
             try {
                 for await (const result of this.pluginManager.backfill(name, {
-                    limit: options.limit,
+                    limit,
                     userId: options.userId,
                 })) {
                     totalInserted += result.inserted;

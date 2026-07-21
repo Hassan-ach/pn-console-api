@@ -25,7 +25,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             } else {
                 const body = res as Record<string, unknown>;
                 const msg = body?.message;
-                message = Array.isArray(msg) ? String(msg[0]) : msg != null ? String(msg) : message;
+                message = Array.isArray(msg)
+                    ? String(msg[0])
+                    : msg != null
+                      ? String(msg)
+                      : message;
             }
         } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
             if (exception.code === 'P2002') {

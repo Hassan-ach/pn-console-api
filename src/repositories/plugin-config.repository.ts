@@ -1,7 +1,4 @@
-import {
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma } from 'generated/app-db-client';
 

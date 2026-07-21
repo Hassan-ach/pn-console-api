@@ -168,8 +168,7 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    | number
-                                    | undefined) ?? null,
+                                    number | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
