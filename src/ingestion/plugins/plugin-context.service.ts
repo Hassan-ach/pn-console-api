@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PluginConfigRepository } from 'src/repositories/plugin-config.repository';
 import { EnvelopeRepository } from 'src/repositories/envelope.repository';
+import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import type { EnvelopeWithPayload } from 'src/types/envelope.types';
 import type {
     PluginContext,
     PluginLogger,
     StoreResult,
 } from './interfaces/plugin-context.interface';
-import { unknown } from 'zod/v3';
 
 @Injectable()
 export class PluginContextService implements PluginContext {
@@ -23,6 +23,7 @@ export class PluginContextService implements PluginContext {
     constructor(
         private readonly configRepo: PluginConfigRepository,
         private readonly envelopeRepo: EnvelopeRepository,
+        private readonly mappingRepo: PlatformUserMappingRepository,
     ) {}
 
     async getConfig(
@@ -30,7 +31,8 @@ export class PluginContextService implements PluginContext {
         pluginName: string,
     ): Promise<Record<string, unknown> | null> {
         const row = await this.configRepo.findUnique(userId, pluginName);
-        return row?.config ?? null;
+        if (!row) return null;
+        return { ...row.config, sessionString: row.sessionString ?? undefined };
     }
 
     async saveConfig(
@@ -52,6 +54,22 @@ export class PluginContextService implements PluginContext {
         partial: Record<string, unknown>,
     ): Promise<void> {
         await this.configRepo.update(userId, pluginName, { config: partial });
+    }
+
+    async storeUserMapping(
+        userId: string,
+        pluginName: string,
+        data: {
+            platformUserId: string;
+            platformUsername: string;
+        },
+    ): Promise<void> {
+        await this.mappingRepo.upsert({
+            appUserId: userId,
+            pluginName,
+            platformUserId: data.platformUserId,
+            platformUsername: data.platformUsername,
+        });
     }
 
     async storeEnvelopes(

@@ -27,6 +27,15 @@ export interface PluginContext {
         pluginName: string,
         partial: Record<string, unknown>,
     ): Promise<void>;
+    storeUserMapping(
+        userId: string,
+        pluginName: string,
+        data: {
+            platformUserId: string;
+            platformUsername: string;
+        },
+    ): Promise<void>;
+
     storeEnvelopes(
         items: EnvelopeWithPayload[],
         userId: string,

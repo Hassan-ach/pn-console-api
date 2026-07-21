@@ -2,8 +2,9 @@ import {
     BadRequestException,
     Injectable,
     NotImplementedException,
+    UnauthorizedException,
 } from '@nestjs/common';
-import { IPlugin } from '../interfaces/plugin.interface';
+import { IPlugin, PlatformUserInfo } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
@@ -26,6 +27,49 @@ interface TelegramConfig {
 export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
     constructor(private readonly factory: TelegramClientFactory) {}
+
+    async validateAuth(
+        sessionString: string,
+        context: PluginContext,
+        userId: string,
+    ): Promise<PlatformUserInfo> {
+        const config = await context.getConfig(userId, this.name);
+        if (!config) {
+            throw new BadRequestException(
+                'Plugin not configured — save API credentials first',
+            );
+        }
+
+        const cfg = config as unknown as TelegramConfig;
+        const client = this.factory.create(
+            cfg.apiId,
+            cfg.apiHash,
+            sessionString,
+        );
+
+        try {
+            await client.connect();
+            const me = await client.getMe();
+            const platformUserId = String(me.id);
+            const platformUsername =
+                (me.username as string) ||
+                (me.firstName as string) ||
+                platformUserId;
+
+            await context.storeUserMapping(userId, this.name, {
+                platformUserId,
+                platformUsername,
+            });
+
+            return { platformUserId, platformUsername };
+        } catch (err) {
+            throw new UnauthorizedException(
+                `Invalid Telegram session: ${err instanceof Error ? err.message : 'unknown error'}`,
+            );
+        } finally {
+            await this.factory.destroy(client);
+        }
+    }
 
     async isConnected(
         context: PluginContext,
@@ -97,7 +141,10 @@ export class TelegramPluginService implements IPlugin {
                     topicId: number;
                 }[] = [];
 
-                const chat = await client.getEntity(chatId);
+                const resolvedChatId = /^-?\d+$/.test(chatId)
+                    ? Number(chatId)
+                    : chatId;
+                const chat = await client.getEntity(resolvedChatId);
                 let offsetId = 1;
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
