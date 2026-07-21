@@ -1,13 +1,12 @@
 import {
-    BadRequestException,
     Controller,
     Get,
-    NotFoundException,
     Param,
     Patch,
     Query,
     Req,
     UseGuards,
+    ValidationPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -16,82 +15,47 @@ import {
     ApiOperation,
     ApiTags,
 } from '@nestjs/swagger';
-import { InsightActionRepository } from '../repositories/insight-action.repository';
-import { InsightRepository } from '../repositories/insight.repository';
-import { INSIGHT_ACTION_MAP } from '../types/insight.types';
+import { plainToInstance } from 'class-transformer';
 import { InsightActionQueryDto } from './dto/insight-action-query.dto';
 import { InsightDetailResponseDto } from './dto/insight-detail-response.dto';
 import { InsightResponseDto } from './dto/insight-response.dto';
 import { InsightsQueryDto } from './dto/insights-query.dto';
+import { InsightsService } from './insights.service';
 
 @ApiTags('Insights')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
 @Controller('insights')
 export class InsightsController {
-    constructor(
-        private readonly insightRepository: InsightRepository,
-        private readonly insightActionRepository: InsightActionRepository,
-    ) {}
+    constructor(private readonly insightsService: InsightsService) {}
 
     @Get()
     @ApiOperation({ summary: 'Get insights for the authenticated user' })
-    async findAll(
+    findAll(
         @Req() req: { user: { id: string } },
-        @Query() query: InsightsQueryDto,
+        @Query(ValidationPipe) query: InsightsQueryDto,
     ) {
-        return this.insightRepository.findByOwnerId(req.user.id, query.type);
+        return this.insightsService.findAllForUser(req.user.id, query.type);
     }
 
     @Get(':id')
     @ApiOperation({ summary: 'Get insight by ID' })
-    async findOne(
-        @Req() req: { user: { id: string } },
-        @Param('id') id: string,
-    ) {
-        const insight = await this.insightRepository.findById(id, req.user.id);
-
-        if (!insight) {
-            throw new NotFoundException('Insight not found');
-        }
-
-        return insight;
+    findOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+        return this.insightsService.findOneForUser(id, req.user.id);
     }
 
     @Patch(':id')
     @ApiOperation({ summary: 'Set action status on an insight' })
-    async updateActionStatus(
+    updateActionStatus(
         @Req() req: { user: { id: string } },
         @Param('id') id: string,
-        @Query() query: InsightActionQueryDto,
+        @Query(ValidationPipe) query: InsightActionQueryDto,
     ) {
-        const insight = await this.insightRepository.findById(id, req.user.id);
-
-        if (!insight) {
-            throw new NotFoundException('Insight not found');
-        }
-
-        const allowed = INSIGHT_ACTION_MAP[insight.type];
-        if (!allowed.includes(query.action)) {
-            throw new BadRequestException(
-                `Action ${query.action} is not valid for insight type ${insight.type}`,
-            );
-        }
-
-        const latestVersionId =
-            await this.insightRepository.getLatestVersionId(id);
-
-        if (!latestVersionId) {
-            throw new NotFoundException('Insight version not found');
-        }
-
-        await this.insightActionRepository.upsert(
-            latestVersionId,
+        return this.insightsService.updateActionStatus(
+            id,
             req.user.id,
             query.action,
         );
-
-        return this.insightRepository.findById(id, req.user.id);
     }
 
     @Get(':id/versions')
@@ -100,17 +64,13 @@ export class InsightsController {
     async findVersions(
         @Req() req: { user: { id: string } },
         @Param('id') id: string,
-    ) {
-        const versions = await this.insightRepository.findVersionsByInsightId(
+    ): Promise<InsightResponseDto[]> {
+        const versions = await this.insightsService.findVersionsForUser(
             id,
             req.user.id,
         );
 
-        if (!versions) {
-            throw new NotFoundException('Insight not found');
-        }
-
-        return versions;
+        return plainToInstance(InsightResponseDto, versions);
     }
 
     @Get(':id/versions/:versionId')
@@ -120,39 +80,29 @@ export class InsightsController {
         @Req() req: { user: { id: string } },
         @Param('id') id: string,
         @Param('versionId') versionId: string,
-    ) {
-        const version = await this.insightRepository.findVersionById(
+    ): Promise<InsightDetailResponseDto> {
+        const version = await this.insightsService.findVersionForUser(
             id,
             versionId,
             req.user.id,
         );
 
-        if (!version) {
-            throw new NotFoundException('Insight version not found');
-        }
-
-        return version;
+        return plainToInstance(InsightDetailResponseDto, version);
     }
 
     @Get(':id/versions/:versionId/envelope-refs')
     @ApiOperation({
         summary: 'Get envelope refs for a specific insight version',
     })
-    async findVersionEnvelopeRefs(
+    findVersionEnvelopeRefs(
         @Req() req: { user: { id: string } },
         @Param('id') id: string,
         @Param('versionId') versionId: string,
     ) {
-        const refs = await this.insightRepository.findVersionEnvelopeRefs(
+        return this.insightsService.findVersionEnvelopeRefs(
             id,
             versionId,
             req.user.id,
         );
-
-        if (refs === null) {
-            throw new NotFoundException('Insight version not found');
-        }
-
-        return refs;
     }
 }
