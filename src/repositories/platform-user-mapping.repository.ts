@@ -91,6 +91,33 @@ export class PlatformUserMappingRepository {
         }));
     }
 
+    async upsert(data: {
+        platformUserId: string;
+        appUserId: string;
+        pluginName: string;
+        platformUsername: string;
+    }): Promise<PlatformUserMapping> {
+        const mapping = await this.prisma.platformUserMapping.upsert({
+            where: {
+                platformUserId_pluginName: {
+                    platformUserId: data.platformUserId,
+                    pluginName: data.pluginName,
+                },
+            },
+            create: {
+                platformUserId: data.platformUserId,
+                appUserId: data.appUserId,
+                pluginName: data.pluginName,
+                platformUsername: data.platformUsername,
+            },
+            update: {
+                appUserId: data.appUserId,
+                platformUsername: data.platformUsername,
+            },
+        });
+        return this.toMapping(mapping);
+    }
+
     async delete(platformUserId: string, pluginName: string): Promise<void> {
         await this.prisma.platformUserMapping.delete({
             where: {

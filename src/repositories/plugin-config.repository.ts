@@ -1,7 +1,4 @@
-import {
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma } from 'generated/app-db-client';
 
@@ -10,6 +7,7 @@ export interface PluginConfigData {
     organizationId: string | null;
     userId: string;
     pluginName: string;
+    sessionString: string | null;
     config: Record<string, unknown>;
     metadata: Record<string, unknown> | null;
     createdAt: Date;
@@ -94,6 +92,7 @@ export class PluginConfigRepository {
             config?: Record<string, unknown>;
             metadata?: Record<string, unknown>;
             organizationId?: string;
+            sessionString?: string | null;
         },
     ): Promise<PluginConfigData> {
         return this.prisma.$transaction(async (tx) => {
@@ -134,11 +133,37 @@ export class PluginConfigRepository {
                     ...(data.organizationId !== undefined && {
                         organizationId: data.organizationId,
                     }),
+                    ...(data.sessionString !== undefined && {
+                        sessionString: data.sessionString,
+                    }),
                 },
             });
 
             return this.toData(row);
         });
+    }
+
+    async updateSessionString(
+        userId: string,
+        pluginName: string,
+        sessionString: string,
+    ): Promise<PluginConfigData> {
+        const row = await this.prisma.pluginConfig.update({
+            where: { userId_pluginName: { userId, pluginName } },
+            data: { sessionString },
+        });
+        return this.toData(row);
+    }
+
+    async clearSessionString(
+        userId: string,
+        pluginName: string,
+    ): Promise<PluginConfigData> {
+        const row = await this.prisma.pluginConfig.update({
+            where: { userId_pluginName: { userId, pluginName } },
+            data: { sessionString: null },
+        });
+        return this.toData(row);
     }
 
     async remove(
@@ -156,6 +181,7 @@ export class PluginConfigRepository {
         organizationId: string | null;
         userId: string;
         pluginName: string;
+        sessionString: string | null;
         config: unknown;
         metadata: unknown;
         createdAt: Date;
@@ -166,6 +192,7 @@ export class PluginConfigRepository {
             organizationId: row.organizationId,
             userId: row.userId,
             pluginName: row.pluginName,
+            sessionString: row.sessionString,
             config: (typeof row.config === 'object' && row.config !== null
                 ? row.config
                 : {}) as Record<string, unknown>,

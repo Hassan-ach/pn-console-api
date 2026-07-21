@@ -1,6 +1,10 @@
-export interface IngestOptions {
-    plugins: string | string[];
+export interface PluginBackfill {
+    name: string;
     limit: number;
+}
+
+export interface IngestOptions {
+    plugins: PluginBackfill[];
     userId: string;
     organizationId: string;
     triggeredBy?: string;

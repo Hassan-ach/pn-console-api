@@ -1,6 +1,11 @@
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import type { PluginContext, StoreResult } from './plugin-context.interface';
 
+export interface PlatformUserInfo {
+    platformUserId: string;
+    platformUsername: string;
+}
+
 export type PluginLoginResult =
     | { status: 'ok' }
     | { status: 'need_code'; pendingId: string }
@@ -13,6 +18,12 @@ export interface BackFillOpts {
 
 export interface IPlugin {
     readonly name: string;
+
+    validateAuth(
+        sessionString: string,
+        context: PluginContext,
+        userId: string,
+    ): Promise<PlatformUserInfo>;
 
     isConnected(
         context: PluginContext,
