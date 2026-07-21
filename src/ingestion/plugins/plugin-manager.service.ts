@@ -4,7 +4,11 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
-import { IPlugin, BackFillOpts } from './interfaces/plugin.interface';
+import {
+    IPlugin,
+    BackFillOpts,
+    PlatformUserInfo,
+} from './interfaces/plugin.interface';
 import type {
     PluginContext,
     StoreResult,
@@ -72,14 +76,14 @@ export class PluginManagerService {
                 hasSession: false,
                 isConnected: false,
             };
-        const cfg = config.config;
         const isConnected = await this.getInstance(name).isConnected(
             this.context,
             userId,
+            { ...config.config, sessionString: config.sessionString },
         );
         return {
             initialized: true,
-            hasSession: !!cfg.sessionString,
+            hasSession: !!config.sessionString,
             isConnected: isConnected,
         };
     }
@@ -97,10 +101,16 @@ export class PluginManagerService {
                 try {
                     const plugin = this.instances.get(name)!;
                     const dbConfig = configs.find((c) => c.pluginName === name);
+                    const fullConfig = dbConfig
+                        ? {
+                              ...dbConfig.config,
+                              sessionString: dbConfig.sessionString,
+                          }
+                        : undefined;
                     const connected = await plugin.isConnected(
                         this.context,
                         userId,
-                        dbConfig?.config,
+                        fullConfig,
                     );
                     return { name, connected, hasConfig: !!dbConfig };
                 } catch {
@@ -152,16 +162,43 @@ export class PluginManagerService {
     ): Promise<Record<string, unknown> | null> {
         const config = await this.getConfig(name, userId);
         if (!config) return null;
-        const sanitized = { ...config };
-        if (typeof sanitized.sessionString === 'string') {
-            sanitized.sessionString =
-                sanitized.sessionString.slice(0, 8) + '...';
-        }
-        return sanitized;
+        return { ...config };
     }
 
     async disconnect(name: string, userId: string): Promise<void> {
-        await this.updateConfig(name, { sessionString: null }, userId);
+        if (!this.instances.has(name))
+            throw new NotFoundException(`Plugin "${name}" not found`);
+        await this.configRepo.clearSessionString(userId, name);
+    }
+
+    async login(
+        name: string,
+        userId: string,
+        config: Record<string, unknown>,
+    ): Promise<PlatformUserInfo> {
+        const plugin = this.getInstance(name);
+
+        const sessionString = config.sessionString as string | undefined;
+        if (!sessionString) {
+            throw new NotFoundException(`sessionString is required for login`);
+        }
+        const configJson = { ...config };
+        delete configJson.sessionString;
+
+        await this.configRepo.upsert(userId, name, {
+            organizationId: this.context.resolveOrgId(userId),
+            config: configJson,
+        });
+
+        const userInfo = await plugin.validateAuth(
+            sessionString,
+            this.context,
+            userId,
+        );
+
+        await this.configRepo.updateSessionString(userId, name, sessionString);
+
+        return userInfo;
     }
 
     async deleteConfig(name: string, userId: string): Promise<void> {

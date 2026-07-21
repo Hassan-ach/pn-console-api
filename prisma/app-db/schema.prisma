@@ -150,6 +150,7 @@ model PluginConfig {
   organizationId String?  @map("organization_id")
   userId         String   @map("user_id")
   pluginName     String   @map("plugin_name")
+  sessionString  String?  @map("session_string")
   config         Json     @map("config")
   metadata       Json?    @map("metadata")
   createdAt      DateTime @default(now()) @map("created_at")
