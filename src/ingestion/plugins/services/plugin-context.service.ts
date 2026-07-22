@@ -8,7 +8,7 @@ import type {
     PluginContext,
     PluginLogger,
     StoreResult,
-} from './interfaces/plugin-context.interface';
+} from '../interfaces/plugin-context.interface';
 
 @Injectable()
 export class PluginContextService implements PluginContext {

@@ -1,5 +1,5 @@
-import { EnvelopeWithPayload } from '../../../types/envelope.types';
-import type { TelegramMessageRaw } from './telegram.types';
+import { EnvelopeWithPayload } from '../../../../types/envelope.types';
+import type { TelegramMessageRaw } from '../types/telegram.types';
 
 export function normalizeTelegramMessage(
     msg: TelegramMessageRaw,

@@ -8,12 +8,12 @@ import {
     IPlugin,
     BackFillOpts,
     PlatformUserInfo,
-} from './interfaces/plugin.interface';
+} from '../interfaces/plugin.interface';
 import type {
     PluginContext,
     StoreResult,
-} from './interfaces/plugin-context.interface';
-import { PluginConfigRepository } from '../../repositories/plugin-config.repository';
+} from '../interfaces/plugin-context.interface';
+import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { PluginContextService } from './plugin-context.service';
 
 @Injectable()
