@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PluginConfigRepository } from 'src/repositories/plugin-config.repository';
 import { EnvelopeRepository } from 'src/repositories/envelope.repository';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { RawDbService } from 'src/prisma/raw-db/raw-db.service';
 import type { EnvelopeWithPayload } from 'src/types/envelope.types';
 import type {
     PluginContext,
@@ -24,6 +25,7 @@ export class PluginContextService implements PluginContext {
         private readonly configRepo: PluginConfigRepository,
         private readonly envelopeRepo: EnvelopeRepository,
         private readonly mappingRepo: PlatformUserMappingRepository,
+        private readonly rawDb: RawDbService,
     ) {}
 
     async getConfig(
@@ -69,6 +71,30 @@ export class PluginContextService implements PluginContext {
             pluginName,
             platformUserId: data.platformUserId,
             platformUsername: data.platformUsername,
+        });
+    }
+
+    async getCursor(
+        pluginName: string,
+        userId: string,
+        key: string,
+    ): Promise<number | null> {
+        const row = await this.rawDb.pluginCursor.findUnique({
+            where: { pluginName_userId_key: { pluginName, userId, key } },
+        });
+        return row ? Number(row.value) : null;
+    }
+
+    async saveCursor(
+        pluginName: string,
+        userId: string,
+        key: string,
+        value: number,
+    ): Promise<void> {
+        await this.rawDb.pluginCursor.upsert({
+            where: { pluginName_userId_key: { pluginName, userId, key } },
+            create: { pluginName, userId, key, value },
+            update: { value },
         });
     }
 

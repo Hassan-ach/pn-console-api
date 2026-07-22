@@ -164,9 +164,18 @@ export class TelegramPluginService implements IPlugin {
                     : chatId;
                 const chatEntity = await client.getEntity(resolvedChatId);
 
-                let offsetId = isFirstN
-                    ? this.config.get<number>('telegram.backfillOffsetId', 1)
-                    : 0;
+                // Resume from last stored offset if in 'first' mode
+                let offsetId: number;
+                if (isFirstN) {
+                    const stored = await context.getCursor(
+                        this.name,
+                        userId,
+                        chatId,
+                    );
+                    offsetId = stored ?? this.config.get<number>('telegram.backfillOffsetId', 1);
+                } else {
+                    offsetId = 0;
+                }
 
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
@@ -273,6 +282,15 @@ export class TelegramPluginService implements IPlugin {
 
                     totalFetched += messages.length;
                     offsetId = messages[messages.length - 1].id as number;
+                    // Save cursor after every batch so resume picks up from here
+                    if (isFirstN) {
+                        await context.saveCursor(
+                            this.name,
+                            userId,
+                            chatId,
+                            offsetId,
+                        );
+                    }
                     if (messages.length < batchSize) break;
                 }
 
