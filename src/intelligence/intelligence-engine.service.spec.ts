@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
@@ -160,6 +161,10 @@ describe('IntelligenceEngineService', () => {
                 {
                     provide: EnvelopeRepository,
                     useValue: mockEnvelopeRepo,
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { get: jest.fn().mockReturnValue(5) },
                 },
             ],
         }).compile();

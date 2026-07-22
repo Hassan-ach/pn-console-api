@@ -60,6 +60,18 @@ model Envelope {
   @@map("envelope")
 }
 
+model PluginCursor {
+  id         String   @id @default(uuid()) @db.Uuid
+  pluginName String   @map("plugin_name")
+  userId     String   @map("user_id")
+  key        String
+  value      BigInt
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([pluginName, userId, key])
+  @@map("plugin_cursor")
+}
+
 model CapabilityFailure {
   id             String   @id @default(uuid()) @db.Uuid
   capabilityName String   @map("capability_name")
