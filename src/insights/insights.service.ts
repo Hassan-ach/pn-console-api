@@ -22,6 +22,7 @@ export class InsightsService {
     async findAllForUser(
         userId: string,
         type?: InsightType,
+        status?: InsightActionStatus,
     ): Promise<
         {
             id: string;
@@ -30,7 +31,7 @@ export class InsightsService {
             status: InsightActionStatus;
         }[]
     > {
-        return this.insightRepository.findByOwnerId(userId, type);
+        return this.insightRepository.findByOwnerId(userId, type, status);
     }
 
     async findOneForUser(id: string, userId: string): Promise<Insight> {
