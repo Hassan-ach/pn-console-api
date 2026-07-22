@@ -40,6 +40,19 @@ export interface PluginContext {
         items: EnvelopeWithPayload[],
         userId: string,
     ): Promise<StoreResult>;
+
+    getCursor(
+        pluginName: string,
+        userId: string,
+        key: string,
+    ): Promise<number | null>;
+    saveCursor(
+        pluginName: string,
+        userId: string,
+        key: string,
+        value: number,
+    ): Promise<void>;
+
     resolveOrgId(userId: string): string;
     logger: PluginLogger;
 }

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { Test } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
+import chunkingConfig from '../../config/chunking.config';
 
 import { ChunkingModule } from './chunking.module';
 import { ChunkingPipeline } from './chunking-pipeline.service';
@@ -13,7 +15,13 @@ describe('ChunkingPipeline (real exported dataset)', () => {
 
     beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [ChunkingModule],
+            imports: [
+                ConfigModule.forRoot({
+                    isGlobal: true,
+                    load: [chunkingConfig],
+                }),
+                ChunkingModule,
+            ],
         }).compile();
 
         pipeline = moduleRef.get(ChunkingPipeline);
