@@ -60,6 +60,12 @@ export class TelegramPluginService implements IPlugin {
             await client.connect();
             const me = await client.getMe();
             const platformUserId = String(me.id);
+            // const fullName = [me.firstName, me.lastName]
+            //     .filter(Boolean)
+            //     .join(' ');
+            // const platformUsername =
+            //     fullName || (me.username as string) || platformUserId;
+
             const platformUsername =
                 (me.username as string) ||
                 (me.firstName as string) ||
@@ -172,7 +178,9 @@ export class TelegramPluginService implements IPlugin {
                         userId,
                         chatId,
                     );
-                    offsetId = stored ?? this.config.get<number>('telegram.backfillOffsetId', 1);
+                    offsetId =
+                        stored ??
+                        this.config.get<number>('telegram.backfillOffsetId', 1);
                 } else {
                     offsetId = 0;
                 }
