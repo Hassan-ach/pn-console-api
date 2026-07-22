@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import { ChunkingPipeline } from './chunking/chunking-pipeline.service';
@@ -12,6 +13,8 @@ import { EnvelopeRepository } from '../repositories/envelope.repository';
 export class IntelligenceEngineService {
     private readonly logger = new Logger(IntelligenceEngineService.name);
 
+    private readonly previousInsightLimit: number;
+
     constructor(
         private readonly contextBuilder: EnterpriseContextBuilder,
         private readonly pipeline: ChunkingPipeline,
@@ -19,7 +22,13 @@ export class IntelligenceEngineService {
         private readonly persistence: InsightPersistenceService,
         private readonly failureRepository: CapabilityFailureRepository,
         private readonly envelopeRepo: EnvelopeRepository,
-    ) {}
+        private readonly config: ConfigService,
+    ) {
+        this.previousInsightLimit = this.config.get<number>(
+            'engine.previousInsightLimit',
+            5,
+        );
+    }
 
     async run(
         organizationId: string,
@@ -117,7 +126,7 @@ export class IntelligenceEngineService {
 
     private buildQuery(chunk: DataChunk): PreviousIntelligenceQuery {
         const firstEnv = chunk.envelopes[0];
-        if (!firstEnv) return { limit: 5 };
+        if (!firstEnv) return { limit: this.previousInsightLimit };
 
         const scope: PreviousIntelligenceQuery['scope'] = {
             sourcePlugin: firstEnv.envelope.sourcePlugin,
@@ -132,6 +141,6 @@ export class IntelligenceEngineService {
             scope.groupId = firstEnv.payload.groupId;
         }
 
-        return { scope, limit: 5 };
+        return { scope, limit: this.previousInsightLimit };
     }
 }

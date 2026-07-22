@@ -4,6 +4,7 @@ import {
     NotImplementedException,
     UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IPlugin, PlatformUserInfo } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
@@ -31,7 +32,10 @@ interface TelegramConfig {
 @Injectable()
 export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
-    constructor(private readonly factory: TelegramClientFactory) {}
+    constructor(
+        private readonly factory: TelegramClientFactory,
+        private readonly config: ConfigService,
+    ) {}
 
     async validateAuth(
         sessionString: string,
@@ -151,18 +155,31 @@ export class TelegramPluginService implements IPlugin {
                     ? Number(chatId)
                     : chatId;
                 const chatEntity = await client.getEntity(resolvedChatId);
-                let offsetId = 1;
+                let offsetId = this.config.get<number>(
+                    'telegram.backfillOffsetId',
+                    1,
+                );
+                let reverse = this.config.get<boolean>(
+                    'telegram.reverse',
+                    true,
+                );
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
                 while (totalFetched < maxLimit) {
-                    const batchSize = Math.min(100, maxLimit - totalFetched);
+                    const batchSize = Math.min(
+                        this.config.get<number>(
+                            'telegram.backfillBatchSize',
+                            100,
+                        ),
+                        maxLimit - totalFetched,
+                    );
                     const messages: any[] = await client.getMessages(
                         chatEntity,
                         {
                             limit: batchSize,
                             offsetId,
-                            reverse: true,
+                            reverse,
                         },
                     );
 
@@ -224,7 +241,8 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
+                                    | number
+                                    | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,

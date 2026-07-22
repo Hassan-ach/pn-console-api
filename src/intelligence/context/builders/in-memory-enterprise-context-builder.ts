@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 import { AppDbService } from '../../../prisma/app-db/app-db.service';
 import { Insight } from '../../../types/insight.types';
@@ -15,12 +16,11 @@ import { toInsight, toEnvelopeWithPayload } from '../utils/context-mappers';
 @Injectable()
 export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
     private readonly logger = new Logger(InMemoryEnterpriseContextBuilder.name);
-    private static readonly DEFAULT_INSIGHT_LIMIT = 20;
-
     constructor(
         private readonly rawDb: RawDbService,
         private readonly appDb: AppDbService,
         private readonly windowDiscovery: WindowDiscoveryService,
+        private readonly config: ConfigService,
     ) {
         super();
     }
@@ -129,7 +129,7 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
     ): Promise<Insight[]> {
         const limit =
             query.limit ??
-            InMemoryEnterpriseContextBuilder.DEFAULT_INSIGHT_LIMIT;
+            this.config.get<number>('context.defaultInsightLimit', 20);
         if (limit <= 0) return [];
 
         const scope = query.scope;

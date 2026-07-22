@@ -6,6 +6,10 @@ import jwtConfig from './config/jwt.config';
 import llmConfig from './config/llm.config';
 import oauthConfig from './config/oauth.config';
 import smtpConfig from './config/smtp.config';
+import engineConfig from './config/engine.config';
+import contextConfig from './config/context.config';
+import chunkingConfig from './config/chunking.config';
+import telegramConfig from './config/telegram.config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -31,6 +35,10 @@ import { AppController } from './app.controller';
                 llmConfig,
                 oauthConfig,
                 smtpConfig,
+                engineConfig,
+                contextConfig,
+                chunkingConfig,
+                telegramConfig,
             ],
         }),
         EventEmitterModule.forRoot({ wildcard: false }),
