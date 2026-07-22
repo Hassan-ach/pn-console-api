@@ -137,6 +137,14 @@ export class TelegramPluginService implements IPlugin {
         try {
             await client.connect();
 
+            // Mode toggle: 'first' (first N, oldest -> newest) vs 'last' (last N, newest -> oldest)
+            const mode = this.config.get<'first' | 'last'>(
+                'telegram.backfillMode',
+                'last',
+            );
+            const isFirstN = mode === 'first';
+            const reverse = isFirstN;
+
             for (const chat of cfg.chats) {
                 const chatId = chat.id;
                 context.logger.info(
@@ -155,14 +163,11 @@ export class TelegramPluginService implements IPlugin {
                     ? Number(chatId)
                     : chatId;
                 const chatEntity = await client.getEntity(resolvedChatId);
-                let offsetId = this.config.get<number>(
-                    'telegram.backfillOffsetId',
-                    1,
-                );
-                let reverse = this.config.get<boolean>(
-                    'telegram.reverse',
-                    true,
-                );
+
+                let offsetId = isFirstN
+                    ? this.config.get<number>('telegram.backfillOffsetId', 1)
+                    : 0;
+
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
@@ -268,7 +273,7 @@ export class TelegramPluginService implements IPlugin {
 
                     totalFetched += messages.length;
                     offsetId = messages[messages.length - 1].id as number;
-                    if (messages.length < 100) break;
+                    if (messages.length < batchSize) break;
                 }
 
                 if (pendingTopicEntries.length > 0) {

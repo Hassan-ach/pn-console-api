@@ -5,6 +5,7 @@ import * as os from 'node:os';
 export default registerAs('telegram', () => ({
     connectionRetries: 5,
     useWSS: true,
+    backfillMode: 'first', // 'first' | 'last'
     backfillBatchSize: 100,
     backfillOffsetId: 1,
     reverse: true,
