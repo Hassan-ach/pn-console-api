@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EnvelopeWithPayload } from '../../../types/envelope.types';
-import { Partitioner, PartitionResult } from './partitioner.interface';
+import { Partitioner, PartitionResult } from '../interfaces/partitioner.interface';
 
 @Injectable()
 export class TopicIdPartitioner implements Partitioner {

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PluginManagerService } from './plugins/plugin-manager.service';
-import { IngestOptions } from './types/ingestion-options.type';
-import { EnvelopesIngestedEvent } from '../intelligence/triggers/envelopes-ingested.event';
+import { PluginManagerService } from '../plugins/services/plugin-manager.service';
+import { IngestOptions } from '../types/ingestion-options.type';
+import { EnvelopesIngestedEvent } from '../../intelligence/triggers/envelopes-ingested.event';
 
 export interface IngestError {
     plugin: string;

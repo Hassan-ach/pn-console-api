@@ -5,16 +5,16 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IPlugin, PlatformUserInfo } from '../interfaces/plugin.interface';
-import type { StoreResult } from '../interfaces/plugin-context.interface';
-import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+import { IPlugin, PlatformUserInfo } from '../../interfaces/plugin.interface';
+import type { StoreResult } from '../../interfaces/plugin-context.interface';
+import type { EnvelopeWithPayload } from '../../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
-import { normalizeTelegramMessage } from './normalizer';
-import { resolveEntities, resolveTopicId } from './telegram-utils';
-import type { PluginContext } from '../interfaces/plugin-context.interface';
-import type { TelegramMessageRaw } from './telegram.types';
-import type { BackFillOpts } from '../interfaces/plugin.interface';
+import { normalizeTelegramMessage } from '../utils/normalizer';
+import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
+import type { PluginContext } from '../../interfaces/plugin-context.interface';
+import type { TelegramMessageRaw } from '../types/telegram.types';
+import type { BackFillOpts } from '../../interfaces/plugin.interface';
 
 interface TelegramChat {
     name: string;

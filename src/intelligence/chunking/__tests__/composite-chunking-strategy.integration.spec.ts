@@ -3,12 +3,12 @@ import { join } from 'node:path';
 
 import { Test } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
-import chunkingConfig from '../../config/chunking.config';
+import chunkingConfig from '../../../config/chunking.config';
 
-import { ChunkingModule } from './chunking.module';
-import { ChunkingPipeline } from './chunking-pipeline.service';
-import type { EnvelopeWithPayload } from '../../types/envelope.types';
-import type { DataChunk } from './types/data-chunk.type';
+import { ChunkingModule } from '../chunking.module';
+import { ChunkingPipeline } from '../services/chunking-pipeline.service';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+import type { DataChunk } from '../types/data-chunk.type';
 
 describe('ChunkingPipeline (real exported dataset)', () => {
     let pipeline: ChunkingPipeline;

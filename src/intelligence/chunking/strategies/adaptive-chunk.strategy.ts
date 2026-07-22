@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EnvelopeWithPayload } from '../../../types/envelope.types';
-import { ChunkingStrategy } from '../chunking-strategy.interface';
+import { ChunkingStrategy } from '../interfaces/chunking-strategy.interface';
 import { DataChunk } from '../types/data-chunk.type';
 
 export interface AdaptiveChunkOptions {
