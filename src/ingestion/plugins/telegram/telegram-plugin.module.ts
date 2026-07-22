@@ -1,8 +1,8 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { PluginManagerService } from '../plugin-manager.service';
+import { PluginManagerService } from '../services/plugin-manager.service';
 import { PluginsModule } from '../plugins.module';
-import { TelegramPluginService } from './telegram-plugin.service';
-import { TelegramClientFactory } from './telegram-client.factory';
+import { TelegramPluginService } from './services/telegram-plugin.service';
+import { TelegramClientFactory } from './services/telegram-client.factory';
 
 @Module({
     imports: [PluginsModule],

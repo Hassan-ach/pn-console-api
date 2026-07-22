@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { EnvelopeWithPayload } from '../../types/envelope.types';
-import { ChunkingStrategy } from './chunking-strategy.interface';
-import { CHUNKING_STRATEGY } from './chunking.token';
-import { DataChunk } from './types/data-chunk.type';
+import { EnvelopeWithPayload } from '../../../types/envelope.types';
+import { ChunkingStrategy } from '../interfaces/chunking-strategy.interface';
+import { CHUNKING_STRATEGY } from '../tokens/chunking.token';
+import { DataChunk } from '../types/data-chunk.type';
 
 @Injectable()
 export class ChunkingPipeline {

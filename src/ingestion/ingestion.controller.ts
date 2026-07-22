@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsInt, IsString } from 'class-validator';
-import { IngestionService } from './ingestion.service';
+import { IngestionService } from './services/ingestion.service';
 
 class BackfillItemDto {
     @IsString()

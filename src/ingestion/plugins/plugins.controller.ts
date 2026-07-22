@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PluginManagerService } from './plugin-manager.service';
+import { PluginManagerService } from './services/plugin-manager.service';
 import { PluginConfigDto } from './dto/plugin-config.dto';
 import { PluginLoginDto } from './dto/plugin-login.dto';
 

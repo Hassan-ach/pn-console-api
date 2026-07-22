@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
-import { EnvelopeWithPayload } from '../../types/envelope.types';
-import { ChunkingStrategy } from './chunking-strategy.interface';
-import { Partitioner } from './partitioners/partitioner.interface';
-import { DataChunk } from './types/data-chunk.type';
+import { EnvelopeWithPayload } from '../../../types/envelope.types';
+import { ChunkingStrategy } from '../interfaces/chunking-strategy.interface';
+import { Partitioner } from '../interfaces/partitioner.interface';
+import { DataChunk } from '../types/data-chunk.type';
 
 export interface CompositeChunkingOptions {
     partitioners: Partitioner[];

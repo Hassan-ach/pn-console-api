@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChunkingPipeline } from './chunking-pipeline.service';
-import { CHUNKING_STRATEGY } from './chunking.token';
-import { CompositeChunkingStrategy } from './composite-chunking-strategy';
+import { ChunkingPipeline } from './services/chunking-pipeline.service';
+import { CHUNKING_STRATEGY } from './tokens/chunking.token';
+import { CompositeChunkingStrategy } from './services/composite-chunking-strategy';
 import { SourcePartitioner } from './partitioners/source-partitioner';
 import { GroupIdPartitioner } from './partitioners/group-id-partitioner';
 import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
 import { TopicIdPartitioner } from './partitioners/topic-id-partitioner';
 import { DailyPartitioner } from './partitioners/daily-partitioner';
 import { PartitionerType } from '../../config/chunking.config';
-import { Partitioner } from './partitioners/partitioner.interface';
+import { Partitioner } from './interfaces/partitioner.interface';
 
 @Module({
     providers: [
