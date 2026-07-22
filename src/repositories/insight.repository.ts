@@ -72,7 +72,7 @@ export class InsightRepository {
             },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: {
                         owners: true,
@@ -155,7 +155,7 @@ export class InsightRepository {
                 where: { id },
                 include: {
                     versions: {
-                        orderBy: { createdAt: 'desc' },
+                        orderBy: { version: 'desc' },
                         take: 1,
                         include: {
                             owners: true,
@@ -173,7 +173,7 @@ export class InsightRepository {
         const insights = await this.prisma.insight.findMany({
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: {
                         owners: true,
@@ -191,7 +191,7 @@ export class InsightRepository {
             where: { organizationId },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: {
                         owners: true,
@@ -226,7 +226,7 @@ export class InsightRepository {
 
         const versions = await this.prisma.insightVersion.findMany({
             where,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { version: 'desc' },
             take: limit,
             include: {
                 owners: true,
@@ -259,6 +259,7 @@ export class InsightRepository {
     async findByOwnerId(
         ownerId: string,
         type?: InsightType,
+        status?: InsightActionStatus,
     ): Promise<
         {
             id: string;
@@ -281,7 +282,7 @@ export class InsightRepository {
                 type: true,
                 content: true,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { version: 'desc' },
         });
 
         const seen = new Set<string>();
@@ -326,11 +327,14 @@ export class InsightRepository {
         for (const v of versions) {
             if (seen.has(v.insightId)) {
                 seen.delete(v.insightId);
+                const ownerStatus =
+                    statusMap.get(v.id) ?? 'PENDING';
+                if (status && ownerStatus !== status) continue;
                 results.push({
                     id: v.insightId,
                     type: v.type,
                     content: v.content,
-                    status: statusMap.get(v.id) ?? 'PENDING',
+                    status: ownerStatus,
                 });
             }
         }
@@ -343,7 +347,7 @@ export class InsightRepository {
             where: { id },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: { owners: true },
                 },
@@ -395,7 +399,7 @@ export class InsightRepository {
             where: { id: insightId },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: { owners: true },
                 },
@@ -464,7 +468,7 @@ export class InsightRepository {
             where: { id: insightId },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: { owners: true },
                 },
@@ -530,7 +534,7 @@ export class InsightRepository {
             where: { id: insightId },
             include: {
                 versions: {
-                    orderBy: { createdAt: 'desc' },
+                    orderBy: { version: 'desc' },
                     take: 1,
                     include: { owners: true },
                 },
