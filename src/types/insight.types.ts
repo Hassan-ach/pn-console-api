@@ -32,18 +32,20 @@ export const INSIGHT_ACTION_MAP: Record<
     InsightType,
     readonly InsightActionStatus[]
 > = {
-    INFO: [InsightActionStatus.NOTED],
+    INFO: [InsightActionStatus.PENDING, InsightActionStatus.NOTED],
     TASK: [
+        InsightActionStatus.PENDING,
         InsightActionStatus.DONE,
         InsightActionStatus.BLOCKED,
         InsightActionStatus.IN_REVIEW,
     ],
     DECISION: [
+        InsightActionStatus.PENDING,
         InsightActionStatus.DECIDED,
         InsightActionStatus.DELEGATED,
         InsightActionStatus.DELAYED,
     ],
-    URGENCY: [InsightActionStatus.HIDDEN],
+    URGENCY: [InsightActionStatus.PENDING, InsightActionStatus.HIDDEN],
 };
 
 export interface Insight {

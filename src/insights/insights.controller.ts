@@ -35,7 +35,11 @@ export class InsightsController {
         @Req() req: { user: { id: string } },
         @Query(ValidationPipe) query: InsightsQueryDto,
     ) {
-        return this.insightsService.findAllForUser(req.user.id, query.type);
+        return this.insightsService.findAllForUser(
+            req.user.id,
+            query.type,
+            query.status,
+        );
     }
 
     @Get(':id')
