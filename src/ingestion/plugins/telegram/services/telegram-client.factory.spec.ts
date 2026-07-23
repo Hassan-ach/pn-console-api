@@ -5,7 +5,9 @@ describe('TelegramClientFactory', () => {
     let factory: TelegramClientFactory;
 
     beforeEach(() => {
-        const config = { get: jest.fn().mockReturnValue(5) } as unknown as ConfigService;
+        const config = {
+            get: jest.fn().mockReturnValue(5),
+        } as unknown as ConfigService;
         factory = new TelegramClientFactory(config);
     });
 
@@ -17,10 +19,10 @@ describe('TelegramClientFactory', () => {
             expect(client.apiHash).toBe('hash123');
         });
 
-    it('creates a client with empty session string', () => {
-        const client = factory.create(12345, 'hash123', '');
-        expect(client).toBeDefined();
-    });
+        it('creates a client with empty session string', () => {
+            const client = factory.create(12345, 'hash123', '');
+            expect(client).toBeDefined();
+        });
     });
 
     describe('destroy', () => {

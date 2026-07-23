@@ -39,7 +39,9 @@ describe('TelegramTopicStore', () => {
 
         it('updates existing entries', async () => {
             await store.setTopicId('chat1', 1, 10);
-            await store.setBatch([{ chatId: 'chat1', messageId: 1, topicId: 99 }]);
+            await store.setBatch([
+                { chatId: 'chat1', messageId: 1, topicId: 99 },
+            ]);
             await expect(store.getTopicId('chat1', 1)).resolves.toBe(99);
         });
 

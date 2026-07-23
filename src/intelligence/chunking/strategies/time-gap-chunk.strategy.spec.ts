@@ -30,7 +30,10 @@ function makeEnvelope(occurredAt: Date): EnvelopeWithPayload {
     };
 }
 
-async function collect(s: TimeGapChunkStrategy, batch: EnvelopeWithPayload[]): Promise<DataChunk[]> {
+async function collect(
+    s: TimeGapChunkStrategy,
+    batch: EnvelopeWithPayload[],
+): Promise<DataChunk[]> {
     const chunks: DataChunk[] = [];
     for await (const c of s.run(batch)) chunks.push(c);
     return chunks;
@@ -77,7 +80,10 @@ describe('TimeGapChunkStrategy', () => {
 
     describe('maxWindow split', () => {
         it('splits when window exceeds maxWindowMinutes', async () => {
-            const s = new TimeGapChunkStrategy({ gapMinutes: 999, maxWindowMinutes: 60 });
+            const s = new TimeGapChunkStrategy({
+                gapMinutes: 999,
+                maxWindowMinutes: 60,
+            });
             const batch = [
                 makeEnvelope(new Date(T0.getTime())),
                 makeEnvelope(new Date(T0.getTime() + 30 * 60 * 1000)),
@@ -110,9 +116,16 @@ describe('TimeGapChunkStrategy', () => {
             const s = new TimeGapChunkStrategy({ gapMinutes: 60 });
             const t1 = new Date(T0.getTime());
             const t2 = new Date(T0.getTime() + 10 * 60 * 1000);
-            const chunks = await collect(s, [makeEnvelope(t1), makeEnvelope(t2)]);
-            expect(chunks[0].metadata.timeRange.start.getTime()).toBe(t1.getTime());
-            expect(chunks[0].metadata.timeRange.end.getTime()).toBe(t2.getTime());
+            const chunks = await collect(s, [
+                makeEnvelope(t1),
+                makeEnvelope(t2),
+            ]);
+            expect(chunks[0].metadata.timeRange.start.getTime()).toBe(
+                t1.getTime(),
+            );
+            expect(chunks[0].metadata.timeRange.end.getTime()).toBe(
+                t2.getTime(),
+            );
             expect(chunks[0].metadata.envelopeCount).toBe(2);
         });
     });

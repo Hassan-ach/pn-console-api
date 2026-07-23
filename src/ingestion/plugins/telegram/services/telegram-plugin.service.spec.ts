@@ -33,7 +33,9 @@ const mockContext: jest.Mocked<PluginContext> = {
     },
 };
 
-const mockConfig = { get: jest.fn().mockReturnValue(undefined) } as unknown as ConfigService;
+const mockConfig = {
+    get: jest.fn().mockReturnValue(undefined),
+} as unknown as ConfigService;
 
 describe('TelegramPluginService', () => {
     let service: TelegramPluginService;
@@ -58,7 +60,9 @@ describe('TelegramPluginService', () => {
                 sessionString: 'sess',
                 chats: [],
             } as never);
-            mockClient.connect.mockRejectedValueOnce(new Error('connection refused'));
+            mockClient.connect.mockRejectedValueOnce(
+                new Error('connection refused'),
+            );
 
             await expect(
                 service.validateAuth('sessionStr', mockContext, 'user1'),
@@ -73,44 +77,74 @@ describe('TelegramPluginService', () => {
                 chats: [],
             } as never);
             mockClient.connect.mockResolvedValue(undefined);
-            mockClient.getMe.mockResolvedValue({ id: 123, username: 'testuser', firstName: 'Test' });
+            mockClient.getMe.mockResolvedValue({
+                id: 123,
+                username: 'testuser',
+                firstName: 'Test',
+            });
 
-            const result = await service.validateAuth('sessionStr', mockContext, 'user1');
+            const result = await service.validateAuth(
+                'sessionStr',
+                mockContext,
+                'user1',
+            );
             expect(result.platformUserId).toBe('123');
             expect(result.platformUsername).toBe('testuser');
-            expect(mockContext.storeUserMapping).toHaveBeenCalledWith('user1', 'telegram', {
-                platformUserId: '123',
-                platformUsername: 'testuser',
-            });
+            expect(mockContext.storeUserMapping).toHaveBeenCalledWith(
+                'user1',
+                'telegram',
+                {
+                    platformUserId: '123',
+                    platformUsername: 'testuser',
+                },
+            );
         });
     });
 
     describe('isConnected', () => {
         it('returns false when no config', async () => {
             mockContext.getConfig.mockResolvedValue(null);
-            await expect(service.isConnected(mockContext, 'user1')).resolves.toBe(false);
+            await expect(
+                service.isConnected(mockContext, 'user1'),
+            ).resolves.toBe(false);
         });
 
         it('returns false when no sessionString', async () => {
-            mockContext.getConfig.mockResolvedValue({ apiId: 1, apiHash: 'h', chats: [] } as never);
-            await expect(service.isConnected(mockContext, 'user1')).resolves.toBe(false);
+            mockContext.getConfig.mockResolvedValue({
+                apiId: 1,
+                apiHash: 'h',
+                chats: [],
+            } as never);
+            await expect(
+                service.isConnected(mockContext, 'user1'),
+            ).resolves.toBe(false);
         });
 
         it('returns false when connect errors', async () => {
             mockContext.getConfig.mockResolvedValue({
-                apiId: 1, apiHash: 'h', sessionString: 's', chats: [],
+                apiId: 1,
+                apiHash: 'h',
+                sessionString: 's',
+                chats: [],
             } as never);
             mockClient.connect.mockRejectedValueOnce(new Error('fail'));
-            await expect(service.isConnected(mockContext, 'user1')).resolves.toBe(false);
+            await expect(
+                service.isConnected(mockContext, 'user1'),
+            ).resolves.toBe(false);
         });
 
         it('returns client.connected value on success', async () => {
             mockContext.getConfig.mockResolvedValue({
-                apiId: 1, apiHash: 'h', sessionString: 's', chats: [],
+                apiId: 1,
+                apiHash: 'h',
+                sessionString: 's',
+                chats: [],
             } as never);
             mockClient.connect.mockResolvedValue(undefined);
             mockClient.connected = true;
-            await expect(service.isConnected(mockContext, 'user1')).resolves.toBe(true);
+            await expect(
+                service.isConnected(mockContext, 'user1'),
+            ).resolves.toBe(true);
         });
     });
 });

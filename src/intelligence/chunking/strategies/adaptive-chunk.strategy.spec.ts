@@ -33,7 +33,10 @@ function makeEnvelope(occurredAt: Date, src = 'telegram'): EnvelopeWithPayload {
     };
 }
 
-async function collect(s: AdaptiveChunkStrategy, batch: EnvelopeWithPayload[]): Promise<DataChunk[]> {
+async function collect(
+    s: AdaptiveChunkStrategy,
+    batch: EnvelopeWithPayload[],
+): Promise<DataChunk[]> {
     const chunks: DataChunk[] = [];
     for await (const c of s.run(batch)) chunks.push(c);
     return chunks;
@@ -44,8 +47,13 @@ const T0 = new Date('2026-06-01T12:00:00Z');
 describe('AdaptiveChunkStrategy', () => {
     describe('batch within maxMessages', () => {
         it('emits single chunk when batch fits', async () => {
-            const s = new AdaptiveChunkStrategy({ maxMessages: 10, strategies: [] });
-            const batch = Array.from({ length: 3 }, (_, i) => makeEnvelope(new Date(T0.getTime() + i * 1000)));
+            const s = new AdaptiveChunkStrategy({
+                maxMessages: 10,
+                strategies: [],
+            });
+            const batch = Array.from({ length: 3 }, (_, i) =>
+                makeEnvelope(new Date(T0.getTime() + i * 1000)),
+            );
             const chunks = await collect(s, batch);
             expect(chunks).toHaveLength(1);
             expect(chunks[0].envelopes).toHaveLength(3);
@@ -54,8 +62,13 @@ describe('AdaptiveChunkStrategy', () => {
 
     describe('force-split when strategies exhausted', () => {
         it('force-splits by maxMessages when no strategies left', async () => {
-            const s = new AdaptiveChunkStrategy({ maxMessages: 2, strategies: [] });
-            const batch = Array.from({ length: 5 }, (_, i) => makeEnvelope(new Date(T0.getTime() + i * 1000)));
+            const s = new AdaptiveChunkStrategy({
+                maxMessages: 2,
+                strategies: [],
+            });
+            const batch = Array.from({ length: 5 }, (_, i) =>
+                makeEnvelope(new Date(T0.getTime() + i * 1000)),
+            );
             const chunks = await collect(s, batch);
             expect(chunks).toHaveLength(3); // 2+2+1
             expect(chunks[0].envelopes).toHaveLength(2);
@@ -70,15 +83,38 @@ describe('AdaptiveChunkStrategy', () => {
                 name: 'mock',
                 async *run(batch) {
                     // Split into two groups by source
-                    const tg = batch.filter(e => e.envelope.sourcePlugin === 'telegram');
-                    const dc = batch.filter(e => e.envelope.sourcePlugin === 'discord');
-                    if (tg.length) yield { id: 'tg', envelopes: tg, metadata: { timeRange: { start: T0, end: T0 }, envelopeCount: tg.length } };
-                    if (dc.length) yield { id: 'dc', envelopes: dc, metadata: { timeRange: { start: T0, end: T0 }, envelopeCount: dc.length } };
+                    const tg = batch.filter(
+                        (e) => e.envelope.sourcePlugin === 'telegram',
+                    );
+                    const dc = batch.filter(
+                        (e) => e.envelope.sourcePlugin === 'discord',
+                    );
+                    if (tg.length)
+                        yield {
+                            id: 'tg',
+                            envelopes: tg,
+                            metadata: {
+                                timeRange: { start: T0, end: T0 },
+                                envelopeCount: tg.length,
+                            },
+                        };
+                    if (dc.length)
+                        yield {
+                            id: 'dc',
+                            envelopes: dc,
+                            metadata: {
+                                timeRange: { start: T0, end: T0 },
+                                envelopeCount: dc.length,
+                            },
+                        };
                 },
             };
 
             // batch.length > maxMessages forces strategy use
-            const s = new AdaptiveChunkStrategy({ maxMessages: 1, strategies: [mockStrategy] });
+            const s = new AdaptiveChunkStrategy({
+                maxMessages: 1,
+                strategies: [mockStrategy],
+            });
             const batch = [
                 makeEnvelope(T0, 'telegram'),
                 makeEnvelope(T0, 'discord'),
@@ -94,12 +130,24 @@ describe('AdaptiveChunkStrategy', () => {
                 name: 'mock',
                 async *run(batch) {
                     // Pass-through
-                    yield { id: 'all', envelopes: batch, metadata: { timeRange: { start: T0, end: T0 }, envelopeCount: batch.length } };
+                    yield {
+                        id: 'all',
+                        envelopes: batch,
+                        metadata: {
+                            timeRange: { start: T0, end: T0 },
+                            envelopeCount: batch.length,
+                        },
+                    };
                 },
             };
 
-            const s = new AdaptiveChunkStrategy({ maxMessages: 2, strategies: [mockStrategy] });
-            const batch = Array.from({ length: 6 }, (_, i) => makeEnvelope(new Date(T0.getTime() + i * 1000)));
+            const s = new AdaptiveChunkStrategy({
+                maxMessages: 2,
+                strategies: [mockStrategy],
+            });
+            const batch = Array.from({ length: 6 }, (_, i) =>
+                makeEnvelope(new Date(T0.getTime() + i * 1000)),
+            );
             const chunks = await collect(s, batch);
             // strategy returns 6 as one chunk, adaptive sees 6 > 2, no more strategies → force-split
             expect(chunks).toHaveLength(3);
