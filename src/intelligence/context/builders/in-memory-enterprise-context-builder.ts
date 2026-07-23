@@ -186,7 +186,12 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
         organizationId: string,
         spec: { ids?: string[]; windowStart?: Date; windowEnd?: Date },
     ): Promise<EnvelopeWithPayload[]> {
-        const where: Record<string, unknown> = { organizationId };
+        const where: Record<string, unknown> = {
+            organizationId,
+            status: {
+                not: 'READY',
+            },
+        };
 
         if (spec.ids) {
             where.id = { in: spec.ids };
