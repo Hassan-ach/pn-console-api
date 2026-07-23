@@ -81,6 +81,7 @@ model User {
   platformMappings    PlatformUserMapping[]
   insightOwnerships   InsightVersionOwner[]
   passwordResetTokens PasswordResetToken[]
+  chatMessages        ChatMessage[]
 
   @@unique([email, providerType])
   @@map("users")
@@ -139,6 +140,11 @@ enum JobStatus {
   FAILED
 }
 
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
 model UnresolvedOwner {
   id               String         @id @default(uuid()) @db.Uuid
   platformUserId   String?        @map("platform_user_id")
@@ -190,4 +196,17 @@ model Job {
   @@index([organizationId])
   @@index([status])
   @@map("jobs")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      ChatRole
+  content   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
 }
