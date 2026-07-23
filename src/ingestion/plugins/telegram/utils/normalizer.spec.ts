@@ -1,5 +1,5 @@
 import { normalizeTelegramMessage } from './normalizer';
-import type { TelegramMessageRaw } from '../types/telegram.types';
+import type { TelegramMessageRaw } from './normalizer';
 
 describe('normalizeTelegramMessage', () => {
     const fullMessage: TelegramMessageRaw = {

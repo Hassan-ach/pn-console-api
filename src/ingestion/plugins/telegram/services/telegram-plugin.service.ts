@@ -13,7 +13,7 @@ import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from '../utils/normalizer';
 import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
 import type { PluginContext } from '../../interfaces/plugin-context.interface';
-import type { TelegramMessageRaw } from '../types/telegram.types';
+import type { TelegramMessageRaw } from '../utils/normalizer';
 import type { BackFillOpts } from '../../interfaces/plugin.interface';
 
 interface TelegramChat {
@@ -157,7 +157,12 @@ export class TelegramPluginService implements IPlugin {
                     `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
                 );
 
-                const topicStore = new TelegramTopicStore(userId, chatId);
+                const topicStore = new TelegramTopicStore(
+                    userId,
+                    chatId,
+                    this.config.get<string>('telegram.topicStoreBasePath'),
+                    this.config.get<string>('telegram.topicStoreFileSuffix'),
+                );
                 const messageToTopicMap = await topicStore.prewarmChat();
                 const pendingTopicEntries: {
                     chatId: string;

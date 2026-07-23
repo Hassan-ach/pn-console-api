@@ -1,5 +1,22 @@
 import { EnvelopeWithPayload } from '../../../../types/envelope.types';
-import type { TelegramMessageRaw } from '../types/telegram.types';
+import type { ResolvedEntity } from './telegram-utils';
+
+export interface TelegramMessageRaw {
+    id: number;
+    channel_id: string | null;
+    group_id: string | null;
+    text: string;
+    date: Date;
+    replyTo: number | null;
+    topic_id: number | null;
+    author_id: string | null;
+    hasAttachment: boolean;
+    reactions: Record<string, unknown>;
+    pinned: boolean;
+    editedDate: string | null;
+    resolved_entities: ResolvedEntity[] | null;
+    raw: Record<string, unknown>;
+}
 
 export function normalizeTelegramMessage(
     msg: TelegramMessageRaw,

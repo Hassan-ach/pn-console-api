@@ -1,8 +1,0 @@
-export enum PluginState {
-    CREATED = 'CREATED',
-    INITIALIZED = 'INITIALIZED',
-    LOGGED_IN = 'LOGGED_IN',
-    STREAMING = 'STREAMING',
-    STOPPED = 'STOPPED',
-    ERROR = 'ERROR',
-}
