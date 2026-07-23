@@ -66,10 +66,9 @@ describe('JobsController', () => {
         it('passes status filter to service', async () => {
             service.getJobsByUser.mockResolvedValue([mockJob]);
 
-            await controller.findAll(
-                { user: { id: 'user-1' } },
-                { status: JobStatus.RUNNING } as any,
-            );
+            await controller.findAll({ user: { id: 'user-1' } }, {
+                status: JobStatus.RUNNING,
+            } as any);
 
             expect(service.getJobsByUser).toHaveBeenCalledWith(
                 'user-1',
@@ -104,9 +103,9 @@ describe('JobsController', () => {
                 new NotFoundException('Job not found'),
             );
 
-            await expect(
-                controller.findOne('nonexistent'),
-            ).rejects.toThrow(NotFoundException);
+            await expect(controller.findOne('nonexistent')).rejects.toThrow(
+                NotFoundException,
+            );
         });
     });
 });

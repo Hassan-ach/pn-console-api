@@ -77,7 +77,11 @@ describe('JobService', () => {
         });
 
         it('creates a job with only title', async () => {
-            const minimalJob = { ...mockJob, progressable: false, progress: null };
+            const minimalJob = {
+                ...mockJob,
+                progressable: false,
+                progress: null,
+            };
             repository.create.mockResolvedValue(minimalJob);
 
             await service.createJob('Data Ingestion');
@@ -117,7 +121,16 @@ describe('JobService', () => {
         it('passes status to repository', async () => {
             repository.create.mockResolvedValue(mockJob);
 
-            await service.createJob('Job', undefined, undefined, false, undefined, undefined, undefined, JobStatus.RUNNING);
+            await service.createJob(
+                'Job',
+                undefined,
+                undefined,
+                false,
+                undefined,
+                undefined,
+                undefined,
+                JobStatus.RUNNING,
+            );
 
             expect(repository.create).toHaveBeenCalledWith(
                 expect.objectContaining({ status: JobStatus.RUNNING }),
@@ -127,7 +140,14 @@ describe('JobService', () => {
         it('passes message to repository', async () => {
             repository.create.mockResolvedValue(mockJob);
 
-            await service.createJob('Job', undefined, undefined, false, undefined, 'Initial message');
+            await service.createJob(
+                'Job',
+                undefined,
+                undefined,
+                false,
+                undefined,
+                'Initial message',
+            );
 
             expect(repository.create).toHaveBeenCalledWith(
                 expect.objectContaining({ message: 'Initial message' }),

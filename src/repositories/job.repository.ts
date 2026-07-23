@@ -30,7 +30,7 @@ export class JobRepository {
         progressable?: boolean;
         status?: JobStatus;
         message?: string;
-        progress?: number; 
+        progress?: number;
     }): Promise<JobRecord> {
         return this.appDb.job.create({ data });
     }

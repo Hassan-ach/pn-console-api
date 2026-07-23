@@ -43,9 +43,7 @@ export class JobsController {
     @Get(':id')
     @ApiOperation({ summary: 'Get job by ID' })
     @ApiOkResponse({ type: JobResponseDto })
-    async findOne(
-        @Param('id') id: string,
-    ): Promise<JobResponseDto> {
+    async findOne(@Param('id') id: string): Promise<JobResponseDto> {
         const job = await this.jobService.getJob(id);
         return plainToInstance(JobResponseDto, job);
     }
