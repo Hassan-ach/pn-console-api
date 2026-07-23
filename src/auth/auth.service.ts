@@ -217,7 +217,7 @@ export class AuthService {
 
         const passwordHash = await bcrypt.hash(dto.password, 10);
 
-        await this.db.user.update({
+        const user = await this.db.user.update({
             where: { id: resetToken.userId },
             data: {
                 passwordHash,
@@ -229,7 +229,16 @@ export class AuthService {
             where: { userId: resetToken.userId },
         });
 
-        return { message: 'Password updated successfully.' };
+        const accessToken = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            tokenVersion: user.tokenVersion,
+        });
+
+        return {
+            access_token: accessToken,
+            message: 'Password updated successfully.',
+        };
     }
 
     async relayResetToken(token: string) {
