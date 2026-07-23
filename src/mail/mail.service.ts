@@ -34,7 +34,10 @@ export class MailService {
                        style="display: inline-block; padding: 12px 24px; background-color: #f97316; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold;">
                         Reset Password
                     </a>
-                    <p style="margin-top: 24px; color: #999; font-size: 12px;">
+                    <p style="margin-top: 24px; color: #555; font-size: 13px;">
+                        After clicking the button, go back to the desktop app to reset your password.
+                    </p>
+                    <p style="margin-top: 12px; color: #999; font-size: 12px;">
                         If you didn't request this, you can safely ignore this email.
                     </p>
                 </div>

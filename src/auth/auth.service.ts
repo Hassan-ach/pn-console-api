@@ -217,7 +217,7 @@ export class AuthService {
 
         const passwordHash = await bcrypt.hash(dto.password, 10);
 
-        await this.db.user.update({
+        const user = await this.db.user.update({
             where: { id: resetToken.userId },
             data: {
                 passwordHash,
@@ -229,7 +229,50 @@ export class AuthService {
             where: { userId: resetToken.userId },
         });
 
-        return { message: 'Password updated successfully.' };
+        const accessToken = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            tokenVersion: user.tokenVersion,
+        });
+
+        return {
+            access_token: accessToken,
+            message: 'Password updated successfully.',
+        };
+    }
+
+    async relayResetToken(token: string) {
+        const resetToken = await this.db.passwordResetToken.findUnique({
+            where: { token },
+            include: { user: true },
+        });
+
+        if (!resetToken || resetToken.expiresAt < new Date()) {
+            return;
+        }
+
+        await this.db.passwordResetToken.update({
+            where: { id: resetToken.id },
+            data: { relayedAt: new Date() },
+        });
+    }
+
+    async getPendingReset(email: string) {
+        const normalizedEmail = email.toLowerCase().trim();
+
+        const resetToken = await this.db.passwordResetToken.findFirst({
+            where: {
+                user: { email: normalizedEmail, providerType: 'EMAIL' },
+                relayedAt: { not: null },
+                expiresAt: { gt: new Date() },
+            },
+        });
+
+        if (!resetToken) {
+            return { token: null };
+        }
+
+        return { token: resetToken.token };
     }
 
     async relayResetToken(token: string) {
