@@ -87,7 +87,10 @@ export class AuthController {
     async relayResetToken(@Query('token') token: string, @Res() res: Response) {
         await this.authService.relayResetToken(token);
         res.send(
-            '<html><body style="font-family:Arial;text-align:center;padding:80px;"><p>You can close this tab and return to the desktop app.</p></body></html>',
+            `<html><body style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;text-align:center;">
+                <h2 style="margin-bottom:16px;">Password Reset</h2>
+                <p style="color:#555;">Go back to the desktop app to reset your password.</p>
+            </body></html>`,
         );
     }
 
