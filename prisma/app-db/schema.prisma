@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output = "../../generated/app-db-client"
+  output   = "../../generated/app-db-client"
 }
 
 datasource db {
@@ -19,23 +19,23 @@ model Insight {
 }
 
 model InsightVersion {
-  id        String      @id @default(uuid()) @db.Uuid
-  insightId String      @db.Uuid
-  version   Int
-  type      InsightType
-  content   String
-  owners              InsightVersionOwner[]
-  unresolvedOwners    UnresolvedOwner[]
-  broadcasted Boolean   @default(false)
-  envolopsRef    String[]  @default([])
+  id               String                @id @default(uuid()) @db.Uuid
+  insightId        String                @db.Uuid
+  version          Int
+  type             InsightType
+  content          String
+  owners           InsightVersionOwner[]
+  unresolvedOwners UnresolvedOwner[]
+  broadcasted      Boolean               @default(false)
+  envolopsRef      String[]              @default([])
 
-  sourcePlugin   String?   @map("source_plugin")
-  groupId        String?   @map("group_id")
-  channelId      String?   @map("channel_id")
-  topicId        String?   @map("topic_id")
+  sourcePlugin String? @map("source_plugin")
+  groupId      String? @map("group_id")
+  channelId    String? @map("channel_id")
+  topicId      String? @map("topic_id")
 
-  createdAt DateTime    @default(now()) @map("created_at")
-  insight   Insight     @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@unique([insightId, version])
   @@index([insightId])
@@ -45,15 +45,15 @@ model InsightVersion {
 }
 
 model InsightVersionOwner {
-  id               String   @id @default(uuid()) @db.Uuid
-  insightVersionId String   @map("insight_version_id") @db.Uuid
-  userId           String   @map("user_id") @db.Uuid
+  id               String              @id @default(uuid()) @db.Uuid
+  insightVersionId String              @map("insight_version_id") @db.Uuid
+  userId           String              @map("user_id") @db.Uuid
   status           InsightActionStatus @default(PENDING)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
 
-  insightVersion   InsightVersion @relation(fields: [insightVersionId], references: [id], onDelete: Cascade)
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insightVersion InsightVersion @relation(fields: [insightVersionId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([insightVersionId, userId])
   @@index([insightVersionId])
@@ -69,17 +69,17 @@ enum ProviderType {
 }
 
 model User {
-  id               String                  @id @default(uuid()) @db.Uuid
-  firstName        String                  @map("first_name")
-  lastName         String?                 @map("last_name")
-  email            String
-  passwordHash     String?                 @map("password_hash")
-  providerType     ProviderType            @default(EMAIL) @map("provider_type")
-  tokenVersion     Int                     @default(0) @map("token_version")
-  createdAt        DateTime                @default(now()) @map("created_at")
-  updatedAt        DateTime                @updatedAt @map("updated_at")
-  platformMappings PlatformUserMapping[]
-  insightOwnerships InsightVersionOwner[]
+  id                  String                @id @default(uuid()) @db.Uuid
+  firstName           String                @map("first_name")
+  lastName            String?               @map("last_name")
+  email               String
+  passwordHash        String?               @map("password_hash")
+  providerType        ProviderType          @default(EMAIL) @map("provider_type")
+  tokenVersion        Int                   @default(0) @map("token_version")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  platformMappings    PlatformUserMapping[]
+  insightOwnerships   InsightVersionOwner[]
   passwordResetTokens PasswordResetToken[]
 
   @@unique([email, providerType])
@@ -133,13 +133,13 @@ enum InsightActionStatus {
 }
 
 model UnresolvedOwner {
-  id               String @id @default(uuid()) @db.Uuid
-  platformUserId   String? @map("platform_user_id")
-  platformUsername String? @map("platform_username")
-  pluginName       String @map("plugin_name")
-  insightVersionId String @map("insight_version_id") @db.Uuid
+  id               String         @id @default(uuid()) @db.Uuid
+  platformUserId   String?        @map("platform_user_id")
+  platformUsername String?        @map("platform_username")
+  pluginName       String         @map("plugin_name")
+  insightVersionId String         @map("insight_version_id") @db.Uuid
   insightVersion   InsightVersion @relation(fields: [insightVersionId], references: [id], onDelete: Cascade)
-  createdAt        DateTime @default(now()) @map("created_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
 
   @@index([insightVersionId])
   @@index([pluginName, platformUserId])

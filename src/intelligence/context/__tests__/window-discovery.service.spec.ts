@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { WindowDiscoveryService } from '../services/window-discovery.service';
 import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 
@@ -15,6 +16,7 @@ describe('WindowDiscoveryService', () => {
             providers: [
                 WindowDiscoveryService,
                 { provide: RawDbService, useValue: rawDb },
+                { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(1000) } },
             ],
         }).compile();
 

@@ -4,16 +4,17 @@ import {
     NotImplementedException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { IPlugin, PlatformUserInfo } from '../interfaces/plugin.interface';
-import type { StoreResult } from '../interfaces/plugin-context.interface';
-import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+import { ConfigService } from '@nestjs/config';
+import { IPlugin, PlatformUserInfo } from '../../interfaces/plugin.interface';
+import type { StoreResult } from '../../interfaces/plugin-context.interface';
+import type { EnvelopeWithPayload } from '../../../../types/envelope.types';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
-import { normalizeTelegramMessage } from './normalizer';
-import { resolveEntities, resolveTopicId } from './telegram-utils';
-import type { PluginContext } from '../interfaces/plugin-context.interface';
-import type { TelegramMessageRaw } from './telegram.types';
-import type { BackFillOpts } from '../interfaces/plugin.interface';
+import { normalizeTelegramMessage } from '../utils/normalizer';
+import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
+import type { PluginContext } from '../../interfaces/plugin-context.interface';
+import type { TelegramMessageRaw } from '../types/telegram.types';
+import type { BackFillOpts } from '../../interfaces/plugin.interface';
 
 interface TelegramChat {
     name: string;
@@ -31,7 +32,10 @@ interface TelegramConfig {
 @Injectable()
 export class TelegramPluginService implements IPlugin {
     readonly name = 'telegram';
-    constructor(private readonly factory: TelegramClientFactory) {}
+    constructor(
+        private readonly factory: TelegramClientFactory,
+        private readonly config: ConfigService,
+    ) {}
 
     async validateAuth(
         sessionString: string,
@@ -56,6 +60,12 @@ export class TelegramPluginService implements IPlugin {
             await client.connect();
             const me = await client.getMe();
             const platformUserId = String(me.id);
+            // const fullName = [me.firstName, me.lastName]
+            //     .filter(Boolean)
+            //     .join(' ');
+            // const platformUsername =
+            //     fullName || (me.username as string) || platformUserId;
+
             const platformUsername =
                 (me.username as string) ||
                 (me.firstName as string) ||
@@ -133,6 +143,14 @@ export class TelegramPluginService implements IPlugin {
         try {
             await client.connect();
 
+            // Mode toggle: 'first' (first N, oldest -> newest) vs 'last' (last N, newest -> oldest)
+            const mode = this.config.get<'first' | 'last'>(
+                'telegram.backfillMode',
+                'last',
+            );
+            const isFirstN = mode === 'first';
+            const reverse = isFirstN;
+
             for (const chat of cfg.chats) {
                 const chatId = chat.id;
                 context.logger.info(
@@ -151,18 +169,39 @@ export class TelegramPluginService implements IPlugin {
                     ? Number(chatId)
                     : chatId;
                 const chatEntity = await client.getEntity(resolvedChatId);
-                let offsetId = 1;
+
+                // Resume from last stored offset if in 'first' mode
+                let offsetId: number;
+                if (isFirstN) {
+                    const stored = await context.getCursor(
+                        this.name,
+                        userId,
+                        chatId,
+                    );
+                    offsetId =
+                        stored ??
+                        this.config.get<number>('telegram.backfillOffsetId', 1);
+                } else {
+                    offsetId = 0;
+                }
+
                 let totalFetched = 0;
                 const maxLimit = limit < 0 ? Infinity : limit;
 
                 while (totalFetched < maxLimit) {
-                    const batchSize = Math.min(100, maxLimit - totalFetched);
+                    const batchSize = Math.min(
+                        this.config.get<number>(
+                            'telegram.backfillBatchSize',
+                            100,
+                        ),
+                        maxLimit - totalFetched,
+                    );
                     const messages: any[] = await client.getMessages(
                         chatEntity,
                         {
                             limit: batchSize,
                             offsetId,
-                            reverse: true,
+                            reverse,
                         },
                     );
 
@@ -224,7 +263,8 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
+                                    | number
+                                    | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
@@ -250,7 +290,16 @@ export class TelegramPluginService implements IPlugin {
 
                     totalFetched += messages.length;
                     offsetId = messages[messages.length - 1].id as number;
-                    if (messages.length < 100) break;
+                    // Save cursor after every batch so resume picks up from here
+                    if (isFirstN) {
+                        await context.saveCursor(
+                            this.name,
+                            userId,
+                            chatId,
+                            offsetId,
+                        );
+                    }
+                    if (messages.length < batchSize) break;
                 }
 
                 if (pendingTopicEntries.length > 0) {

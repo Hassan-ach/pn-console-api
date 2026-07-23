@@ -1,9 +1,9 @@
-import { CompositeChunkingStrategy } from './composite-chunking-strategy';
-import { SourcePartitioner } from './partitioners/source-partitioner';
-import { GroupIdPartitioner } from './partitioners/group-id-partitioner';
-import { ChannelIdPartitioner } from './partitioners/channel-id-partitioner';
-import type { EnvelopeWithPayload } from '../../types/envelope.types';
-import type { DataChunk } from './types/data-chunk.type';
+import { CompositeChunkingStrategy } from '../composite-chunking-strategy';
+import { SourcePartitioner } from '../../partitioners/source-partitioner';
+import { GroupIdPartitioner } from '../../partitioners/group-id-partitioner';
+import { ChannelIdPartitioner } from '../../partitioners/channel-id-partitioner';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+import type { DataChunk } from '../../types/data-chunk.type';
 
 function makeEnvelope(overrides?: {
     sourcePlugin?: string;

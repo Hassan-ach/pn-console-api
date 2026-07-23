@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { TelegramClient as GramJsClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
 
@@ -14,6 +15,9 @@ const DC_IPS: Record<number, string> = {
 @Injectable()
 export class TelegramClientFactory {
     private readonly logger = new Logger(TelegramClientFactory.name);
+
+    constructor(private readonly config: ConfigService) {}
+
     create(
         apiId: number,
         apiHash: string,
@@ -31,8 +35,11 @@ export class TelegramClientFactory {
         }
 
         return new GramJsClient(session, apiId, apiHash, {
-            connectionRetries: 5,
-            useWSS: true,
+            connectionRetries: this.config.get<number>(
+                'telegram.connectionRetries',
+                5,
+            ),
+            useWSS: this.config.get<boolean>('telegram.useWSS', true),
         });
     }
 

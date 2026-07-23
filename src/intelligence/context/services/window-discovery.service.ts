@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 import { RetrievalWindow } from '../types/enterprise-context.types';
 
@@ -6,7 +7,10 @@ import { RetrievalWindow } from '../types/enterprise-context.types';
 export class WindowDiscoveryService {
     private readonly logger = new Logger(WindowDiscoveryService.name);
 
-    constructor(private readonly rawDb: RawDbService) {}
+    constructor(
+        private readonly rawDb: RawDbService,
+        private readonly config: ConfigService,
+    ) {}
 
     async discoverWindows(
         organizationId: string,
@@ -16,7 +20,9 @@ export class WindowDiscoveryService {
             windowEnd?: Date;
         },
     ): Promise<RetrievalWindow[]> {
-        const minMessages = options?.minMessages ?? 1000;
+        const minMessages =
+            options?.minMessages ??
+            this.config.get<number>('context.windowMinMessages', 1000);
 
         type RawWindow = {
             window_start: Date;
