@@ -132,6 +132,13 @@ enum InsightActionStatus {
   HIDDEN
 }
 
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 model UnresolvedOwner {
   id               String         @id @default(uuid()) @db.Uuid
   platformUserId   String?        @map("platform_user_id")
@@ -162,4 +169,25 @@ model PluginConfig {
   @@index([userId])
   @@index([pluginName])
   @@map("plugin_configs")
+}
+
+model Job {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String?   @map("user_id") @db.Uuid
+  organizationId String?   @map("organization_id")
+  title          String
+  description    String?
+  progressable   Boolean   @default(false)
+  progress       Int?
+  message        String?
+  status         JobStatus @default(PENDING)
+  startedAt      DateTime? @map("started_at") @db.Timestamptz
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("jobs")
 }
