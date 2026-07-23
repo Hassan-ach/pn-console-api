@@ -275,40 +275,6 @@ export class AuthService {
         return { token: resetToken.token };
     }
 
-    async relayResetToken(token: string) {
-        const resetToken = await this.db.passwordResetToken.findUnique({
-            where: { token },
-            include: { user: true },
-        });
-
-        if (!resetToken || resetToken.expiresAt < new Date()) {
-            return;
-        }
-
-        await this.db.passwordResetToken.update({
-            where: { id: resetToken.id },
-            data: { relayedAt: new Date() },
-        });
-    }
-
-    async getPendingReset(email: string) {
-        const normalizedEmail = email.toLowerCase().trim();
-
-        const resetToken = await this.db.passwordResetToken.findFirst({
-            where: {
-                user: { email: normalizedEmail, providerType: 'EMAIL' },
-                relayedAt: { not: null },
-                expiresAt: { gt: new Date() },
-            },
-        });
-
-        if (!resetToken) {
-            return { token: null };
-        }
-
-        return { token: resetToken.token };
-    }
-
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private async loginOrCreateOAuthUser(
