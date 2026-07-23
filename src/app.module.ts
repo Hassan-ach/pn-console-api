@@ -22,6 +22,7 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { DemoModule } from './demo/demo.module';
 import { InsightsModule } from './insights/insights.module';
+import { JobsModule } from './jobs/jobs.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -51,6 +52,7 @@ import { AppController } from './app.controller';
         MailModule,
         DemoModule,
         InsightsModule,
+        JobsModule,
     ],
     controllers: [AppController],
     providers: [

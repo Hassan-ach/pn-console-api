@@ -8,6 +8,7 @@ import { CapabilityFailureRepository } from './capability-failure.repository';
 import { EnvelopeRepository } from './envelope.repository';
 import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
 import { PluginConfigRepository } from './plugin-config.repository';
+import { JobRepository } from './job.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -19,6 +20,7 @@ import { PluginConfigRepository } from './plugin-config.repository';
         EnvelopeRepository,
         UnresolvedOwnerRepository,
         PluginConfigRepository,
+        JobRepository,
     ],
     exports: [
         InsightRepository,
@@ -28,6 +30,7 @@ import { PluginConfigRepository } from './plugin-config.repository';
         EnvelopeRepository,
         UnresolvedOwnerRepository,
         PluginConfigRepository,
+        JobRepository,
     ],
 })
 export class RepositoriesModule {}
