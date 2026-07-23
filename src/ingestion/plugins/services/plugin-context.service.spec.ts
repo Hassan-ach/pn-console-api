@@ -182,26 +182,26 @@ describe('PluginContextService', () => {
             );
 
             expect(result).toEqual({ inserted: 2, ids: ['e1', 'e2'] });
-            expect(
-                mockEnvelopeRepo.createManyWithPayload,
-            ).toHaveBeenCalledWith([
-                {
-                    envelope: expect.objectContaining({
-                        sourcePlugin: 'telegram',
-                        sourceId: '123',
-                        organizationId: 'org-1',
-                    }),
-                    payload: { content: 'hello' },
-                },
-                {
-                    envelope: expect.objectContaining({
-                        sourcePlugin: 'telegram',
-                        sourceId: '456',
-                        organizationId: 'custom-org',
-                    }),
-                    payload: { content: 'world' },
-                },
-            ]);
+            expect(mockEnvelopeRepo.createManyWithPayload).toHaveBeenCalledWith(
+                [
+                    {
+                        envelope: expect.objectContaining({
+                            sourcePlugin: 'telegram',
+                            sourceId: '123',
+                            organizationId: 'org-1',
+                        }),
+                        payload: { content: 'hello' },
+                    },
+                    {
+                        envelope: expect.objectContaining({
+                            sourcePlugin: 'telegram',
+                            sourceId: '456',
+                            organizationId: 'custom-org',
+                        }),
+                        payload: { content: 'world' },
+                    },
+                ],
+            );
         });
     });
 

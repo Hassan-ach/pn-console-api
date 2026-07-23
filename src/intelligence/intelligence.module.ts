@@ -7,8 +7,8 @@ import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
-import { IntelligenceEngineService } from './services/intelligence-engine.service';
-import { EnvelopesIngestedListener } from './triggers/services/envelopes-ingested.listener';
+import { IntelligenceEngineService } from './intelligence-engine.service';
+import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
 @Module({
     providers: [IntelligenceEngineService, EnvelopesIngestedListener],

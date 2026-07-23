@@ -38,7 +38,9 @@ describe('normalizeTelegramMessage', () => {
         expect(result.payload.pinned).toBe(true);
         expect(result.payload.groupId).toBe('grp-1');
         expect(result.payload.channelId).toBe('ch-1');
-        expect(result.payload.editedDate).toEqual(new Date('2025-01-15T11:00:00Z'));
+        expect(result.payload.editedDate).toEqual(
+            new Date('2025-01-15T11:00:00Z'),
+        );
     });
 
     it('maps null replyTo and topic_id to null', () => {

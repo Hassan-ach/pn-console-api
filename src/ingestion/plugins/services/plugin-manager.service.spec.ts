@@ -77,7 +77,9 @@ describe('PluginManagerService', () => {
 
         it('throws ConflictException on duplicate registration', () => {
             service.register(mockPlugin);
-            expect(() => service.register(mockPlugin)).toThrow(ConflictException);
+            expect(() => service.register(mockPlugin)).toThrow(
+                ConflictException,
+            );
         });
     });
 
@@ -135,9 +137,7 @@ describe('PluginManagerService', () => {
             const plugin2: jest.Mocked<IPlugin> = {
                 name: 'broken-plugin',
                 backfill: jest.fn(),
-                isConnected: jest
-                    .fn()
-                    .mockRejectedValue(new Error('boom')),
+                isConnected: jest.fn().mockRejectedValue(new Error('boom')),
                 validateAuth: jest.fn(),
                 startStream: jest.fn(),
                 stopStream: jest.fn(),
@@ -239,9 +239,9 @@ describe('PluginManagerService', () => {
         });
 
         it('throws if plugin not found', async () => {
-            await expect(
-                service.disconnect('unknown', 'u1'),
-            ).rejects.toThrow(NotFoundException);
+            await expect(service.disconnect('unknown', 'u1')).rejects.toThrow(
+                NotFoundException,
+            );
         });
     });
 
@@ -256,9 +256,9 @@ describe('PluginManagerService', () => {
         });
 
         it('throws if plugin not found', async () => {
-            await expect(
-                service.deleteConfig('unknown', 'u1'),
-            ).rejects.toThrow(NotFoundException);
+            await expect(service.deleteConfig('unknown', 'u1')).rejects.toThrow(
+                NotFoundException,
+            );
         });
     });
 

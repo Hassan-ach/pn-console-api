@@ -46,8 +46,13 @@ describe('DailyPartitioner', () => {
 
     describe('below minChunkMessages', () => {
         it('returns single all bucket when group is below min threshold', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 10, maxChunkMessages: 20 });
-            const batch = Array.from({ length: 5 }, () => makeEnvelope(sameDay(base)));
+            const p = new DailyPartitioner({
+                minChunkMessages: 10,
+                maxChunkMessages: 20,
+            });
+            const batch = Array.from({ length: 5 }, () =>
+                makeEnvelope(sameDay(base)),
+            );
             const result = p.split(batch);
 
             expect(result).toHaveLength(1);
@@ -58,8 +63,13 @@ describe('DailyPartitioner', () => {
 
     describe('single day fits in one bucket', () => {
         it('groups envelopes from same day under the date key', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 5, maxChunkMessages: 20 });
-            const batch = Array.from({ length: 10 }, () => makeEnvelope(sameDay(base)));
+            const p = new DailyPartitioner({
+                minChunkMessages: 5,
+                maxChunkMessages: 20,
+            });
+            const batch = Array.from({ length: 10 }, () =>
+                makeEnvelope(sameDay(base)),
+            );
             const result = p.split(batch);
 
             expect(result).toHaveLength(1);
@@ -70,7 +80,10 @@ describe('DailyPartitioner', () => {
 
     describe('merge adjacent small days', () => {
         it('merges two small days when combined size <= maxChunkMessages', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 10, maxChunkMessages: 15 });
+            const p = new DailyPartitioner({
+                minChunkMessages: 10,
+                maxChunkMessages: 15,
+            });
             const batch = [
                 ...Array.from({ length: 5 }, () => makeEnvelope(sameDay(base))),
                 ...Array.from({ length: 5 }, () => makeEnvelope(sameDay(day2))),
@@ -85,9 +98,14 @@ describe('DailyPartitioner', () => {
 
     describe('skip merge when bucket already >= minChunkMessages', () => {
         it('does not merge if existing bucket is already at min threshold', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 10, maxChunkMessages: 30 });
+            const p = new DailyPartitioner({
+                minChunkMessages: 10,
+                maxChunkMessages: 30,
+            });
             const batch = [
-                ...Array.from({ length: 10 }, () => makeEnvelope(sameDay(base))),
+                ...Array.from({ length: 10 }, () =>
+                    makeEnvelope(sameDay(base)),
+                ),
                 ...Array.from({ length: 5 }, () => makeEnvelope(sameDay(day2))),
             ];
             const result = p.split(batch);
@@ -102,10 +120,17 @@ describe('DailyPartitioner', () => {
 
     describe('skip merge when combining would exceed max', () => {
         it('does not merge if combined size would exceed maxChunkMessages', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 5, maxChunkMessages: 20 });
+            const p = new DailyPartitioner({
+                minChunkMessages: 5,
+                maxChunkMessages: 20,
+            });
             const batch = [
-                ...Array.from({ length: 12 }, () => makeEnvelope(sameDay(base))),
-                ...Array.from({ length: 12 }, () => makeEnvelope(sameDay(day2))),
+                ...Array.from({ length: 12 }, () =>
+                    makeEnvelope(sameDay(base)),
+                ),
+                ...Array.from({ length: 12 }, () =>
+                    makeEnvelope(sameDay(day2)),
+                ),
             ];
             const result = p.split(batch);
 
@@ -119,7 +144,10 @@ describe('DailyPartitioner', () => {
 
     describe('empty input', () => {
         it('returns single all bucket for empty batch (below min threshold)', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 5, maxChunkMessages: 20 });
+            const p = new DailyPartitioner({
+                minChunkMessages: 5,
+                maxChunkMessages: 20,
+            });
             const result = p.split([]);
 
             expect(result).toHaveLength(1);
@@ -130,7 +158,10 @@ describe('DailyPartitioner', () => {
 
     describe('complex multi-day merge', () => {
         it('merges early small days but splits larger later day', () => {
-            const p = new DailyPartitioner({ minChunkMessages: 5, maxChunkMessages: 10 });
+            const p = new DailyPartitioner({
+                minChunkMessages: 5,
+                maxChunkMessages: 10,
+            });
             const batch = [
                 ...Array.from({ length: 4 }, () => makeEnvelope(sameDay(base))),
                 ...Array.from({ length: 4 }, () => makeEnvelope(sameDay(day2))),

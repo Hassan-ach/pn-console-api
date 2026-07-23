@@ -16,7 +16,10 @@ describe('WindowDiscoveryService', () => {
             providers: [
                 WindowDiscoveryService,
                 { provide: RawDbService, useValue: rawDb },
-                { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(1000) } },
+                {
+                    provide: ConfigService,
+                    useValue: { get: jest.fn().mockReturnValue(1000) },
+                },
             ],
         }).compile();
 

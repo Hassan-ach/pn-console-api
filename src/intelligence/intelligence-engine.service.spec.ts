@@ -1,20 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
-import { IntelligenceEngineService } from '../../services/intelligence-engine.service';
-import { EnterpriseContextBuilder } from '../../context/builders/enterprise-context-builder.abstract';
-import { ChunkingPipeline } from '../../chunking/services/chunking-pipeline.service';
-import { CapabilityManager } from '../../capabilities/capability-manager.service';
-import { InsightPersistenceService } from '../../store/insight-persistence.service';
-import { CapabilityFailureRepository } from '../../../repositories/capability-failure.repository';
-import { EnvelopeRepository } from '../../../repositories/envelope.repository';
+import { IntelligenceEngineService } from './intelligence-engine.service';
+import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
+import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
+import { CapabilityManager } from './capabilities/capability-manager.service';
+import { InsightPersistenceService } from './store/insight-persistence.service';
+import { CapabilityFailureRepository } from './../repositories/capability-failure.repository';
+import { EnvelopeRepository } from './../repositories/envelope.repository';
 import type {
     EnterpriseContext,
     RetrievalWindow,
-} from '../../context/types/enterprise-context.types';
-import type { Insight } from '../../../types/insight.types';
-import type { DataChunk } from '../../chunking/types/data-chunk.type';
-import type { EnvelopeWithPayload } from '../../../types/envelope.types';
+} from './context/types/enterprise-context.types';
+import type { Insight } from './../types/insight.types';
+import type { DataChunk } from './chunking/types/data-chunk.type';
+import type { EnvelopeWithPayload } from './../types/envelope.types';
 
 const basePayload = {
     id: 'p1',

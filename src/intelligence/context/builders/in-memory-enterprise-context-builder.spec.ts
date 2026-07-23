@@ -110,10 +110,7 @@ describe('InMemoryEnterpriseContextBuilder', () => {
             id: 'e2',
             occurredAt: new Date('2026-07-02T12:00:00Z'),
         };
-        rawDb.envelope.findMany.mockResolvedValue([
-            baseEnvelopeRow,
-            row2,
-        ]);
+        rawDb.envelope.findMany.mockResolvedValue([baseEnvelopeRow, row2]);
 
         const contexts: any[] = [];
         for await (const ctx of builder.build('org-1', {
@@ -197,10 +194,9 @@ describe('InMemoryEnterpriseContextBuilder', () => {
         expect(contexts).toHaveLength(2);
         expect(contexts[0].window.messageCount).toBe(100);
         expect(contexts[1].window.messageCount).toBe(200);
-        expect(windowDiscovery.discoverWindows).toHaveBeenCalledWith(
-            'org-1',
-            { minMessages: 50 },
-        );
+        expect(windowDiscovery.discoverWindows).toHaveBeenCalledWith('org-1', {
+            minMessages: 50,
+        });
     });
 
     it('yields nothing when no windows discovered', async () => {

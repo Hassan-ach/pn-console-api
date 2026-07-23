@@ -55,13 +55,12 @@ describe('IngestionService', () => {
     });
 
     it('collects errors without stopping other plugins', async () => {
-        pluginManager.backfill.mockImplementation(
-            (name: string) =>
-                name === 'bad'
-                    ? (() => {
-                          throw new Error('fail');
-                      })()
-                    : asyncGen([{ inserted: 3, ids: ['x', 'y', 'z'] }]),
+        pluginManager.backfill.mockImplementation((name: string) =>
+            name === 'bad'
+                ? (() => {
+                      throw new Error('fail');
+                  })()
+                : asyncGen([{ inserted: 3, ids: ['x', 'y', 'z'] }]),
         );
 
         const result = await service.ingest({
