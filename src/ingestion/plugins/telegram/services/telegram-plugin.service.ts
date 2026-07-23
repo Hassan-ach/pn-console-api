@@ -13,7 +13,7 @@ import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from '../utils/normalizer';
 import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
 import type { PluginContext } from '../../interfaces/plugin-context.interface';
-import type { TelegramMessageRaw } from '../utils/normalizer';
+import type { TelegramMessageRaw } from '../types/telegram.types';
 import type { BackFillOpts } from '../../interfaces/plugin.interface';
 
 interface TelegramChat {

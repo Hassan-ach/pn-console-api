@@ -1,7 +1,7 @@
 import { ChunkingPipeline } from './chunking-pipeline.service';
 import type { ChunkingStrategy } from '../interfaces/chunking-strategy.interface';
 import type { DataChunk } from '../types/data-chunk.type';
-import type { EnvelopeWithPayload } from '../../types/envelope.types';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 
 const dummyEnvelope: EnvelopeWithPayload = {
     envelope: {

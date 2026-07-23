@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
-import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
-import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
-import { DataChunk } from './chunking/types/data-chunk.type';
-import { CapabilityManager } from './capabilities/capability-manager.service';
-import { InsightPersistenceService } from './store/insight-persistence.service';
-import { CapabilityFailureRepository } from './../repositories/capability-failure.repository';
-import { EnvelopeRepository } from './../repositories/envelope.repository';
+import { EnterpriseContextBuilder } from '../context/builders/enterprise-context-builder.abstract';
+import { PreviousIntelligenceQuery } from '../context/types/enterprise-context.types';
+import { ChunkingPipeline } from '../chunking/services/chunking-pipeline.service';
+import { DataChunk } from '../chunking/types/data-chunk.type';
+import { CapabilityManager } from '../capabilities/capability-manager.service';
+import { InsightPersistenceService } from '../store/insight-persistence.service';
+import { CapabilityFailureRepository } from '../../repositories/capability-failure.repository';
+import { EnvelopeRepository } from '../../repositories/envelope.repository';
 
 @Injectable()
 export class IntelligenceEngineService {

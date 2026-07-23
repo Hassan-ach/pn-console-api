@@ -1,5 +1,5 @@
 import { DailyPartitioner } from './daily-partitioner';
-import type { EnvelopeWithPayload } from '../../types/envelope.types';
+import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 
 function makeEnvelope(occurredAt?: Date): EnvelopeWithPayload {
     return {
