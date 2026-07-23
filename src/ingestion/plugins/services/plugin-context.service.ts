@@ -13,10 +13,10 @@ import type {
 @Injectable()
 export class PluginContextService implements PluginContext {
     readonly logger: PluginLogger = {
-        info: (msg, ctx?) => this.nestLogger.log(msg),
-        warn: (msg, ctx?) => this.nestLogger.warn(msg),
-        error: (msg, ctx?) => this.nestLogger.error(msg),
-        debug: (msg, ctx?) => this.nestLogger.debug(msg),
+        info: (msg) => this.nestLogger.log(msg),
+        warn: (msg) => this.nestLogger.warn(msg),
+        error: (msg) => this.nestLogger.error(msg),
+        debug: (msg) => this.nestLogger.debug(msg),
     };
 
     private readonly nestLogger = new Logger('PluginContext');

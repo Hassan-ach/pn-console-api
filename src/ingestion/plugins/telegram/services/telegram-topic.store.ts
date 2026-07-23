@@ -12,11 +12,17 @@ interface TopicMappingEntry {
 
 @Injectable()
 export class TelegramTopicStore extends JsonStore<TopicMappingEntry> {
-    constructor(userId: string, chatId: string, basePath?: string) {
+    constructor(
+        userId: string,
+        chatId: string,
+        basePath?: string,
+        fileSuffix?: string,
+    ) {
         const base =
             basePath ??
             path.join(os.homedir(), '.pn-console', 'plugins', 'telegram');
-        const filePath = path.join(base, userId, `${chatId}__topics.json`);
+        const suffix = fileSuffix ?? '__topics.json';
+        const filePath = path.join(base, userId, `${chatId}${suffix}`);
         super(filePath);
     }
 

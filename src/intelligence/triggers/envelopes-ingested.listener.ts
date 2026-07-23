@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { EnvelopesIngestedEvent } from '../envelopes-ingested.event';
-import { IntelligenceEngineService } from '../../services/intelligence-engine.service';
+import { EnvelopesIngestedEvent } from './envelopes-ingested.event';
+import { IntelligenceEngineService } from '../intelligence-engine.service';
 
 @Injectable()
 export class EnvelopesIngestedListener {

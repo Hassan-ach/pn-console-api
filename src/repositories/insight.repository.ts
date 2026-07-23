@@ -327,8 +327,7 @@ export class InsightRepository {
         for (const v of versions) {
             if (seen.has(v.insightId)) {
                 seen.delete(v.insightId);
-                const ownerStatus =
-                    statusMap.get(v.id) ?? 'PENDING';
+                const ownerStatus = statusMap.get(v.id) ?? 'PENDING';
                 if (status && ownerStatus !== status) continue;
                 results.push({
                     id: v.insightId,

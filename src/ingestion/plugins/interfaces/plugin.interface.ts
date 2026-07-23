@@ -6,11 +6,6 @@ export interface PlatformUserInfo {
     platformUsername: string;
 }
 
-export type PluginLoginResult =
-    | { status: 'ok' }
-    | { status: 'need_code'; pendingId: string }
-    | { status: 'need_password'; pendingId: string };
-
 export interface BackFillOpts {
     limit: number;
     userId: string;

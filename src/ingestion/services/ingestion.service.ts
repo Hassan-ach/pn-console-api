@@ -1,12 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PluginManagerService } from '../plugins/services/plugin-manager.service';
-import { IngestOptions } from '../types/ingestion-options.type';
 import { EnvelopesIngestedEvent } from '../../intelligence/triggers/envelopes-ingested.event';
 
 export interface IngestError {
     plugin: string;
     message: string;
+}
+export interface PluginBackfill {
+    name: string;
+    limit: number;
+}
+export interface IngestOptions {
+    plugins: PluginBackfill[];
+    userId: string;
+    organizationId: string;
+    triggeredBy?: string;
 }
 
 @Injectable()

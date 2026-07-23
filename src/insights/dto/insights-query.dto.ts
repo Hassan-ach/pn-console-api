@@ -1,9 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
-import {
-    InsightActionStatus,
-    InsightType,
-} from 'src/types/insight.types';
+import { InsightActionStatus, InsightType } from 'src/types/insight.types';
 
 export class InsightsQueryDto {
     @ApiPropertyOptional({ enum: InsightType })

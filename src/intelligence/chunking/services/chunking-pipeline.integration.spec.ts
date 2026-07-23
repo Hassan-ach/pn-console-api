@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import chunkingConfig from '../../../config/chunking.config';
 
 import { ChunkingModule } from '../chunking.module';
-import { ChunkingPipeline } from '../services/chunking-pipeline.service';
+import { ChunkingPipeline } from './chunking-pipeline.service';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import type { DataChunk } from '../types/data-chunk.type';
 

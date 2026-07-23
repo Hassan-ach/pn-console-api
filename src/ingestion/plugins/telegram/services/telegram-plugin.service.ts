@@ -157,7 +157,12 @@ export class TelegramPluginService implements IPlugin {
                     `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
                 );
 
-                const topicStore = new TelegramTopicStore(userId, chatId);
+                const topicStore = new TelegramTopicStore(
+                    userId,
+                    chatId,
+                    this.config.get<string>('telegram.topicStoreBasePath'),
+                    this.config.get<string>('telegram.topicStoreFileSuffix'),
+                );
                 const messageToTopicMap = await topicStore.prewarmChat();
                 const pendingTopicEntries: {
                     chatId: string;
@@ -263,8 +268,7 @@ export class TelegramPluginService implements IPlugin {
                             date: ts,
                             replyTo:
                                 (msg.replyTo?.replyToMsgId as
-                                    | number
-                                    | undefined) ?? null,
+                                    number | undefined) ?? null,
                             topic_id: topicId,
                             author_id: authorId,
                             hasAttachment: !!msg.media,
