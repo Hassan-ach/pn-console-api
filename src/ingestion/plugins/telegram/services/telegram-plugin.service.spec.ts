@@ -59,7 +59,7 @@ describe('TelegramPluginService', () => {
                 apiHash: 'hash',
                 sessionString: 'sess',
                 chats: [],
-            } as never);
+            });
             mockClient.connect.mockRejectedValueOnce(
                 new Error('connection refused'),
             );
@@ -75,7 +75,7 @@ describe('TelegramPluginService', () => {
                 apiHash: 'hash',
                 sessionString: 'sess',
                 chats: [],
-            } as never);
+            });
             mockClient.connect.mockResolvedValue(undefined);
             mockClient.getMe.mockResolvedValue({
                 id: 123,
@@ -114,7 +114,7 @@ describe('TelegramPluginService', () => {
                 apiId: 1,
                 apiHash: 'h',
                 chats: [],
-            } as never);
+            });
             await expect(
                 service.isConnected(mockContext, 'user1'),
             ).resolves.toBe(false);
@@ -126,7 +126,7 @@ describe('TelegramPluginService', () => {
                 apiHash: 'h',
                 sessionString: 's',
                 chats: [],
-            } as never);
+            });
             mockClient.connect.mockRejectedValueOnce(new Error('fail'));
             await expect(
                 service.isConnected(mockContext, 'user1'),
@@ -139,7 +139,7 @@ describe('TelegramPluginService', () => {
                 apiHash: 'h',
                 sessionString: 's',
                 chats: [],
-            } as never);
+            });
             mockClient.connect.mockResolvedValue(undefined);
             mockClient.connected = true;
             await expect(
