@@ -24,7 +24,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 message = res;
             } else {
                 const body = res as Record<string, unknown>;
-                const msg = body?.message;
+                const msg = body?.message as string | string[] | undefined;
                 message = Array.isArray(msg)
                     ? String(msg[0])
                     : msg != null
