@@ -185,6 +185,7 @@ describe('PluginContextService', () => {
             expect(mockEnvelopeRepo.createManyWithPayload).toHaveBeenCalledWith(
                 [
                     {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         envelope: expect.objectContaining({
                             sourcePlugin: 'telegram',
                             sourceId: '123',
@@ -193,6 +194,7 @@ describe('PluginContextService', () => {
                         payload: { content: 'hello' },
                     },
                     {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         envelope: expect.objectContaining({
                             sourcePlugin: 'telegram',
                             sourceId: '456',

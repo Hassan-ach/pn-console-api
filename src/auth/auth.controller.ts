@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import {
     ApiBadRequestResponse,
     ApiConflictResponse,
@@ -60,8 +60,8 @@ export class AuthController {
     @ApiOperation({ summary: 'Log out and revoke current token' })
     @ApiOkResponse({ description: 'Logged out successfully' })
     @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
-    async logout(@Req() req: any) {
-        return this.authService.logout(req.user.id);
+    async logout(@Req() req: Request) {
+        return this.authService.logout(req.user!.id);
     }
 
     @Public()
@@ -116,13 +116,13 @@ export class AuthController {
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Google OAuth callback' })
-    async googleCallback(@Req() req, @Res() res: Response) {
+    async googleCallback(@Req() req: Request, @Res() res: Response) {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateGoogleUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'google_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
@@ -146,13 +146,13 @@ export class AuthController {
     @Get('microsoft/callback')
     @UseGuards(AuthGuard('microsoft'))
     @ApiOperation({ summary: 'Microsoft OAuth callback' })
-    async microsoftCallback(@Req() req, @Res() res: Response) {
+    async microsoftCallback(@Req() req: Request, @Res() res: Response) {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateMicrosoftUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'microsoft_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
@@ -176,13 +176,13 @@ export class AuthController {
     @Get('sso/callback')
     @UseGuards(AuthGuard('sso'))
     @ApiOperation({ summary: 'SSO (OIDC) callback' })
-    async ssoCallback(@Req() req, @Res() res: Response) {
+    async ssoCallback(@Req() req: Request, @Res() res: Response) {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateSsoUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'sso_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
