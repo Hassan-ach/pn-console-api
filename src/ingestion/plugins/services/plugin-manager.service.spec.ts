@@ -7,6 +7,7 @@ import type { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { PluginContext } from '../interfaces/plugin-context.interface';
 
+// eslint-disable-next-line @typescript-eslint/require-await
 async function* asyncGen<T>(items: T[]): AsyncIterable<T> {
     for (const item of items) {
         yield item;
@@ -42,7 +43,6 @@ const mockConfigRepo = {
 
 describe('PluginManagerService', () => {
     let service: PluginManagerService;
-    let configRepo: jest.Mocked<PluginConfigRepository>;
     let mockPlugin: jest.Mocked<IPlugin>;
 
     beforeEach(async () => {
@@ -55,7 +55,6 @@ describe('PluginManagerService', () => {
         }).compile();
 
         service = module.get(PluginManagerService);
-        configRepo = module.get(PluginConfigRepository);
 
         jest.clearAllMocks();
 
@@ -177,6 +176,7 @@ describe('PluginManagerService', () => {
                 limit: 10,
                 userId: 'u1',
             });
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             await expect(gen.next()).rejects.toThrow(NotFoundException);
         });
     });

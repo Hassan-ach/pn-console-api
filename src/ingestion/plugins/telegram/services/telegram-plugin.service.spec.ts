@@ -90,6 +90,7 @@ describe('TelegramPluginService', () => {
             );
             expect(result.platformUserId).toBe('123');
             expect(result.platformUsername).toBe('testuser');
+            // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(mockContext.storeUserMapping).toHaveBeenCalledWith(
                 'user1',
                 'telegram',
