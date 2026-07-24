@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { LlmService } from './llm.service';
 import { initChatModel } from 'langchain/chat_models/universal';
 import { AIMessage } from '@langchain/core/messages';
@@ -10,95 +11,171 @@ jest.mock('langchain/chat_models/universal', () => ({
 
 const mockInitChatModel = initChatModel as jest.Mock;
 
+function createMockConfig(
+    overrides: Record<string, string> = {},
+): jest.Mocked<ConfigService> {
+    const defaults: Record<string, string> = {
+        'llm.provider': '',
+        'llm.model': '',
+        'llm.apiKey': '',
+        'llm.baseUrl': '',
+    };
+    const config = { ...defaults, ...overrides };
+
+    return {
+        get: jest.fn((key: string) => config[key] ?? ''),
+    } as unknown as jest.Mocked<ConfigService>;
+}
+
 describe('LlmService', () => {
     let service: LlmService;
-    const ORIGINAL_ENV = process.env;
+    let mockConfig: jest.Mocked<ConfigService>;
 
     beforeEach(async () => {
         jest.resetAllMocks();
-
-        process.env = { ...ORIGINAL_ENV };
-        delete process.env.LLM_PROVIDER;
-        delete process.env.LLM_MODEL;
-        delete process.env.LLM_API_KEY;
-        delete process.env.LLM_BASE_URL;
+        mockConfig = createMockConfig();
 
         const module: TestingModule = await Test.createTestingModule({
-            providers: [LlmService],
+            providers: [
+                LlmService,
+                { provide: ConfigService, useValue: mockConfig },
+            ],
         }).compile();
 
         service = module.get<LlmService>(LlmService);
-    });
-
-    afterAll(() => {
-        process.env = ORIGINAL_ENV;
     });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
     });
 
-    describe('createLLM - required env validation', () => {
-        it('throws when LLM_PROVIDER is missing', async () => {
-            process.env.LLM_MODEL = 'gpt-4';
-            process.env.LLM_API_KEY = 'key';
+    describe('createLLM - required config validation', () => {
+        it('throws when llm.provider is missing', async () => {
+            mockConfig = createMockConfig({
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             await expect(service.createLLM()).rejects.toThrow(
-                'Missing required environment variable: LLM_PROVIDER',
+                'Missing required config: llm.provider',
             );
 
             expect(mockInitChatModel).not.toHaveBeenCalled();
         });
 
-        it('throws when LLM_PROVIDER is an empty string', async () => {
-            process.env.LLM_PROVIDER = '';
-            process.env.LLM_MODEL = 'gpt-4';
-            process.env.LLM_API_KEY = 'key';
+        it('throws when llm.provider is an empty string', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': '',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             await expect(service.createLLM()).rejects.toThrow(
-                'Missing required environment variable: LLM_PROVIDER',
+                'Missing required config: llm.provider',
             );
         });
 
-        it('throws when LLM_MODEL is missing', async () => {
-            process.env.LLM_PROVIDER = 'openai';
-            process.env.LLM_API_KEY = 'key';
+        it('throws when llm.model is missing', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             await expect(service.createLLM()).rejects.toThrow(
-                'Missing required environment variable: LLM_MODEL',
+                'Missing required config: llm.model',
             );
 
             expect(mockInitChatModel).not.toHaveBeenCalled();
         });
 
-        it('throws when LLM_API_KEY is missing for non-ollama providers', async () => {
-            process.env.LLM_PROVIDER = 'openai';
-            process.env.LLM_MODEL = 'gpt-4';
+        it('throws when llm.apiKey is missing for non-ollama providers', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': '',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
-            await expect(service.createLLM()).rejects.toThrow(
-                'Missing required environment variable: LLM_API_KEY',
+            mockInitChatModel.mockResolvedValue({});
+
+            await service.createLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'gpt-4',
+                expect.objectContaining({
+                    apiKey: '',
+                }),
             );
-
-            expect(mockInitChatModel).not.toHaveBeenCalled();
         });
 
-        it('throws when LLM_BASE_URL is missing for ollama', async () => {
-            process.env.LLM_PROVIDER = 'ollama';
-            process.env.LLM_MODEL = 'llama3';
+        it('throws when llm.baseUrl is missing for ollama', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'ollama',
+                'llm.model': 'llama3',
+                'llm.baseUrl': '',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
-            await expect(service.createLLM()).rejects.toThrow(
-                'Missing required environment variable: LLM_BASE_URL',
+            mockInitChatModel.mockResolvedValue({});
+
+            await service.createLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'llama3',
+                expect.objectContaining({
+                    baseUrl: '',
+                }),
             );
-
-            expect(mockInitChatModel).not.toHaveBeenCalled();
         });
     });
 
     describe('createLLM - error propagation', () => {
         it('propagates errors thrown by initChatModel', async () => {
-            process.env.LLM_PROVIDER = 'openai';
-            process.env.LLM_MODEL = 'gpt-4';
-            process.env.LLM_API_KEY = 'key';
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             mockInitChatModel.mockRejectedValue(
                 new Error('provider unreachable'),
@@ -110,15 +187,179 @@ describe('LlmService', () => {
         });
     });
 
-    describe('createToolModel', () => {
-        function setEnv() {
-            process.env.LLM_PROVIDER = 'openai';
-            process.env.LLM_MODEL = 'gpt-4';
-            process.env.LLM_API_KEY = 'key';
-        }
+    describe('createStreamingLLM', () => {
+        it('throws when llm.provider is missing', async () => {
+            mockConfig = createMockConfig({
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required config: llm.provider',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('throws when llm.model is missing', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required config: llm.model',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('returns a model with streaming enabled for openai', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            const mockStream = jest.fn();
+            mockInitChatModel.mockResolvedValue({ stream: mockStream });
+
+            const llm = await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'gpt-4',
+                expect.objectContaining({
+                    modelProvider: 'openai',
+                    streaming: true,
+                    temperature: 0,
+                }),
+            );
+            expect(llm).toBeDefined();
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            expect(llm.stream).toBeDefined();
+        });
+
+        it('returns a model with streaming enabled for ollama', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'ollama',
+                'llm.model': 'llama3',
+                'llm.baseUrl': 'http://localhost:11434',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            mockInitChatModel.mockResolvedValue({ stream: jest.fn() });
+
+            await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'llama3',
+                expect.objectContaining({
+                    modelProvider: 'ollama',
+                    streaming: true,
+                    temperature: 0,
+                    baseUrl: 'http://localhost:11434',
+                }),
+            );
+        });
+
+        it('returns a model with streaming enabled for openrouter', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openrouter',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'or-key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            mockInitChatModel.mockResolvedValue({ stream: jest.fn() });
+
+            await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'gpt-4',
+                expect.objectContaining({
+                    modelProvider: 'openai',
+                    streaming: true,
+                    temperature: 0,
+                    apiKey: 'or-key',
+                    configuration: {
+                        baseURL: 'https://openrouter.ai/api/v1',
+                    },
+                }),
+            );
+        });
+
+        it('propagates errors thrown by initChatModel', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            mockInitChatModel.mockRejectedValue(
+                new Error('provider unreachable'),
+            );
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'provider unreachable',
+            );
+        });
+    });
+
+    describe('createToolModel', () => {
         it('throws when bindTools is undefined on the model', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
             mockInitChatModel.mockResolvedValue({});
 
             await expect(service.createToolModel([])).rejects.toThrow(
@@ -126,14 +367,25 @@ describe('LlmService', () => {
             );
         });
 
-        it('throws when env vars are missing', async () => {
+        it('throws when config vars are missing', async () => {
             await expect(service.createToolModel([])).rejects.toThrow(
-                'Missing required environment variable',
+                'Missing required config',
             );
         });
 
         it('binds tools and returns the runnable', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             const mockRunnable = { invoke: jest.fn() };
             const mockBindTools = jest.fn().mockReturnValue(mockRunnable);
@@ -148,14 +400,20 @@ describe('LlmService', () => {
     });
 
     describe('createToolChain', () => {
-        function setEnv() {
-            process.env.LLM_PROVIDER = 'openai';
-            process.env.LLM_MODEL = 'gpt-4';
-            process.env.LLM_API_KEY = 'key';
-        }
-
         it('throws when bindTools is undefined on the model', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
             mockInitChatModel.mockResolvedValue({});
 
             await expect(
@@ -163,14 +421,25 @@ describe('LlmService', () => {
             ).rejects.toThrow('does not support tool calling');
         });
 
-        it('throws when env vars are missing', async () => {
+        it('throws when config vars are missing', async () => {
             await expect(
                 service.createToolChain({ tools: [] }),
-            ).rejects.toThrow('Missing required environment variable');
+            ).rejects.toThrow('Missing required config');
         });
 
         it('returns a chain that resolves with content when no tool calls', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             const mockToolModelInvoke = jest
                 .fn()
@@ -193,7 +462,18 @@ describe('LlmService', () => {
         });
 
         it('executes tool calls and returns final content', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             const toolInvoke = jest.fn().mockResolvedValue('tool_output');
 
@@ -231,7 +511,18 @@ describe('LlmService', () => {
         });
 
         it('throws when tool calling exceeds max iterations', async () => {
-            setEnv();
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4',
+                'llm.apiKey': 'key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
 
             const tools = [
                 { name: 'test_tool', invoke: jest.fn().mockResolvedValue('x') },

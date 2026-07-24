@@ -24,6 +24,7 @@ export class EnvelopesIngestedListener {
 
         try {
             const result = await this.engine.run(event.organizationId, {
+                userId: event.userId,
                 ...(event.envelopeIds?.length
                     ? { envelopeIds: event.envelopeIds }
                     : {}),

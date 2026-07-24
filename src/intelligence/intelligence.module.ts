@@ -7,6 +7,7 @@ import { StoreModule } from './store/store.module';
 import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
+import { JobsModule } from '../jobs/jobs.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
@@ -21,6 +22,7 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         MergeModule,
         ToolsModule,
         RepositoriesModule,
+        JobsModule,
     ],
     exports: [ContextModule, StoreModule, IntelligenceEngineService],
 })
