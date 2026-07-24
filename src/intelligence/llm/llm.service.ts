@@ -129,6 +129,7 @@ export class LlmService {
                 for (const call of response.tool_calls) {
                     const tool = toolMap[call.name];
                     if (!tool) throw new Error(`Unknown tool: ${call.name}`);
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     const result = await tool.invoke(
                         call.args as Record<string, unknown>,
                     );

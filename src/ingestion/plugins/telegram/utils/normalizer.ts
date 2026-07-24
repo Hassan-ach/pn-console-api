@@ -23,7 +23,10 @@ export function normalizeTelegramMessage(
             reactions: msg.reactions,
             pinned: msg.pinned,
             editedDate: msg.editedDate ? new Date(msg.editedDate) : null,
-            entities: msg.resolved_entities as any,
+            entities: msg.resolved_entities as unknown as Record<
+                string,
+                unknown
+            > | null,
             rawPayload: msg.raw,
         },
     };

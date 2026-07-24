@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { JobsController } from './jobs.controller';
@@ -52,7 +53,7 @@ describe('JobsController', () => {
 
             const result = await controller.findAll(
                 { user: { id: 'user-1' } },
-                {} as any,
+                {},
             );
 
             expect(service.getJobsByUser).toHaveBeenCalledWith(
@@ -66,9 +67,12 @@ describe('JobsController', () => {
         it('passes status filter to service', async () => {
             service.getJobsByUser.mockResolvedValue([mockJob]);
 
-            await controller.findAll({ user: { id: 'user-1' } }, {
-                status: JobStatus.RUNNING,
-            } as any);
+            await controller.findAll(
+                { user: { id: 'user-1' } },
+                {
+                    status: JobStatus.RUNNING,
+                },
+            );
 
             expect(service.getJobsByUser).toHaveBeenCalledWith(
                 'user-1',
@@ -81,7 +85,7 @@ describe('JobsController', () => {
 
             const result = await controller.findAll(
                 { user: { id: 'user-1' } },
-                {} as any,
+                {},
             );
 
             expect(result).toEqual([]);

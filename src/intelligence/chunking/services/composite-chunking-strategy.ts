@@ -22,6 +22,7 @@ export class CompositeChunkingStrategy implements ChunkingStrategy {
         this.partitioners = options.partitioners;
     }
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     async *run(batch: EnvelopeWithPayload[]): AsyncIterable<DataChunk> {
         let groups: GroupWithFingerprint[] = [
             { envelopes: batch, fingerprint: '' },

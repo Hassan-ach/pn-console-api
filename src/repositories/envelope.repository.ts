@@ -3,7 +3,7 @@ import { RawDbService } from '../prisma/raw-db/raw-db.service';
 import { Prisma } from 'generated/raw-db-client';
 
 function toJson(value: unknown): Prisma.InputJsonValue {
-    return JSON.parse(JSON.stringify(value));
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
 function parseStatus(status: string): 'PENDING' | 'READY' | 'FAILED' {
@@ -94,6 +94,7 @@ export class EnvelopeRepository {
 
                 const payload = await tx.messagePayload.create({
                     data: {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         type: item.payload.type as any,
                         content: item.payload.content,
                         groupId: item.payload.groupId,
@@ -118,6 +119,7 @@ export class EnvelopeRepository {
                     data: {
                         sourcePlugin: item.envelope.sourcePlugin,
                         sourceId: item.envelope.sourceId,
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         type: item.envelope.type as any,
                         payloadRef: payload.id,
                         hasAttachment: item.envelope.hasAttachment,
