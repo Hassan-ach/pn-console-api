@@ -2,6 +2,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
@@ -172,6 +173,13 @@ describe('IntelligenceEngineService', () => {
                 {
                     provide: ConfigService,
                     useValue: { get: jest.fn().mockReturnValue(5) },
+                },
+                {
+                    provide: EventEmitter2,
+                    useValue: {
+                        emit: jest.fn(),
+                        emitAsync: jest.fn().mockResolvedValue([]),
+                    },
                 },
             ],
         }).compile();
