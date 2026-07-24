@@ -197,9 +197,13 @@ export class InMemoryEnterpriseContextBuilder extends EnterpriseContextBuilder {
             where.id = { in: spec.ids };
         } else {
             where.occurredAt = {};
-            if (spec.windowStart)
-                (where.occurredAt as any).gte = spec.windowStart;
-            if (spec.windowEnd) (where.occurredAt as any).lte = spec.windowEnd;
+            if (spec.windowStart) {
+                (where.occurredAt as Record<string, Date>).gte =
+                    spec.windowStart;
+            }
+            if (spec.windowEnd) {
+                (where.occurredAt as Record<string, Date>).lte = spec.windowEnd;
+            }
         }
 
         const rows = await this.rawDb.envelope.findMany({

@@ -7,7 +7,6 @@ import type { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
 import type { PluginContext } from '../interfaces/plugin-context.interface';
 
-// eslint-disable-next-line @typescript-eslint/require-await
 async function* asyncGen<T>(items: T[]): AsyncIterable<T> {
     for (const item of items) {
         yield item;

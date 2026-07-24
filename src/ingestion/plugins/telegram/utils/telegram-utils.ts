@@ -4,6 +4,7 @@ export interface ResolvedEntity {
     raw: Record<string, unknown>;
 }
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 export function resolveEntities(
     text: string,
     rawEntities: any[],
@@ -26,7 +27,9 @@ export function resolveEntities(
         return { type, value, raw: rawEntity };
     });
 }
+/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 export function resolveTopicId(
     msg: any,
     raw: any,
@@ -61,3 +64,4 @@ export function resolveTopicId(
 
     return 1;
 }
+/* eslint-enable @typescript-eslint/no-unsafe-member-access */
