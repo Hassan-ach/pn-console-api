@@ -51,6 +51,41 @@ export class LlmService {
             ...providerFields,
         });
     }
+
+    async createStreamingLLM(): Promise<BaseChatModel> {
+        const provider = this.requireEnv('LLM_PROVIDER');
+        const model = this.requireEnv('LLM_MODEL');
+
+        let providerFields: Record<string, unknown>;
+        let modelProvider = provider;
+
+        if (provider === 'ollama') {
+            providerFields = {
+                baseUrl: this.requireEnv('LLM_BASE_URL'),
+                think: false,
+            };
+        } else if (provider === 'openrouter') {
+            modelProvider = 'openai';
+            providerFields = {
+                apiKey: this.requireEnv('LLM_API_KEY'),
+                configuration: {
+                    baseURL: 'https://openrouter.ai/api/v1',
+                },
+            };
+        } else {
+            providerFields = {
+                apiKey: this.requireEnv('LLM_API_KEY'),
+            };
+        }
+
+        return initChatModel(model, {
+            modelProvider,
+            temperature: 0,
+            streaming: true,
+            ...providerFields,
+        });
+    }
+
     async createToolModel(tools: StructuredTool[]): Promise<Runnable> {
         const llm = await this.createLLM();
 

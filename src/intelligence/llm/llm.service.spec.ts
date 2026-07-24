@@ -110,6 +110,132 @@ describe('LlmService', () => {
         });
     });
 
+    describe('createStreamingLLM', () => {
+        function setEnv() {
+            process.env.LLM_PROVIDER = 'openai';
+            process.env.LLM_MODEL = 'gpt-4';
+            process.env.LLM_API_KEY = 'key';
+        }
+
+        it('throws when LLM_PROVIDER is missing', async () => {
+            process.env.LLM_MODEL = 'gpt-4';
+            process.env.LLM_API_KEY = 'key';
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required environment variable: LLM_PROVIDER',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('throws when LLM_MODEL is missing', async () => {
+            process.env.LLM_PROVIDER = 'openai';
+            process.env.LLM_API_KEY = 'key';
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required environment variable: LLM_MODEL',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('throws when LLM_API_KEY is missing for non-ollama providers', async () => {
+            process.env.LLM_PROVIDER = 'openai';
+            process.env.LLM_MODEL = 'gpt-4';
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required environment variable: LLM_API_KEY',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('throws when LLM_BASE_URL is missing for ollama', async () => {
+            process.env.LLM_PROVIDER = 'ollama';
+            process.env.LLM_MODEL = 'llama3';
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'Missing required environment variable: LLM_BASE_URL',
+            );
+
+            expect(mockInitChatModel).not.toHaveBeenCalled();
+        });
+
+        it('returns a model with streaming enabled for openai', async () => {
+            setEnv();
+            const mockStream = jest.fn();
+            mockInitChatModel.mockResolvedValue({ stream: mockStream });
+
+            const llm = await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'gpt-4',
+                expect.objectContaining({
+                    modelProvider: 'openai',
+                    streaming: true,
+                    temperature: 0,
+                }),
+            );
+            expect(llm).toBeDefined();
+            expect(llm.stream).toBeDefined();
+        });
+
+        it('returns a model with streaming enabled for ollama', async () => {
+            process.env.LLM_PROVIDER = 'ollama';
+            process.env.LLM_MODEL = 'llama3';
+            process.env.LLM_BASE_URL = 'http://localhost:11434';
+
+            mockInitChatModel.mockResolvedValue({ stream: jest.fn() });
+
+            await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'llama3',
+                expect.objectContaining({
+                    modelProvider: 'ollama',
+                    streaming: true,
+                    temperature: 0,
+                    baseUrl: 'http://localhost:11434',
+                }),
+            );
+        });
+
+        it('returns a model with streaming enabled for openrouter', async () => {
+            process.env.LLM_PROVIDER = 'openrouter';
+            process.env.LLM_MODEL = 'gpt-4';
+            process.env.LLM_API_KEY = 'or-key';
+
+            mockInitChatModel.mockResolvedValue({ stream: jest.fn() });
+
+            await service.createStreamingLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'gpt-4',
+                expect.objectContaining({
+                    modelProvider: 'openai',
+                    streaming: true,
+                    temperature: 0,
+                    apiKey: 'or-key',
+                    configuration: {
+                        baseURL: 'https://openrouter.ai/api/v1',
+                    },
+                }),
+            );
+        });
+
+        it('propagates errors thrown by initChatModel', async () => {
+            setEnv();
+
+            mockInitChatModel.mockRejectedValue(
+                new Error('provider unreachable'),
+            );
+
+            await expect(service.createStreamingLLM()).rejects.toThrow(
+                'provider unreachable',
+            );
+        });
+    });
+
     describe('createToolModel', () => {
         function setEnv() {
             process.env.LLM_PROVIDER = 'openai';
