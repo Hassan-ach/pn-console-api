@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
@@ -8,6 +9,12 @@ import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
 import { EnvelopeRepository } from '../repositories/envelope.repository';
+import {
+    IntelligenceJobStartedEvent,
+    IntelligenceJobProgressEvent,
+    IntelligenceJobCompletedEvent,
+    IntelligenceJobFailedEvent,
+} from '../jobs/events/intelligence-job.events';
 
 @Injectable()
 export class IntelligenceEngineService {
@@ -23,6 +30,7 @@ export class IntelligenceEngineService {
         private readonly failureRepository: CapabilityFailureRepository,
         private readonly envelopeRepo: EnvelopeRepository,
         private readonly config: ConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {
         this.previousInsightLimit = this.config.get<number>(
             'engine.previousInsightLimit',
@@ -32,7 +40,12 @@ export class IntelligenceEngineService {
 
     async run(
         organizationId: string,
-        opts?: { envelopeIds?: string[]; windowStart?: Date; windowEnd?: Date },
+        opts?: {
+            userId?: string;
+            envelopeIds?: string[];
+            windowStart?: Date;
+            windowEnd?: Date;
+        },
     ): Promise<{ insightsPersisted: number }> {
         this.logger.log(
             `Starting intelligence run: org=${organizationId}${
@@ -42,6 +55,62 @@ export class IntelligenceEngineService {
             }${opts?.windowStart ? `, window=${String(opts.windowStart)}–${String(opts.windowEnd)}` : ''}`,
         );
 
+        let jobId: string | undefined;
+
+        if (opts?.userId) {
+            const results = (await this.eventEmitter.emitAsync(
+                'job.intelligence.started',
+                new IntelligenceJobStartedEvent(
+                    organizationId,
+                    opts.userId,
+                    'Intelligence Run',
+                    'Processing envelopes',
+                ),
+            )) as Array<{ jobId?: string }>;
+            const result = results?.[0];
+            if (result?.jobId) {
+                jobId = result.jobId;
+            }
+        }
+
+        try {
+            const result = await this.executeRun(organizationId, opts, jobId);
+            if (jobId) {
+                this.eventEmitter.emit(
+                    'job.intelligence.completed',
+                    new IntelligenceJobCompletedEvent(
+                        jobId,
+                        `${result.insightsPersisted} insights persisted`,
+                    ),
+                );
+            }
+            return result;
+        } catch (error) {
+            if (jobId) {
+                this.eventEmitter.emit(
+                    'job.intelligence.failed',
+                    new IntelligenceJobFailedEvent(
+                        jobId,
+                        error instanceof Error
+                            ? error.message
+                            : 'Unknown error',
+                    ),
+                );
+            }
+            throw error;
+        }
+    }
+
+    private async executeRun(
+        organizationId: string,
+        opts?: {
+            userId?: string;
+            envelopeIds?: string[];
+            windowStart?: Date;
+            windowEnd?: Date;
+        },
+        jobId?: string,
+    ): Promise<{ insightsPersisted: number }> {
         const startedAt = Date.now();
         let totalInsights = 0;
         let windowCount = 0;
@@ -61,6 +130,17 @@ export class IntelligenceEngineService {
             this.logger.log(
                 `Window ${windowCount}: ${ctx.envelopes.length} envelopes [${ctx.window.start?.toISOString()} – ${ctx.window.end?.toISOString()}]`,
             );
+
+            if (jobId) {
+                this.eventEmitter.emit(
+                    'job.intelligence.progress',
+                    new IntelligenceJobProgressEvent(
+                        jobId,
+                        0,
+                        `Processing window ${windowCount}`,
+                    ),
+                );
+            }
 
             for await (const chunk of this.pipeline.run(ctx.envelopes)) {
                 const query = this.buildQuery(chunk);
