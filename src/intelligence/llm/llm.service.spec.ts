@@ -125,7 +125,7 @@ describe('LlmService', () => {
 
             mockInitChatModel.mockResolvedValue({});
 
-            const llm = await service.createLLM();
+            await service.createLLM();
 
             expect(mockInitChatModel).toHaveBeenCalledWith(
                 'gpt-4',
@@ -151,7 +151,7 @@ describe('LlmService', () => {
 
             mockInitChatModel.mockResolvedValue({});
 
-            const llm = await service.createLLM();
+            await service.createLLM();
 
             expect(mockInitChatModel).toHaveBeenCalledWith(
                 'llama3',
@@ -256,6 +256,7 @@ describe('LlmService', () => {
                 }),
             );
             expect(llm).toBeDefined();
+            // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(llm.stream).toBeDefined();
         });
 
