@@ -69,6 +69,7 @@ export class IngestionService {
                     options.organizationId,
                     totalInserted,
                     'backfill',
+                    options.userId,
                     undefined,
                     undefined,
                     undefined,
