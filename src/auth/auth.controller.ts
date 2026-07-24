@@ -61,7 +61,7 @@ export class AuthController {
     @ApiOkResponse({ description: 'Logged out successfully' })
     @ApiUnauthorizedResponse({ description: 'Invalid or missing token' })
     async logout(@Req() req: Request) {
-        return this.authService.logout(req.user.id);
+        return this.authService.logout(req.user!.id);
     }
 
     @Public()
@@ -120,9 +120,9 @@ export class AuthController {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateGoogleUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'google_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
@@ -150,9 +150,9 @@ export class AuthController {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateMicrosoftUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'microsoft_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
@@ -180,9 +180,9 @@ export class AuthController {
         const frontendUrl =
             this.configService.getOrThrow<string>('FRONTEND_URL');
         const result = await this.authService.loginOrCreateSsoUser({
-            email: req.user.email,
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
+            email: req.user!.email,
+            firstName: req.user!.firstName,
+            lastName: req.user!.lastName,
         });
         const successParam = result.is_new_user ? 'sso_success=1' : '';
         const redirectUrl = this.oauthRedirectUrl(
