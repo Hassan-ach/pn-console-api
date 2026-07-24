@@ -79,11 +79,11 @@ export class InsightExtractionCapability implements ICapability {
                 break;
             } catch (error) {
                 this.logger.warn(
-                    `LLM invocation failed (attempt ${attempt}/${MAX_RETRIES}): ${error.message}`,
+                    `LLM invocation failed (attempt ${attempt}/${MAX_RETRIES}): ${(error as Error).message}`,
                 );
                 if (attempt === MAX_RETRIES) {
                     throw new Error(
-                        `insights extraction failed: ${error.message}`,
+                        `insights extraction failed: ${(error as Error).message}`,
                     );
                 }
             }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { JobService } from './job.service';
@@ -210,6 +211,7 @@ describe('JobService', () => {
             expect(repository.update).toHaveBeenCalledWith('job-1', {
                 status: JobStatus.RUNNING,
                 message: undefined,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 startedAt: expect.any(Date),
             });
             expect(result.status).toBe(JobStatus.RUNNING);
@@ -224,6 +226,7 @@ describe('JobService', () => {
             expect(repository.update).toHaveBeenCalledWith('job-1', {
                 status: JobStatus.RUNNING,
                 message: 'Starting ingestion',
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 startedAt: expect.any(Date),
             });
         });
@@ -311,6 +314,7 @@ describe('JobService', () => {
 
             expect(repository.update).toHaveBeenCalledWith('job-1', {
                 status: JobStatus.COMPLETED,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 completedAt: expect.any(Date),
                 message: 'Done',
             });
@@ -339,6 +343,7 @@ describe('JobService', () => {
 
             expect(repository.update).toHaveBeenCalledWith('job-1', {
                 status: JobStatus.FAILED,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 completedAt: expect.any(Date),
                 message: 'LLM timeout',
             });

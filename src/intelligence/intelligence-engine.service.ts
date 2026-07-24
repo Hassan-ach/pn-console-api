@@ -52,7 +52,7 @@ export class IntelligenceEngineService {
                 opts?.envelopeIds?.length
                     ? `, ids=${opts.envelopeIds.length}`
                     : ''
-            }${opts?.windowStart ? `, window=${opts.windowStart}–${opts.windowEnd}` : ''}`,
+            }${opts?.windowStart ? `, window=${String(opts.windowStart)}–${String(opts.windowEnd)}` : ''}`,
         );
 
         let jobId: string | undefined;

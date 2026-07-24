@@ -21,7 +21,14 @@ export class SsoStrategy extends PassportStrategy(Strategy, 'sso') {
         });
     }
 
-    validate(_issuer: string, profile: any) {
+    validate(
+        _issuer: string,
+        profile: {
+            displayName?: string;
+            name?: { givenName?: string; familyName?: string };
+            emails?: Array<{ value: string }>;
+        },
+    ) {
         return {
             email: (profile.emails?.[0]?.value ?? '').toLowerCase(),
             firstName:

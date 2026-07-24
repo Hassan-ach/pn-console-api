@@ -5,7 +5,7 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class MailService {
     private readonly logger = new Logger(MailService.name);
-    private readonly transporter;
+    private readonly transporter: nodemailer.Transporter;
 
     constructor(private readonly config: ConfigService) {
         const smtpUser = config.get<string>('SMTP_USER');

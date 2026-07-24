@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
@@ -7,6 +8,7 @@ import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service'
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
+
 import { EnvelopeRepository } from '../repositories/envelope.repository';
 import type {
     EnterpriseContext,
@@ -118,28 +120,33 @@ describe('IntelligenceEngineService', () => {
 
         mockPipeline = {
             run: jest.fn(),
-        } as any;
+        } as unknown as jest.Mocked<ChunkingPipeline>;
 
         mockCapabilityManager = {
             executeAll: jest.fn(),
-        } as any;
+        } as unknown as jest.Mocked<CapabilityManager>;
 
         mockPersistence = {
             persistAll: jest.fn().mockResolvedValue(undefined),
-        } as any;
+        } as unknown as jest.Mocked<InsightPersistenceService>;
 
         mockFailureRepository = {
-            create: jest.fn().mockResolvedValue({} as any),
+            create: jest.fn().mockResolvedValue({}),
+
             createMany: jest.fn().mockResolvedValue(0),
+
             findByOrganizationId: jest.fn().mockResolvedValue([]),
+
             markResolved: jest.fn().mockResolvedValue(0),
-        } as any;
+        } as unknown as jest.Mocked<CapabilityFailureRepository>;
 
         mockEnvelopeRepo = {
             markStatus: jest.fn().mockResolvedValue(0),
+
             createManyWithPayload: jest.fn(),
+
             count: jest.fn(),
-        } as any;
+        } as unknown as jest.Mocked<EnvelopeRepository>;
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

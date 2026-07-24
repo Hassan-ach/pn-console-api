@@ -201,6 +201,7 @@ export class TelegramPluginService implements IPlugin {
                         ),
                         maxLimit - totalFetched,
                     );
+                    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
                     const messages: any[] = await client.getMessages(
                         chatEntity,
                         {
@@ -305,6 +306,7 @@ export class TelegramPluginService implements IPlugin {
                     }
                     if (messages.length < batchSize) break;
                 }
+                /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 
                 if (pendingTopicEntries.length > 0) {
                     await topicStore.setBatch(pendingTopicEntries);
@@ -315,6 +317,7 @@ export class TelegramPluginService implements IPlugin {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/require-await, require-yield
     async *startStream(): AsyncIterable<EnvelopeWithPayload[]> {
         throw new NotImplementedException('Streaming not implemented yet');
     }

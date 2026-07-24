@@ -42,7 +42,6 @@ const mockConfigRepo = {
 
 describe('PluginManagerService', () => {
     let service: PluginManagerService;
-    let configRepo: jest.Mocked<PluginConfigRepository>;
     let mockPlugin: jest.Mocked<IPlugin>;
 
     beforeEach(async () => {
@@ -55,7 +54,6 @@ describe('PluginManagerService', () => {
         }).compile();
 
         service = module.get(PluginManagerService);
-        configRepo = module.get(PluginConfigRepository);
 
         jest.clearAllMocks();
 
@@ -177,6 +175,7 @@ describe('PluginManagerService', () => {
                 limit: 10,
                 userId: 'u1',
             });
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             await expect(gen.next()).rejects.toThrow(NotFoundException);
         });
     });
