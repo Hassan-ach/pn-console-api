@@ -48,6 +48,7 @@ describe('IngestionService', () => {
 
         expect(result.inserted).toBe(5);
         expect(result.errors).toEqual([]);
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         expect(eventEmitter.emit).toHaveBeenCalledWith(
             'envelopes.ingested',
             expect.any(EnvelopesIngestedEvent),
@@ -75,6 +76,7 @@ describe('IngestionService', () => {
         expect(result.inserted).toBe(3);
         expect(result.errors).toHaveLength(1);
         expect(result.errors[0].plugin).toBe('bad');
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
     });
 

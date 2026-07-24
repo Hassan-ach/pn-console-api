@@ -206,5 +206,5 @@ export class PluginConfigRepository {
 }
 
 function toJson(value: unknown): Prisma.InputJsonValue {
-    return JSON.parse(JSON.stringify(value));
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }

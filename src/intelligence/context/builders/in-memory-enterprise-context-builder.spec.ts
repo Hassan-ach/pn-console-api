@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { InMemoryEnterpriseContextBuilder } from './in-memory-enterprise-context-builder';
@@ -6,16 +7,18 @@ import { AppDbService } from '../../../prisma/app-db/app-db.service';
 import { WindowDiscoveryService } from '../services/window-discovery.service';
 
 function mockConfig(
-    overrides?: Record<string, any>,
+    overrides?: Record<string, unknown>,
 ): jest.Mocked<ConfigService> {
-    const get = jest.fn((key: string, defaultValue?: any) => {
-        const values: Record<string, any> = {
-            'context.defaultInsightLimit': 20,
-            ...overrides,
-        };
-        return key in values ? values[key] : defaultValue;
-    });
-    return { get } as any;
+    const get: jest.Mock<unknown, [string, unknown?]> = jest.fn(
+        (key: string, defaultValue?: unknown): unknown => {
+            const values: Record<string, unknown> = {
+                'context.defaultInsightLimit': 20,
+                ...overrides,
+            };
+            return key in values ? values[key] : defaultValue;
+        },
+    );
+    return { get } as unknown as jest.Mocked<ConfigService>;
 }
 
 describe('InMemoryEnterpriseContextBuilder', () => {

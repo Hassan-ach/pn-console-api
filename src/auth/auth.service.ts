@@ -328,9 +328,9 @@ export class AuthService {
                     providerType: provider,
                 },
             });
-        } catch (e: any) {
+        } catch (e) {
             // P2002 = unique constraint violation (race: another request created the same user)
-            if (e?.code === 'P2002') {
+            if ((e as { code?: string })?.code === 'P2002') {
                 const raceCreated = await this.db.user.findUnique({
                     where: {
                         email_providerType: {

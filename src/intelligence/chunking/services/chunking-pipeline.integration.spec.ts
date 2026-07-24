@@ -10,6 +10,35 @@ import { ChunkingPipeline } from './chunking-pipeline.service';
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import type { DataChunk } from '../types/data-chunk.type';
 
+interface RawExportItem {
+    envelope: {
+        id: string;
+        source_plugin: string;
+        source_id: string;
+        type: string;
+        has_attachment: boolean;
+        author_id: string;
+        organization_id: string;
+        status: string;
+        permissions: Record<string, unknown>;
+        occurred_at: string;
+    };
+    payload: {
+        id: string;
+        type: string;
+        content: string;
+        group_id: string | null;
+        channel_id: string | null;
+        topic_id: string | null;
+        reply_to: string | null;
+        reactions: Record<string, unknown>;
+        pinned: boolean;
+        edited_date: string | null;
+        entities: unknown;
+        raw_payload: unknown;
+    };
+}
+
 describe('ChunkingPipeline (real exported dataset)', () => {
     let pipeline: ChunkingPipeline;
 
@@ -30,9 +59,9 @@ describe('ChunkingPipeline (real exported dataset)', () => {
     it('chunks the exported dataset without losing envelopes', async () => {
         const raw = JSON.parse(
             readFileSync(join(process.cwd(), 'reports', 'export.json'), 'utf8'),
-        );
+        ) as RawExportItem[];
 
-        const batch: EnvelopeWithPayload[] = raw.map((item: any) => ({
+        const batch: EnvelopeWithPayload[] = raw.map((item: RawExportItem) => ({
             envelope: {
                 id: item.envelope.id,
                 sourcePlugin: item.envelope.source_plugin,

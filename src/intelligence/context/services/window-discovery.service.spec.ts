@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { WindowDiscoveryService } from '../services/window-discovery.service';
@@ -10,7 +11,7 @@ describe('WindowDiscoveryService', () => {
     beforeEach(async () => {
         rawDb = {
             $queryRawUnsafe: jest.fn(),
-        } as any;
+        } as unknown as jest.Mocked<RawDbService>;
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

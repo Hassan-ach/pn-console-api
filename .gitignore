@@ -4,7 +4,7 @@
 /build
 
 # lock files
-pnpm-lock.yaml
+# pnpm-lock.yaml
 package-lock.json
 
 # Logs
@@ -34,7 +34,6 @@ lerna-debug.log*
 
 # IDE - VSCode
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
