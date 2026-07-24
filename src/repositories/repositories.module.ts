@@ -9,6 +9,7 @@ import { EnvelopeRepository } from './envelope.repository';
 import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
 import { PluginConfigRepository } from './plugin-config.repository';
 import { JobRepository } from './job.repository';
+import { UserRepository } from './user.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -21,6 +22,7 @@ import { JobRepository } from './job.repository';
         UnresolvedOwnerRepository,
         PluginConfigRepository,
         JobRepository,
+        UserRepository,
     ],
     exports: [
         InsightRepository,
@@ -31,6 +33,7 @@ import { JobRepository } from './job.repository';
         UnresolvedOwnerRepository,
         PluginConfigRepository,
         JobRepository,
+        UserRepository,
     ],
 })
 export class RepositoriesModule {}
