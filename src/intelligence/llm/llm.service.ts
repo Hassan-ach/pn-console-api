@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { initChatModel } from 'langchain/chat_models/universal';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { StructuredTool } from '@langchain/core/tools';
@@ -8,39 +9,41 @@ import { ToolCallingChainConfig, ToolChainInput } from './llm.types';
 
 @Injectable()
 export class LlmService {
-    private requireEnv(key: string): string {
-        const value = process.env[key];
+    constructor(private readonly config: ConfigService) {}
+
+    private requireConfig(key: string): string {
+        const value = this.config.get<string>(key);
 
         if (!value) {
-            throw new Error(`Missing required environment variable: ${key}`);
+            throw new Error(`Missing required config: ${key}`);
         }
 
         return value;
     }
 
     async createLLM(): Promise<BaseChatModel> {
-        const provider = this.requireEnv('LLM_PROVIDER');
-        const model = this.requireEnv('LLM_MODEL');
+        const provider = this.requireConfig('llm.provider');
+        const model = this.requireConfig('llm.model');
 
         let providerFields: Record<string, unknown>;
         let modelProvider = provider;
 
         if (provider === 'ollama') {
             providerFields = {
-                baseUrl: this.requireEnv('LLM_BASE_URL'),
+                baseUrl: this.config.get<string>('llm.baseUrl'),
                 think: false,
             };
         } else if (provider === 'openrouter') {
             modelProvider = 'openai';
             providerFields = {
-                apiKey: this.requireEnv('LLM_API_KEY'),
+                apiKey: this.config.get<string>('llm.apiKey'),
                 configuration: {
                     baseURL: 'https://openrouter.ai/api/v1',
                 },
             };
         } else {
             providerFields = {
-                apiKey: this.requireEnv('LLM_API_KEY'),
+                apiKey: this.config.get<string>('llm.apiKey'),
             };
         }
 
@@ -51,6 +54,41 @@ export class LlmService {
             ...providerFields,
         });
     }
+
+    async createStreamingLLM(): Promise<BaseChatModel> {
+        const provider = this.requireConfig('llm.provider');
+        const model = this.requireConfig('llm.model');
+
+        let providerFields: Record<string, unknown>;
+        let modelProvider = provider;
+
+        if (provider === 'ollama') {
+            providerFields = {
+                baseUrl: this.config.get<string>('llm.baseUrl'),
+                think: false,
+            };
+        } else if (provider === 'openrouter') {
+            modelProvider = 'openai';
+            providerFields = {
+                apiKey: this.config.get<string>('llm.apiKey'),
+                configuration: {
+                    baseURL: 'https://openrouter.ai/api/v1',
+                },
+            };
+        } else {
+            providerFields = {
+                apiKey: this.config.get<string>('llm.apiKey'),
+            };
+        }
+
+        return initChatModel(model, {
+            modelProvider,
+            temperature: 0,
+            streaming: true,
+            ...providerFields,
+        });
+    }
+
     async createToolModel(tools: StructuredTool[]): Promise<Runnable> {
         const llm = await this.createLLM();
 
