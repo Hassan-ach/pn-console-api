@@ -11,7 +11,7 @@ import { CapabilityFailureRepository } from '../repositories/capability-failure.
 import { EnvelopeRepository } from '../repositories/envelope.repository';
 import {
     IntelligenceJobStartedEvent,
-    IntelligenceJobProgressEvent,
+    IntelligenceJobMessageEvent,
     IntelligenceJobCompletedEvent,
     IntelligenceJobFailedEvent,
 } from '../jobs/events/intelligence-job.events';
@@ -133,10 +133,9 @@ export class IntelligenceEngineService {
 
             if (jobId) {
                 this.eventEmitter.emit(
-                    'job.intelligence.progress',
-                    new IntelligenceJobProgressEvent(
+                    'job.intelligence.message',
+                    new IntelligenceJobMessageEvent(
                         jobId,
-                        0,
                         `Processing window ${windowCount}`,
                     ),
                 );

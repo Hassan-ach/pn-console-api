@@ -8,11 +8,10 @@ export class IntelligenceJobStartedEvent {
     ) {}
 }
 
-export class IntelligenceJobProgressEvent {
+export class IntelligenceJobMessageEvent {
     constructor(
         public readonly jobId: string,
-        public readonly progress: number,
-        public readonly message?: string,
+        public readonly message: string,
     ) {}
 }
 

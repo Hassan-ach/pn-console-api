@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { JobService } from './job.service';
 import {
     IntelligenceJobStartedEvent,
-    IntelligenceJobProgressEvent,
+    IntelligenceJobMessageEvent,
     IntelligenceJobCompletedEvent,
     IntelligenceJobFailedEvent,
 } from './events/intelligence-job.events';
@@ -26,8 +26,8 @@ export class JobTrackingListener {
             event.title,
             event.userId,
             event.description,
-            true,
-            0,
+            false,
+            undefined,
             event.message,
             event.organizationId,
         );
@@ -37,13 +37,9 @@ export class JobTrackingListener {
         return { jobId: job.id };
     }
 
-    @OnEvent('job.intelligence.progress')
-    async handleProgress(event: IntelligenceJobProgressEvent) {
-        await this.jobService.updateProgress(
-            event.jobId,
-            event.progress,
-            event.message,
-        );
+    @OnEvent('job.intelligence.message')
+    async handleMessage(event: IntelligenceJobMessageEvent) {
+        await this.jobService.updateMessage(event.jobId, event.message);
     }
 
     @OnEvent('job.intelligence.completed')
