@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Injectable, Logger } from '@nestjs/common';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { ChatRole } from 'generated/app-db-client';
@@ -13,6 +14,11 @@ const SYSTEM_PROMPT = `You are a read-only assistant that helps the user underst
 You are concise and direct.
 Reference insight types (TASK, URGENCY, INFO, DECISION) and statuses when relevant.
 Do not modify or delete any data.`;
+=======
+import { Injectable } from '@nestjs/common';
+import { AppDbService } from '../prisma/app-db/app-db.service';
+import { ChatRole } from 'generated/app-db-client';
+>>>>>>> origin/main
 
 export interface ChatMessageRecord {
     id: string;
@@ -63,6 +69,7 @@ export class ChatService {
             },
         });
     }
+<<<<<<< HEAD
 
     async *streamResponse(
         userId: string,
@@ -105,4 +112,6 @@ export class ChatService {
 
         await this.saveMessage(userId, 'ASSISTANT', fullResponse);
     }
+=======
+>>>>>>> origin/main
 }
