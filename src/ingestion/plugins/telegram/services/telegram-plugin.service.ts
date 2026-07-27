@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { IPlugin, PlatformUserInfo } from '../../interfaces/plugin.interface';
 import type { StoreResult } from '../../interfaces/plugin-context.interface';
-import type { EnvelopeWithPayload } from '../../../../types/envelope.types';
+
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from '../utils/normalizer';
@@ -314,14 +314,14 @@ export class TelegramPluginService implements IPlugin {
 
     // eslint-disable-next-line @typescript-eslint/require-await, require-yield
     async *startStream(
-        chatId: string,
-        context: PluginContext,
-        signal?: AbortSignal,
+        _chatId: string,
+        _context: PluginContext,
+        _signal?: AbortSignal,
     ): AsyncIterable<StreamBatch> {
         throw new NotImplementedException('Streaming not implemented yet');
     }
 
-    stopStream(chatId: string): Promise<void> {
+    stopStream(_chatId: string): Promise<void> {
         throw new NotImplementedException('Streaming not implemented yet');
     }
 }
