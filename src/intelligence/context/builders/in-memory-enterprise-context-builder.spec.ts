@@ -23,8 +23,8 @@ function mockConfig(
 
 describe('InMemoryEnterpriseContextBuilder', () => {
     let builder: InMemoryEnterpriseContextBuilder;
-    let rawDb: jest.Mocked<RawDbService>;
-    let appDb: jest.Mocked<AppDbService>;
+    let rawDb: any;
+    let appDb: any;
     let windowDiscovery: jest.Mocked<WindowDiscoveryService>;
 
     const baseEnvelopeRow = {
@@ -57,12 +57,12 @@ describe('InMemoryEnterpriseContextBuilder', () => {
             envelope: {
                 findMany: jest.fn(),
             },
-        } as any;
+        };
         appDb = {
             insightVersion: {
                 findMany: jest.fn(),
             },
-        } as any;
+        };
         windowDiscovery = { discoverWindows: jest.fn() } as any;
 
         const module: TestingModule = await Test.createTestingModule({
