@@ -24,6 +24,7 @@ import { DemoModule } from './demo/demo.module';
 import { InsightsModule } from './insights/insights.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ProfileModule } from './profile/profile.module';
+import { ChatModule } from './chat/chat.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -55,6 +56,7 @@ import { AppController } from './app.controller';
         InsightsModule,
         JobsModule,
         ProfileModule,
+        ChatModule,
     ],
     controllers: [AppController],
     providers: [
