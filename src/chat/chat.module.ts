@@ -6,7 +6,6 @@ import { ChatContextService } from './chat-context.service';
 import { ChatService } from './chat.service';
 
 @Module({
-
     imports: [AppDbModule, RepositoriesModule, LlmModule],
 
     providers: [ChatContextService, ChatService],

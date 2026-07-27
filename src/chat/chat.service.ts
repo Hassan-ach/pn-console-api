@@ -14,7 +14,6 @@ You are concise and direct.
 Reference insight types (TASK, URGENCY, INFO, DECISION) and statuses when relevant.
 Do not modify or delete any data.`;
 
-
 export interface ChatMessageRecord {
     id: string;
     role: ChatRole;
@@ -65,7 +64,6 @@ export class ChatService {
         });
     }
 
-
     async *streamResponse(
         userId: string,
         userMessage: string,
@@ -107,5 +105,4 @@ export class ChatService {
 
         await this.saveMessage(userId, 'ASSISTANT', fullResponse);
     }
-
 }
