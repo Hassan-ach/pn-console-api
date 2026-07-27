@@ -45,6 +45,7 @@ export class IntelligenceEngineService {
             envelopeIds?: string[];
             windowStart?: Date;
             windowEnd?: Date;
+            progressable?: boolean;
         },
     ): Promise<{ insightsPersisted: number }> {
         this.logger.log(
@@ -64,6 +65,7 @@ export class IntelligenceEngineService {
                     organizationId,
                     opts.userId,
                     'Intelligence Run',
+                    opts.progressable ?? false,
                     'Processing envelopes',
                 ),
             )) as Array<{ jobId?: string }>;

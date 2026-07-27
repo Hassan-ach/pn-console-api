@@ -73,6 +73,24 @@ export class JobService {
         return this.jobRepository.update(id, { progress, message });
     }
 
+    async updateTitle(id: string, title: string) {
+        await this.getJob(id);
+
+        return this.jobRepository.update(id, { title });
+    }
+
+    async updateDescription(id: string, description: string) {
+        await this.getJob(id);
+
+        return this.jobRepository.update(id, { description });
+    }
+
+    async updateProgressable(id: string, progressable: boolean) {
+        await this.getJob(id);
+
+        return this.jobRepository.update(id, { progressable });
+    }
+
     async completeJob(id: string, message?: string) {
         await this.getJob(id);
 

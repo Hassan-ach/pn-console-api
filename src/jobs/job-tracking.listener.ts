@@ -3,6 +3,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { JobService } from './job.service';
 import {
     IntelligenceJobStartedEvent,
+    IntelligenceJobSetTitleEvent,
+    IntelligenceJobSetDescriptionEvent,
+    IntelligenceJobSetProgressableEvent,
+    IntelligenceJobSetProgressEvent,
     IntelligenceJobMessageEvent,
     IntelligenceJobCompletedEvent,
     IntelligenceJobFailedEvent,
@@ -26,7 +30,7 @@ export class JobTrackingListener {
             event.title,
             event.userId,
             event.description,
-            false,
+            event.progressable,
             undefined,
             event.message,
             event.organizationId,
@@ -35,6 +39,29 @@ export class JobTrackingListener {
         await this.jobService.startJob(job.id);
 
         return { jobId: job.id };
+    }
+
+    @OnEvent('job.intelligence.setTitle')
+    async handleSetTitle(event: IntelligenceJobSetTitleEvent) {
+        await this.jobService.updateTitle(event.jobId, event.title);
+    }
+
+    @OnEvent('job.intelligence.setDescription')
+    async handleSetDescription(event: IntelligenceJobSetDescriptionEvent) {
+        await this.jobService.updateDescription(event.jobId, event.description);
+    }
+
+    @OnEvent('job.intelligence.setProgressable')
+    async handleSetProgressable(event: IntelligenceJobSetProgressableEvent) {
+        await this.jobService.updateProgressable(
+            event.jobId,
+            event.progressable,
+        );
+    }
+
+    @OnEvent('job.intelligence.setProgress')
+    async handleSetProgress(event: IntelligenceJobSetProgressEvent) {
+        await this.jobService.updateProgress(event.jobId, event.progress);
     }
 
     @OnEvent('job.intelligence.message')
