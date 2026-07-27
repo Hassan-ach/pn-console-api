@@ -185,6 +185,37 @@ export class EnvelopeRepository {
         }));
     }
 
+    async findRecent(limit: number): Promise<
+        {
+            envolopId: string;
+            sourcePlugin: string;
+            occurredAt: Date;
+            content: string;
+        }[]
+    > {
+        if (limit <= 0) return [];
+
+        const envelopes = await this.rawDb.envelope.findMany({
+            orderBy: { occurredAt: 'desc' },
+            take: limit,
+            select: {
+                id: true,
+                sourcePlugin: true,
+                occurredAt: true,
+                payload: {
+                    select: { content: true },
+                },
+            },
+        });
+
+        return envelopes.map((e) => ({
+            envolopId: e.id,
+            sourcePlugin: e.sourcePlugin,
+            occurredAt: e.occurredAt,
+            content: e.payload.content,
+        }));
+    }
+
     async count(sourcePlugin?: string): Promise<number> {
         const where: Record<string, unknown> = {};
         if (sourcePlugin) where.sourcePlugin = sourcePlugin;
