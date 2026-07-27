@@ -9,6 +9,7 @@ export interface PlatformUserInfo {
 export interface BackFillOpts {
     limit: number;
     userId: string;
+    chatId: string;
 }
 
 export interface StreamBatch {
