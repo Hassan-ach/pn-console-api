@@ -80,6 +80,38 @@ export class ActiveChatListenerRepository {
         });
     }
 
+    async claim(id: string, instanceId: string) {
+        return this.prisma.activeChatListener.update({
+            where: { id },
+            data: { claimedBy: instanceId, heartbeatAt: new Date() },
+        });
+    }
+
+    async heartbeat(id: string) {
+        return this.prisma.activeChatListener.update({
+            where: { id },
+            data: { heartbeatAt: new Date() },
+        });
+    }
+
+    async releaseClaim(id: string) {
+        return this.prisma.activeChatListener.update({
+            where: { id },
+            data: { claimedBy: null, heartbeatAt: null },
+        });
+    }
+
+    async findStale(heartbeatTimeoutMs: number): Promise<{ id: string; pluginName: string; chatId: string }[]> {
+        const threshold = new Date(Date.now() - heartbeatTimeoutMs);
+        return this.prisma.activeChatListener.findMany({
+            where: {
+                claimedBy: { not: null },
+                heartbeatAt: { lt: threshold },
+            },
+            select: { id: true, pluginName: true, chatId: true },
+        });
+    }
+
     async delete(id: string) {
         return this.prisma.activeChatListener.delete({ where: { id } });
     }

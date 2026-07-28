@@ -10,6 +10,7 @@ import engineConfig from './config/engine.config';
 import contextConfig from './config/context.config';
 import chunkingConfig from './config/chunking.config';
 import ingestionConfig from './config/ingestion.config';
+import redisConfig from './config/redis.config';
 import telegramConfig from './config/telegram.config';
 import streamingConfig from './ingestion/streaming/streaming.config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -19,6 +20,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PluginsModule } from './ingestion/plugins/plugins.module';
 import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
 import { IngestionModule } from './ingestion/ingestion.module';
+import { RedisModule } from './ingestion/redis/redis.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
@@ -46,6 +48,7 @@ import { AppController } from './app.controller';
                 telegramConfig,
                 streamingConfig,
                 ingestionConfig,
+                redisConfig,
             ],
         }),
         EventEmitterModule.forRoot({ wildcard: false }),
@@ -53,6 +56,7 @@ import { AppController } from './app.controller';
         PluginsModule,
         TelegramPluginModule,
         IngestionModule,
+        RedisModule,
         IntelligenceModule,
         AuthModule,
         MailModule,

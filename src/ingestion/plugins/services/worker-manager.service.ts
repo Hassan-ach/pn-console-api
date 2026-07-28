@@ -1,10 +1,12 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PluginStatus } from 'generated/app-db-client';
 import { ActiveChatListenerRepository } from '../../../repositories/active-chat-listener.repository';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { PluginManagerService } from './plugin-manager.service';
 import { IngestionWorker } from './ingestion-worker.service';
 import { IntelligenceEngineService } from '../../../intelligence/intelligence-engine.service';
+import { RedisService } from '../../redis/redis.service';
 import type { PluginConfigData } from '../../../repositories/plugin-config.repository';
 import type { WorkerState } from '../types/worker-state.type';
 
@@ -21,32 +23,70 @@ function isSessionExpired(err: Error): boolean {
 @Injectable()
 export class WorkerManager implements OnApplicationBootstrap, OnApplicationShutdown {
     private readonly logger = new Logger(WorkerManager.name);
+    private readonly instanceId: string;
     private workers = new Map<string, IngestionWorker>();
+    private claimedResources: string[] = [];
 
     constructor(
         private readonly activeChatRepo: ActiveChatListenerRepository,
         private readonly configRepo: PluginConfigRepository,
         private readonly pluginManager: PluginManagerService,
         private readonly intelligenceEngine: IntelligenceEngineService,
-    ) {}
+        private readonly redisService: RedisService,
+        private readonly config: ConfigService,
+    ) {
+        this.instanceId = process.env.HOSTNAME ?? `instance-${crypto.randomUUID()}`;
+    }
 
     async onApplicationBootstrap(): Promise<void> {
         const listeners = await this.activeChatRepo.findAllActive();
+
+        const claimed: string[] = [];
         for (const listener of listeners) {
-            const config = await this.configRepo.findUnique(
-                listener.ownerUserId,
-                listener.pluginName,
-            );
-            if (config) {
-                this.startWorker(
+            const resource = `${listener.pluginName}:${listener.chatId}`;
+            const acquired = await this.redisService.tryAcquireLock(resource, this.instanceId);
+            if (acquired) {
+                const config = await this.configRepo.findUnique(
+                    listener.ownerUserId,
                     listener.pluginName,
-                    listener.chatId,
-                    config,
                 );
-            } else {
-                await this.activeChatRepo.delete(listener.id);
+                if (config) {
+                    claimed.push(resource);
+                    await this.activeChatRepo.claim(listener.id, this.instanceId);
+                    this.startWorker(listener.pluginName, listener.chatId, config);
+                } else {
+                    await this.redisService.releaseLock(resource);
+                    await this.activeChatRepo.delete(listener.id);
+                }
             }
         }
+
+        this.claimedResources = claimed;
+        if (claimed.length > 0) {
+            this.redisService.startHeartbeat(claimed, this.instanceId);
+        }
+
+        this.redisService.subscribe('listener.released', async (msg) => {
+            try {
+                const { resource } = JSON.parse(msg) as { resource: string };
+                const [pluginName, chatId] = resource.split(':');
+                const listener = await this.activeChatRepo.findByPluginAndChat(pluginName, chatId);
+                if (listener && !listener.claimedBy) {
+                    const acquired = await this.redisService.tryAcquireLock(resource, this.instanceId);
+                    if (acquired) {
+                        const config = await this.configRepo.findUnique(listener.ownerUserId, pluginName);
+                        if (config) {
+                            await this.activeChatRepo.claim(listener.id, this.instanceId);
+                            this.claimedResources.push(resource);
+                            this.redisService.startHeartbeat(this.claimedResources, this.instanceId);
+                            this.startWorker(pluginName, chatId, config);
+                        }
+                    }
+                }
+            } catch (err) {
+                this.logger.error(`Failed to handle listener.released: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        });
     }
 
     start(config: PluginConfigData): void {
@@ -94,6 +134,10 @@ export class WorkerManager implements OnApplicationBootstrap, OnApplicationShutd
     async onApplicationShutdown(): Promise<void> {
         for (const [, worker] of this.workers) {
             worker.abort();
+        }
+        this.redisService.stopHeartbeat();
+        for (const resource of this.claimedResources) {
+            await this.redisService.releaseLock(resource);
         }
         await new Promise((r) => setTimeout(r, 5000));
     }
