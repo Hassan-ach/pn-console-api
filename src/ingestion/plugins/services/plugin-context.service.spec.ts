@@ -163,7 +163,19 @@ describe('PluginContextService', () => {
                             authorId: 'a1',
                             occurredAt: new Date(),
                         },
-                        payload: { content: 'hello' },
+                        payload: {
+                            content: 'hello',
+                            type: 'direct',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
                     },
                     {
                         envelope: {
@@ -175,7 +187,19 @@ describe('PluginContextService', () => {
                             organizationId: 'custom-org',
                             occurredAt: new Date(),
                         },
-                        payload: { content: 'world' },
+                        payload: {
+                            content: 'world',
+                            type: 'direct',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
                     },
                 ],
                 'u1',
@@ -191,7 +215,8 @@ describe('PluginContextService', () => {
                             sourceId: '123',
                             organizationId: 'org-1',
                         }),
-                        payload: { content: 'hello' },
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        payload: expect.objectContaining({ content: 'hello' }),
                     },
                     {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -200,7 +225,8 @@ describe('PluginContextService', () => {
                             sourceId: '456',
                             organizationId: 'custom-org',
                         }),
-                        payload: { content: 'world' },
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        payload: expect.objectContaining({ content: 'world' }),
                     },
                 ],
             );

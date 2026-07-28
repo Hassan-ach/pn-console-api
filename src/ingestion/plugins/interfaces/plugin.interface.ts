@@ -9,6 +9,17 @@ export interface PlatformUserInfo {
 export interface BackFillOpts {
     limit: number;
     userId: string;
+    chatId: string;
+}
+
+export interface StreamOpts {
+    userId: string;
+    chatId: string;
+}
+
+export interface StreamBatch {
+    envelopes: EnvelopeWithPayload[];
+    lastMessageId?: number;
 }
 
 export interface IPlugin {
@@ -31,7 +42,11 @@ export interface IPlugin {
         context: PluginContext,
     ): AsyncIterable<StoreResult>;
 
-    startStream(signal?: AbortSignal): AsyncIterable<EnvelopeWithPayload[]>;
+    startStream(
+        opts: StreamOpts,
+        context: PluginContext,
+        signal?: AbortSignal,
+    ): AsyncIterable<StreamBatch>;
 
-    stopStream(): void;
+    stopStream(opts: StreamOpts): void;
 }
