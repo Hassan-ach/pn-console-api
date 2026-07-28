@@ -65,4 +65,6 @@ export interface Insight {
     status?: InsightActionStatus;
     channelId?: string;
     topicId?: string;
+    priority?: number;
+    deadline?: Date;
 }
