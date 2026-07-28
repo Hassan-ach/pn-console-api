@@ -55,8 +55,6 @@ export interface IPlugin {
         signal?: AbortSignal,
     ): AsyncIterable<StreamBatch>;
 
-    stopStream(opts: StreamOpts): void;
-
     getConfigSchema?(): Record<string, unknown>[];
     getActivationRequirements?(config: Record<string, unknown>): ActivationRequirement[];
 }

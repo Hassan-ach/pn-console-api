@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { PluginStatus } from 'generated/app-db-client';
 import { ActiveChatListenerRepository } from '../../../repositories/active-chat-listener.repository';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
@@ -18,7 +18,7 @@ function isSessionExpired(err: Error): boolean {
 }
 
 @Injectable()
-export class WorkerManager {
+export class WorkerManager implements OnApplicationBootstrap, OnApplicationShutdown {
     private readonly logger = new Logger(WorkerManager.name);
     private workers = new Map<string, IngestionWorker>();
 

@@ -260,8 +260,6 @@ export class TelegramPluginService implements IPlugin {
         }
     }
 
-    private streamControllers = new Map<string, AbortController>();
-
     async *startStream(
         { userId, chatId }: StreamOpts,
         context: PluginContext,
@@ -288,11 +286,7 @@ export class TelegramPluginService implements IPlugin {
             );
         }
 
-        const controller = new AbortController();
-        this.streamControllers.set(chatId, controller);
-        const combinedSignal = signal
-            ? this.combineSignals(signal, controller.signal)
-            : controller.signal;
+        const abortSignal = signal ?? new AbortController().signal;
 
         const client = this.factory.create(
             cfg.apiId,
@@ -315,7 +309,7 @@ export class TelegramPluginService implements IPlugin {
         let lastMessageId = 0;
 
         try {
-            while (!combinedSignal.aborted) {
+            while (!abortSignal.aborted) {
                 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
                 const messages: any[] = await client.getMessages(chatEntity, {
                     limit: batchSize,
@@ -358,32 +352,9 @@ export class TelegramPluginService implements IPlugin {
                 /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
             }
         } finally {
-            this.streamControllers.delete(chatId);
             buffer = [];
             await this.factory.destroy(client);
         }
-    }
-
-    stopStream({ userId: _userId, chatId }: StreamOpts): void {
-        const controller = this.streamControllers.get(chatId);
-        if (controller) {
-            controller.abort();
-            this.streamControllers.delete(chatId);
-        }
-    }
-
-    private combineSignals(...signals: AbortSignal[]): AbortSignal {
-        const controller = new AbortController();
-        for (const sig of signals) {
-            if (sig.aborted) {
-                controller.abort();
-                return controller.signal;
-            }
-            sig.addEventListener('abort', () => controller.abort(), {
-                once: true,
-            });
-        }
-        return controller.signal;
     }
 
     private sleep(ms: number): Promise<void> {

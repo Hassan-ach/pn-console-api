@@ -63,7 +63,6 @@ describe('PluginManagerService', () => {
             isConnected: jest.fn(),
             validateAuth: jest.fn(),
             startStream: jest.fn(),
-            stopStream: jest.fn(),
         };
     });
 
@@ -138,7 +137,6 @@ describe('PluginManagerService', () => {
                 isConnected: jest.fn().mockRejectedValue(new Error('boom')),
                 validateAuth: jest.fn(),
                 startStream: jest.fn(),
-                stopStream: jest.fn(),
             };
             service.register(mockPlugin);
             service.register(plugin2);
