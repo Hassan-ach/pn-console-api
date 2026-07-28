@@ -164,6 +164,7 @@ describe('PluginManagerService', () => {
             for await (const r of service.backfill('test-plugin', {
                 limit: 10,
                 userId: 'u1',
+                chatId: 'test-chat',
             })) {
                 results.push(r);
             }
@@ -174,9 +175,14 @@ describe('PluginManagerService', () => {
             const gen = service.backfill('unknown', {
                 limit: 10,
                 userId: 'u1',
+                chatId: 'test-chat',
             });
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            await expect(gen.next()).rejects.toThrow(NotFoundException);
+            await expect(async () => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                for await (const _ of gen) {
+                    /* noop */
+                }
+            }).rejects.toThrow(NotFoundException);
         });
     });
 

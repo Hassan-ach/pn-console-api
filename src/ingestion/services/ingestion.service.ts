@@ -1,16 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PluginManagerService } from '../plugins/services/plugin-manager.service';
+import { IngestionRunnerService } from './ingestion-runner.service';
 import { EnvelopesIngestedEvent } from '../../intelligence/triggers/envelopes-ingested.event';
 
 export interface IngestError {
     plugin: string;
     message: string;
 }
-export interface PluginBackfill {
-    name: string;
+
+export interface ChatBackfill {
+    chatId: string;
+    chatName: string;
     limit: number;
 }
+
+export interface PluginBackfill {
+    name: string;
+    chats: ChatBackfill[];
+}
+
 export interface IngestOptions {
     plugins: PluginBackfill[];
     userId: string;
@@ -23,7 +31,7 @@ export class IngestionService {
     private readonly logger = new Logger(IngestionService.name);
 
     constructor(
-        private readonly pluginManager: PluginManagerService,
+        private readonly ingestionRunner: IngestionRunnerService,
         private readonly eventEmitter: EventEmitter2,
     ) {}
 
@@ -31,51 +39,50 @@ export class IngestionService {
         options: IngestOptions,
     ): Promise<{ inserted: number; errors: IngestError[] }> {
         const startedAt = Date.now();
-
-        this.logger.log(
-            `Backfill starting: plugins=${options.plugins.map((p) => `${p.name}:${p.limit}`).join(', ')}, org=${options.organizationId}`,
-        );
-
         let totalInserted = 0;
         const errors: IngestError[] = [];
 
         for (const plugin of options.plugins) {
-            const { name, limit } = plugin;
-            this.logger.log(
-                `Plugin "${name}" backfill starting (limit=${limit})`,
-            );
-
+            const { name, chats } = plugin;
             try {
-                for await (const result of this.pluginManager.backfill(name, {
-                    limit,
+                const result = await this.ingestionRunner.backfillPlugin(name, {
                     userId: options.userId,
-                })) {
-                    totalInserted += result.inserted;
-                    this.logger.debug(
-                        `Plugin "${name}": inserted ${result.inserted} envelopes in chunk`,
-                    );
+                    organizationId: options.organizationId,
+                    chats: chats.map((c) => ({
+                        chatId: c.chatId,
+                        chatName: c.chatName,
+                        limit: c.limit,
+                    })),
+                });
+
+                for (const cr of result.chatResults) {
+                    totalInserted += cr.inserted;
+                    if (cr.error) {
+                        errors.push({
+                            plugin: `${name}/${cr.chatName}`,
+                            message: cr.error,
+                        });
+                    }
                 }
-                this.logger.log(`Plugin "${name}" backfill complete`);
             } catch (err) {
                 const msg =
                     err instanceof Error ? err.message : 'Unknown error';
-                this.logger.error(`Plugin "${name}" backfill failed: ${msg}`);
                 errors.push({ plugin: name, message: msg });
             }
-
-            this.eventEmitter.emit(
-                'envelopes.ingested',
-                new EnvelopesIngestedEvent(
-                    options.organizationId,
-                    totalInserted,
-                    'backfill',
-                    options.userId,
-                    undefined,
-                    undefined,
-                    undefined,
-                ),
-            );
         }
+
+        this.eventEmitter.emit(
+            'envelopes.ingested',
+            new EnvelopesIngestedEvent(
+                options.organizationId,
+                totalInserted,
+                'backfill',
+                options.userId,
+                undefined,
+                undefined,
+                undefined,
+            ),
+        );
 
         this.logger.log(
             `Ingest complete: ${totalInserted} inserted, ${errors.length} error(s) in ${Date.now() - startedAt}ms`,

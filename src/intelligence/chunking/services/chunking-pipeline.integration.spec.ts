@@ -66,7 +66,7 @@ describe('ChunkingPipeline (real exported dataset)', () => {
                 id: item.envelope.id,
                 sourcePlugin: item.envelope.source_plugin,
                 sourceId: item.envelope.source_id,
-                type: item.envelope.type,
+                type: item.envelope.type as 'message',
                 hasAttachment: item.envelope.has_attachment,
                 authorId: item.envelope.author_id,
                 organizationId: item.envelope.organization_id,
@@ -76,7 +76,7 @@ describe('ChunkingPipeline (real exported dataset)', () => {
             },
             payload: {
                 id: item.payload.id,
-                type: item.payload.type,
+                type: item.payload.type as 'direct' | 'email',
                 content: item.payload.content,
                 groupId: item.payload.group_id,
                 channelId: item.payload.channel_id,
@@ -87,8 +87,11 @@ describe('ChunkingPipeline (real exported dataset)', () => {
                 editedDate: item.payload.edited_date
                     ? new Date(item.payload.edited_date)
                     : null,
-                entities: item.payload.entities,
-                rawPayload: item.payload.raw_payload,
+                entities: item.payload.entities as Record<
+                    string,
+                    unknown
+                > | null,
+                rawPayload: item.payload.raw_payload as Record<string, unknown>,
             },
         }));
 
