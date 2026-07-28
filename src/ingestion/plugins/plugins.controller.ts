@@ -13,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PluginManagerService } from './services/plugin-manager.service';
+import { PluginActivationService } from './services/plugin-activation.service';
 import { PluginConfigDto } from './dto/plugin-config.dto';
 import { PluginLoginDto } from './dto/plugin-login.dto';
 
@@ -21,7 +22,10 @@ import { PluginLoginDto } from './dto/plugin-login.dto';
 @UseGuards(AuthGuard('jwt'))
 @Controller('plugins')
 export class PluginsController {
-    constructor(private readonly pluginManager: PluginManagerService) {}
+    constructor(
+        private readonly pluginManager: PluginManagerService,
+        private readonly pluginActivation: PluginActivationService,
+    ) {}
 
     @Get()
     @ApiOperation({ summary: 'List registered plugins with status from DB' })
@@ -112,6 +116,42 @@ export class PluginsController {
     ) {
         await this.pluginManager.disconnect(name, req.user.id);
         return { success: true, message: 'Disconnected successfully' };
+    }
+
+    @Post(':name/activate')
+    @ApiOperation({ summary: 'Activate plugin — start backfill + stream' })
+    async activate(
+        @Param('name') name: string,
+        @Req() req: { user: { id: string } },
+    ) {
+        const data = await this.pluginActivation.activate(
+            req.user.id,
+            name,
+        );
+        return { success: true, message: 'Activation started', data };
+    }
+
+    @Post(':name/deactivate')
+    @ApiOperation({ summary: 'Deactivate plugin — stop all workers' })
+    async deactivate(
+        @Param('name') name: string,
+        @Req() req: { user: { id: string } },
+    ) {
+        await this.pluginActivation.deactivate(req.user.id, name);
+        return { success: true, message: 'Deactivated', data: { status: 'CONFIGURED' } };
+    }
+
+    @Get(':name/status')
+    @ApiOperation({ summary: 'Get plugin activation status with per-chat worker state' })
+    async getActivationStatus(
+        @Param('name') name: string,
+        @Req() req: { user: { id: string } },
+    ) {
+        const data = await this.pluginActivation.getStatus(
+            req.user.id,
+            name,
+        );
+        return { success: true, message: 'Plugin status loaded', data };
     }
 
     @Delete(':name')
