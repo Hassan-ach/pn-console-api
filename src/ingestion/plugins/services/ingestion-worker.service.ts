@@ -3,6 +3,7 @@ import type { PluginContext } from '../interfaces/plugin-context.interface';
 import type { PluginConfigData } from '../../../repositories/plugin-config.repository';
 import type { WorkerState } from '../types/worker-state.type';
 import { BatchBuffer } from '../../streaming/batch-buffer.service';
+import type { IntelligenceEngineService } from '../../../intelligence/intelligence-engine.service';
 
 export class IngestionWorker {
     private backfillAbort = new AbortController();
@@ -12,12 +13,17 @@ export class IngestionWorker {
         stream: 'IDLE',
         startedAt: new Date(),
     };
+    private backfillEnvelopeIds: string[] = [];
 
     constructor(
         private pluginName: string,
         private chatId: string,
         private config: PluginConfigData,
-        private pluginManager: { get(name: string): IPlugin | undefined; getContext(): PluginContext },
+        private pluginManager: {
+            get(name: string): IPlugin | undefined;
+            getContext(): PluginContext;
+        },
+        private intelligenceEngine?: IntelligenceEngineService,
     ) {}
 
     async run(): Promise<void> {
@@ -31,7 +37,32 @@ export class IngestionWorker {
         await backfillPromise;
         this.state.backfill = 'COMPLETED';
 
+        if (this.intelligenceEngine && this.backfillEnvelopeIds.length > 0) {
+            const orgId = context.resolveOrgId(this.config.userId);
+            await this.triggerBackfillIntelligence(orgId, plugin, context);
+        }
+
         await streamPromise;
+    }
+
+    private async triggerBackfillIntelligence(
+        organizationId: string,
+        _plugin: IPlugin,
+        context: PluginContext,
+    ): Promise<void> {
+        if (!this.intelligenceEngine) return;
+
+        try {
+            await this.intelligenceEngine.run(organizationId, {
+                envelopeIds: this.backfillEnvelopeIds,
+                userId: this.config.userId,
+                progressable: true,
+            });
+        } catch (err) {
+            context.logger.error(
+                `Backfill intelligence failed: ${err instanceof Error ? err.message : String(err)}`,
+            );
+        }
     }
 
     private async runBackfill(
@@ -54,6 +85,7 @@ export class IngestionWorker {
                 this.backfillAbort.signal,
             )) {
                 this.state.backfillProgress = result;
+                this.backfillEnvelopeIds.push(...result.ids);
             }
         } catch (err) {
             if (!this.backfillAbort.signal.aborted) throw err;

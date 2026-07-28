@@ -9,6 +9,7 @@ import smtpConfig from './config/smtp.config';
 import engineConfig from './config/engine.config';
 import contextConfig from './config/context.config';
 import chunkingConfig from './config/chunking.config';
+import ingestionConfig from './config/ingestion.config';
 import telegramConfig from './config/telegram.config';
 import streamingConfig from './ingestion/streaming/streaming.config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -44,6 +45,7 @@ import { AppController } from './app.controller';
                 chunkingConfig,
                 telegramConfig,
                 streamingConfig,
+                ingestionConfig,
             ],
         }),
         EventEmitterModule.forRoot({ wildcard: false }),

@@ -4,6 +4,7 @@ import { ActiveChatListenerRepository } from '../../../repositories/active-chat-
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { PluginManagerService } from './plugin-manager.service';
 import { IngestionWorker } from './ingestion-worker.service';
+import { IntelligenceEngineService } from '../../../intelligence/intelligence-engine.service';
 import type { PluginConfigData } from '../../../repositories/plugin-config.repository';
 import type { WorkerState } from '../types/worker-state.type';
 
@@ -26,6 +27,7 @@ export class WorkerManager implements OnApplicationBootstrap, OnApplicationShutd
         private readonly activeChatRepo: ActiveChatListenerRepository,
         private readonly configRepo: PluginConfigRepository,
         private readonly pluginManager: PluginManagerService,
+        private readonly intelligenceEngine: IntelligenceEngineService,
     ) {}
 
     async onApplicationBootstrap(): Promise<void> {
@@ -67,6 +69,7 @@ export class WorkerManager implements OnApplicationBootstrap, OnApplicationShutd
             chatId,
             config,
             this.pluginManager,
+            this.intelligenceEngine,
         );
         this.workers.set(key, worker);
         worker.run().catch((err) =>

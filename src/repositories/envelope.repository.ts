@@ -216,6 +216,18 @@ export class EnvelopeRepository {
         }));
     }
 
+    async findIdsBySourcePlugin(
+        sourcePlugin: string,
+        orderDirection?: 'asc' | 'desc',
+    ): Promise<{ id: string; occurredAt: Date }[]> {
+        const envelopes = await this.rawDb.envelope.findMany({
+            where: { sourcePlugin },
+            orderBy: { occurredAt: orderDirection ?? 'asc' },
+            select: { id: true, occurredAt: true },
+        });
+        return envelopes.map((e) => ({ id: e.id, occurredAt: e.occurredAt }));
+    }
+
     async count(sourcePlugin?: string): Promise<number> {
         const where: Record<string, unknown> = {};
         if (sourcePlugin) where.sourcePlugin = sourcePlugin;
