@@ -140,6 +140,16 @@ enum JobStatus {
   FAILED
 }
 
+enum PluginStatus {
+  NOT_CONNECTED
+  CONNECTED
+  CONFIGURED
+  ACTIVATING
+  ACTIVE
+  DEACTIVATING
+  ERROR
+}
+
 enum ChatRole {
   USER
   ASSISTANT
@@ -160,21 +170,40 @@ model UnresolvedOwner {
 }
 
 model PluginConfig {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String?  @map("organization_id")
-  userId         String   @map("user_id")
-  pluginName     String   @map("plugin_name")
-  sessionString  String?  @map("session_string")
-  config         Json     @map("config")
-  metadata       Json?    @map("metadata")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String?      @map("organization_id")
+  userId         String       @map("user_id")
+  pluginName     String       @map("plugin_name")
+  sessionString  String?      @map("session_string")
+  config         Json         @map("config")
+  metadata       Json?        @map("metadata")
+
+  status         PluginStatus @default(NOT_CONNECTED)
+  activatedAt    DateTime?    @map("activated_at")
+  errorMessage   String?      @map("error_message")
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@unique([userId, pluginName])
   @@index([organizationId])
   @@index([userId])
   @@index([pluginName])
   @@map("plugin_configs")
+}
+
+model ActiveChatListener {
+  id              String   @id @default(uuid()) @db.Uuid
+  pluginName      String   @map("plugin_name")
+  chatId          String   @map("chat_id")
+  organizationId  String   @map("organization_id")
+  ownerUserId     String   @map("owner_user_id")
+  subscriberCount Int      @default(1)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([pluginName, chatId])
+  @@map("active_chat_listeners")
 }
 
 model Job {
