@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
-import { Prisma } from 'generated/app-db-client';
+import { Prisma, PluginStatus } from 'generated/app-db-client';
 
 export interface PluginConfigData {
     id: string;
@@ -10,6 +10,9 @@ export interface PluginConfigData {
     sessionString: string | null;
     config: Record<string, unknown>;
     metadata: Record<string, unknown> | null;
+    status: PluginStatus;
+    activatedAt: Date | null;
+    errorMessage: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -93,6 +96,9 @@ export class PluginConfigRepository {
             metadata?: Record<string, unknown>;
             organizationId?: string;
             sessionString?: string | null;
+            status?: PluginStatus;
+            activatedAt?: Date | null;
+            errorMessage?: string | null;
         },
     ): Promise<PluginConfigData> {
         return this.prisma.$transaction(async (tx) => {
@@ -135,6 +141,15 @@ export class PluginConfigRepository {
                     }),
                     ...(data.sessionString !== undefined && {
                         sessionString: data.sessionString,
+                    }),
+                    ...(data.status !== undefined && {
+                        status: data.status,
+                    }),
+                    ...(data.activatedAt !== undefined && {
+                        activatedAt: data.activatedAt,
+                    }),
+                    ...(data.errorMessage !== undefined && {
+                        errorMessage: data.errorMessage,
                     }),
                 },
             });
@@ -184,6 +199,9 @@ export class PluginConfigRepository {
         sessionString: string | null;
         config: unknown;
         metadata: unknown;
+        status: PluginStatus;
+        activatedAt: Date | null;
+        errorMessage: string | null;
         createdAt: Date;
         updatedAt: Date;
     }): PluginConfigData {
@@ -199,6 +217,9 @@ export class PluginConfigRepository {
             metadata: (typeof row.metadata === 'object' && row.metadata !== null
                 ? row.metadata
                 : null) as Record<string, unknown> | null,
+            status: row.status,
+            activatedAt: row.activatedAt,
+            errorMessage: row.errorMessage,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
         };

@@ -22,6 +22,12 @@ export interface StreamBatch {
     lastMessageId?: number;
 }
 
+export interface ActivationRequirement {
+    field: string;
+    message: string;
+    validate: (config: Record<string, unknown>) => boolean;
+}
+
 export interface IPlugin {
     readonly name: string;
 
@@ -40,6 +46,7 @@ export interface IPlugin {
     backfill(
         opts: BackFillOpts,
         context: PluginContext,
+        signal?: AbortSignal,
     ): AsyncIterable<StoreResult>;
 
     startStream(
@@ -49,4 +56,7 @@ export interface IPlugin {
     ): AsyncIterable<StreamBatch>;
 
     stopStream(opts: StreamOpts): void;
+
+    getConfigSchema?(): Record<string, unknown>[];
+    getActivationRequirements?(config: Record<string, unknown>): ActivationRequirement[];
 }
