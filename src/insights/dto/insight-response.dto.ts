@@ -25,4 +25,16 @@ export class InsightResponseDto {
         description: 'Current user action status for this insight',
     })
     status?: InsightActionStatus;
+
+    @Expose()
+    @ApiPropertyOptional({
+        description: 'Priority score (1-10, 10 = most critical)',
+    })
+    priority?: number;
+
+    @Expose()
+    @ApiPropertyOptional({
+        description: 'Deadline for time-sensitive insights',
+    })
+    deadline?: Date;
 }
