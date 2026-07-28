@@ -29,10 +29,11 @@ model InsightVersion {
   broadcasted      Boolean               @default(false)
   envolopsRef      String[]              @default([])
 
-  sourcePlugin String? @map("source_plugin")
-  groupId      String? @map("group_id")
-  channelId    String? @map("channel_id")
-  topicId      String? @map("topic_id")
+  sourcePlugin String?   @map("source_plugin")
+  groupId      String?   @map("group_id")
+  channelId    String?   @map("channel_id")
+  topicId      String?   @map("topic_id")
+  deadline     DateTime? @map("deadline")
 
   createdAt DateTime @default(now()) @map("created_at")
   insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
@@ -49,6 +50,7 @@ model InsightVersionOwner {
   insightVersionId String              @map("insight_version_id") @db.Uuid
   userId           String              @map("user_id") @db.Uuid
   status           InsightActionStatus @default(PENDING)
+  priority         Int?                @map("priority")
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
 
