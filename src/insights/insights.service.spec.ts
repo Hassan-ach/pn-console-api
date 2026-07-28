@@ -1,8 +1,13 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/unbound-method */
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { InsightActionRepository } from '../repositories/insight-action.repository';
 import { InsightRepository } from '../repositories/insight.repository';
-import { Insight, InsightActionStatus, InsightType } from '../types/insight.types';
+import {
+    Insight,
+    InsightActionStatus,
+    InsightType,
+} from '../types/insight.types';
 import { InsightsService } from './insights.service';
 
 describe('InsightsService', () => {
@@ -86,7 +91,11 @@ describe('InsightsService', () => {
         it('passes type and status filters to the repository', async () => {
             insightRepository.findByOwnerId.mockResolvedValue([]);
 
-            await service.findAllForUser('user-1', InsightType.TASK, InsightActionStatus.PENDING);
+            await service.findAllForUser(
+                'user-1',
+                InsightType.TASK,
+                InsightActionStatus.PENDING,
+            );
 
             expect(insightRepository.findByOwnerId).toHaveBeenCalledWith(
                 'user-1',
@@ -122,21 +131,33 @@ describe('InsightsService', () => {
                 .mockResolvedValueOnce(mockInsight)
                 .mockResolvedValueOnce({ ...mockInsight, priority: 9 });
             insightRepository.getLatestVersionId.mockResolvedValue('version-1');
-            insightActionRepository.upsertPriority.mockResolvedValue({} as never);
+            insightActionRepository.upsertPriority.mockResolvedValue(
+                {} as never,
+            );
 
-            const result = await service.updatePriority('insight-1', 'user-1', 9);
+            const result = await service.updatePriority(
+                'insight-1',
+                'user-1',
+                9,
+            );
 
             expect(insightRepository.findById).toHaveBeenNthCalledWith(
-                1, 'insight-1', 'user-1',
+                1,
+                'insight-1',
+                'user-1',
             );
             expect(insightRepository.getLatestVersionId).toHaveBeenCalledWith(
                 'insight-1',
             );
             expect(insightActionRepository.upsertPriority).toHaveBeenCalledWith(
-                'version-1', 'user-1', 9,
+                'version-1',
+                'user-1',
+                9,
             );
             expect(insightRepository.findById).toHaveBeenNthCalledWith(
-                2, 'insight-1', 'user-1',
+                2,
+                'insight-1',
+                'user-1',
             );
             expect(result.priority).toBe(9);
         });
@@ -231,7 +252,11 @@ describe('InsightsService', () => {
             insightRepository.findVersionById.mockResolvedValue(null);
 
             await expect(
-                service.findVersionForUser('insight-1', 'nonexistent', 'user-1'),
+                service.findVersionForUser(
+                    'insight-1',
+                    'nonexistent',
+                    'user-1',
+                ),
             ).rejects.toThrow(NotFoundException);
         });
     });
