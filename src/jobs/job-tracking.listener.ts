@@ -3,7 +3,11 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { JobService } from './job.service';
 import {
     IntelligenceJobStartedEvent,
-    IntelligenceJobProgressEvent,
+    IntelligenceJobSetTitleEvent,
+    IntelligenceJobSetDescriptionEvent,
+    IntelligenceJobSetProgressableEvent,
+    IntelligenceJobSetProgressEvent,
+    IntelligenceJobMessageEvent,
     IntelligenceJobCompletedEvent,
     IntelligenceJobFailedEvent,
 } from './events/intelligence-job.events';
@@ -26,8 +30,8 @@ export class JobTrackingListener {
             event.title,
             event.userId,
             event.description,
-            true,
-            0,
+            event.progressable,
+            undefined,
             event.message,
             event.organizationId,
         );
@@ -37,13 +41,32 @@ export class JobTrackingListener {
         return { jobId: job.id };
     }
 
-    @OnEvent('job.intelligence.progress')
-    async handleProgress(event: IntelligenceJobProgressEvent) {
-        await this.jobService.updateProgress(
+    @OnEvent('job.intelligence.setTitle')
+    async handleSetTitle(event: IntelligenceJobSetTitleEvent) {
+        await this.jobService.updateTitle(event.jobId, event.title);
+    }
+
+    @OnEvent('job.intelligence.setDescription')
+    async handleSetDescription(event: IntelligenceJobSetDescriptionEvent) {
+        await this.jobService.updateDescription(event.jobId, event.description);
+    }
+
+    @OnEvent('job.intelligence.setProgressable')
+    async handleSetProgressable(event: IntelligenceJobSetProgressableEvent) {
+        await this.jobService.updateProgressable(
             event.jobId,
-            event.progress,
-            event.message,
+            event.progressable,
         );
+    }
+
+    @OnEvent('job.intelligence.setProgress')
+    async handleSetProgress(event: IntelligenceJobSetProgressEvent) {
+        await this.jobService.updateProgress(event.jobId, event.progress);
+    }
+
+    @OnEvent('job.intelligence.message')
+    async handleMessage(event: IntelligenceJobMessageEvent) {
+        await this.jobService.updateMessage(event.jobId, event.message);
     }
 
     @OnEvent('job.intelligence.completed')

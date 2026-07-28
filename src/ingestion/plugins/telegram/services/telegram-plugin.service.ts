@@ -7,14 +7,17 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { IPlugin, PlatformUserInfo } from '../../interfaces/plugin.interface';
 import type { StoreResult } from '../../interfaces/plugin-context.interface';
-import type { EnvelopeWithPayload } from '../../../../types/envelope.types';
+
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from '../utils/normalizer';
 import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
 import type { PluginContext } from '../../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from '../types/telegram.types';
-import type { BackFillOpts } from '../../interfaces/plugin.interface';
+import type {
+    BackFillOpts,
+    StreamBatch,
+} from '../../interfaces/plugin.interface';
 
 interface TelegramChat {
     name: string;
@@ -108,11 +111,11 @@ export class TelegramPluginService implements IPlugin {
     }
 
     async *backfill(
-        { limit, userId }: BackFillOpts,
+        { limit, userId, chatId }: BackFillOpts,
         context: PluginContext,
     ): AsyncIterable<StoreResult> {
         context.logger.debug(
-            `Starting backfill for user ${userId} with limit ${limit}`,
+            `Starting backfill for user ${userId} chat ${chatId} limit ${limit}`,
         );
         const config = await context.getConfig(userId, this.name);
         if (!config) {
@@ -134,6 +137,13 @@ export class TelegramPluginService implements IPlugin {
             );
         }
 
+        const chat = cfg.chats.find((c) => c.id === chatId);
+        if (!chat) {
+            throw new BadRequestException(
+                `Chat "${chatId}" not found in Telegram config`,
+            );
+        }
+
         const client = this.factory.create(
             cfg.apiId,
             cfg.apiHash,
@@ -151,166 +161,151 @@ export class TelegramPluginService implements IPlugin {
             const isFirstN = mode === 'first';
             const reverse = isFirstN;
 
-            for (const chat of cfg.chats) {
-                const chatId = chat.id;
-                context.logger.info(
-                    `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
-                );
+            context.logger.info(
+                `Backfilling ${chat.name} (${chatId}) limit ${limit}`,
+            );
 
-                const topicStore = new TelegramTopicStore(
+            const topicStore = new TelegramTopicStore(
+                userId,
+                chatId,
+                this.config.get<string>('telegram.topicStoreBasePath'),
+                this.config.get<string>('telegram.topicStoreFileSuffix'),
+            );
+            const messageToTopicMap = await topicStore.prewarmChat();
+            const pendingTopicEntries: {
+                chatId: string;
+                messageId: number;
+                topicId: number;
+            }[] = [];
+
+            const resolvedChatId = /^-?\d+$/.test(chatId)
+                ? Number(chatId)
+                : chatId;
+            const chatEntity = await client.getEntity(resolvedChatId);
+
+            // Resume from last stored offset if in 'first' mode
+            let offsetId: number;
+            if (isFirstN) {
+                const stored = await context.getCursor(
+                    this.name,
                     userId,
                     chatId,
-                    this.config.get<string>('telegram.topicStoreBasePath'),
-                    this.config.get<string>('telegram.topicStoreFileSuffix'),
                 );
-                const messageToTopicMap = await topicStore.prewarmChat();
-                const pendingTopicEntries: {
-                    chatId: string;
-                    messageId: number;
-                    topicId: number;
-                }[] = [];
+                offsetId =
+                    stored ??
+                    this.config.get<number>('telegram.backfillOffsetId', 1);
+            } else {
+                offsetId = 0;
+            }
 
-                const resolvedChatId = /^-?\d+$/.test(chatId)
-                    ? Number(chatId)
-                    : chatId;
-                const chatEntity = await client.getEntity(resolvedChatId);
+            let totalFetched = 0;
+            const maxLimit = limit < 0 ? Infinity : limit;
 
-                // Resume from last stored offset if in 'first' mode
-                let offsetId: number;
+            while (totalFetched < maxLimit) {
+                const batchSize = Math.min(
+                    this.config.get<number>('telegram.backfillBatchSize', 100),
+                    maxLimit - totalFetched,
+                );
+                /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+                const messages: any[] = await client.getMessages(chatEntity, {
+                    limit: batchSize,
+                    offsetId,
+                    reverse,
+                });
+
+                if (messages.length === 0) break;
+
+                const chunk: TelegramMessageRaw[] = [];
+                for (const msg of messages) {
+                    const raw = JSON.parse(JSON.stringify(msg));
+                    const ts =
+                        msg.date instanceof Date
+                            ? msg.date
+                            : new Date((msg.date as number) * 1000);
+
+                    let channelId: string | null = null;
+                    let groupId: string | null = null;
+                    if (raw.peerId?.className === 'PeerChannel') {
+                        channelId = raw.peerId.channelId.toString();
+                    }
+                    if (raw.peerId?.className === 'PeerChat') {
+                        groupId = raw.peerId.chatId.toString();
+                    } else {
+                        groupId = chatId;
+                    }
+
+                    let authorId: string | null = null;
+                    if (raw.fromId?.userId) {
+                        authorId = raw.fromId.userId.toString();
+                    } else if (raw.fromId?.channelId) {
+                        authorId = raw.fromId.channelId.toString();
+                    } else if (raw.fromId?.chatId) {
+                        authorId = raw.fromId.chatId.toString();
+                    }
+
+                    const msgText = (msg.text ?? msg.message ?? '') as string;
+                    const resolvedEntities = resolveEntities(
+                        msgText,
+                        raw.entities ?? [],
+                    );
+
+                    const topicId = resolveTopicId(msg, raw, messageToTopicMap);
+                    messageToTopicMap.set(msg.id as number, topicId);
+                    pendingTopicEntries.push({
+                        chatId,
+                        messageId: msg.id as number,
+                        topicId,
+                    });
+
+                    chunk.push({
+                        id: msg.id as number,
+                        channel_id: channelId,
+                        group_id: groupId,
+                        text: msgText,
+                        date: ts,
+                        replyTo:
+                            (msg.replyTo?.replyToMsgId as number | undefined) ??
+                            null,
+                        topic_id: topicId,
+                        author_id: authorId,
+                        hasAttachment: !!msg.media,
+                        reactions: raw.reactions ?? {},
+                        pinned: !!msg.pinned,
+                        editedDate: msg.editDate ?? null,
+                        resolved_entities:
+                            resolvedEntities.length > 0
+                                ? resolvedEntities
+                                : null,
+                        raw,
+                    });
+                }
+
+                if (chunk.length > 0) {
+                    const envelopes = chunk.map(normalizeTelegramMessage);
+                    const result = await context.storeEnvelopes(
+                        envelopes,
+                        userId,
+                    );
+                    yield result;
+                }
+
+                totalFetched += messages.length;
+                offsetId = messages[messages.length - 1].id as number;
+                // Save cursor after every batch so resume picks up from here
                 if (isFirstN) {
-                    const stored = await context.getCursor(
+                    await context.saveCursor(
                         this.name,
                         userId,
                         chatId,
+                        offsetId,
                     );
-                    offsetId =
-                        stored ??
-                        this.config.get<number>('telegram.backfillOffsetId', 1);
-                } else {
-                    offsetId = 0;
                 }
+                if (messages.length < batchSize) break;
+            }
+            /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 
-                let totalFetched = 0;
-                const maxLimit = limit < 0 ? Infinity : limit;
-
-                while (totalFetched < maxLimit) {
-                    const batchSize = Math.min(
-                        this.config.get<number>(
-                            'telegram.backfillBatchSize',
-                            100,
-                        ),
-                        maxLimit - totalFetched,
-                    );
-                    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
-                    const messages: any[] = await client.getMessages(
-                        chatEntity,
-                        {
-                            limit: batchSize,
-                            offsetId,
-                            reverse,
-                        },
-                    );
-
-                    if (messages.length === 0) break;
-
-                    const chunk: TelegramMessageRaw[] = [];
-                    for (const msg of messages) {
-                        const raw = JSON.parse(JSON.stringify(msg));
-                        const ts =
-                            msg.date instanceof Date
-                                ? msg.date
-                                : new Date((msg.date as number) * 1000);
-
-                        let channelId: string | null = null;
-                        let groupId: string | null = null;
-                        if (raw.peerId?.className === 'PeerChannel') {
-                            channelId = raw.peerId.channelId.toString();
-                        }
-                        if (raw.peerId?.className === 'PeerChat') {
-                            groupId = raw.peerId.chatId.toString();
-                        } else {
-                            groupId = chatId;
-                        }
-
-                        let authorId: string | null = null;
-                        if (raw.fromId?.userId) {
-                            authorId = raw.fromId.userId.toString();
-                        } else if (raw.fromId?.channelId) {
-                            authorId = raw.fromId.channelId.toString();
-                        } else if (raw.fromId?.chatId) {
-                            authorId = raw.fromId.chatId.toString();
-                        }
-
-                        const msgText = (msg.text ??
-                            msg.message ??
-                            '') as string;
-                        const resolvedEntities = resolveEntities(
-                            msgText,
-                            raw.entities ?? [],
-                        );
-
-                        const topicId = resolveTopicId(
-                            msg,
-                            raw,
-                            messageToTopicMap,
-                        );
-                        messageToTopicMap.set(msg.id as number, topicId);
-                        pendingTopicEntries.push({
-                            chatId,
-                            messageId: msg.id as number,
-                            topicId,
-                        });
-
-                        chunk.push({
-                            id: msg.id as number,
-                            channel_id: channelId,
-                            group_id: groupId,
-                            text: msgText,
-                            date: ts,
-                            replyTo:
-                                (msg.replyTo?.replyToMsgId as
-                                    number | undefined) ?? null,
-                            topic_id: topicId,
-                            author_id: authorId,
-                            hasAttachment: !!msg.media,
-                            reactions: raw.reactions ?? {},
-                            pinned: !!msg.pinned,
-                            editedDate: msg.editDate ?? null,
-                            resolved_entities:
-                                resolvedEntities.length > 0
-                                    ? resolvedEntities
-                                    : null,
-                            raw,
-                        });
-                    }
-
-                    if (chunk.length > 0) {
-                        const envelopes = chunk.map(normalizeTelegramMessage);
-                        const result = await context.storeEnvelopes(
-                            envelopes,
-                            userId,
-                        );
-                        yield result;
-                    }
-
-                    totalFetched += messages.length;
-                    offsetId = messages[messages.length - 1].id as number;
-                    // Save cursor after every batch so resume picks up from here
-                    if (isFirstN) {
-                        await context.saveCursor(
-                            this.name,
-                            userId,
-                            chatId,
-                            offsetId,
-                        );
-                    }
-                    if (messages.length < batchSize) break;
-                }
-                /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
-
-                if (pendingTopicEntries.length > 0) {
-                    await topicStore.setBatch(pendingTopicEntries);
-                }
+            if (pendingTopicEntries.length > 0) {
+                await topicStore.setBatch(pendingTopicEntries);
             }
         } finally {
             await this.factory.destroy(client);
@@ -318,11 +313,15 @@ export class TelegramPluginService implements IPlugin {
     }
 
     // eslint-disable-next-line @typescript-eslint/require-await, require-yield
-    async *startStream(): AsyncIterable<EnvelopeWithPayload[]> {
+    async *startStream(
+        _chatId: string,
+        _context: PluginContext,
+        _signal?: AbortSignal,
+    ): AsyncIterable<StreamBatch> {
         throw new NotImplementedException('Streaming not implemented yet');
     }
 
-    stopStream(): void {
-        // Not implemented yet
+    stopStream(_chatId: string): Promise<void> {
+        throw new NotImplementedException('Streaming not implemented yet');
     }
 }

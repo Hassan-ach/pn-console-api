@@ -49,6 +49,7 @@ export class IngestionService {
                 for await (const result of this.pluginManager.backfill(name, {
                     limit,
                     userId: options.userId,
+                    chatId: '', // ponytail: old per-plugin path lacks chatId; replaced by IngestionRunnerService
                 })) {
                     totalInserted += result.inserted;
                     this.logger.debug(

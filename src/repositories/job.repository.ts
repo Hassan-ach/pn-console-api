@@ -58,6 +58,9 @@ export class JobRepository {
     async update(
         id: string,
         data: {
+            title?: string;
+            description?: string;
+            progressable?: boolean;
             status?: JobStatus;
             progress?: number;
             message?: string;
