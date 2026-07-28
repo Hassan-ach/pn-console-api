@@ -215,7 +215,8 @@ describe('PluginContextService', () => {
                             sourceId: '123',
                             organizationId: 'org-1',
                         }),
-                        payload: { content: 'hello' },
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        payload: expect.objectContaining({ content: 'hello' }),
                     },
                     {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -224,7 +225,8 @@ describe('PluginContextService', () => {
                             sourceId: '456',
                             organizationId: 'custom-org',
                         }),
-                        payload: { content: 'world' },
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        payload: expect.objectContaining({ content: 'world' }),
                     },
                 ],
             );

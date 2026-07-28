@@ -1,18 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IngestionService } from './ingestion.service';
-import { PluginManagerService } from '../plugins/services/plugin-manager.service';
+import { IngestionRunnerService } from './ingestion-runner.service';
 import { EnvelopesIngestedEvent } from '../../intelligence/triggers/envelopes-ingested.event';
-
-async function* asyncGen<T>(items: T[]): AsyncIterable<T> {
-    for (const item of items) {
-        yield item;
-    }
-}
 
 describe('IngestionService', () => {
     let service: IngestionService;
-    let pluginManager: jest.Mocked<PluginManagerService>;
+    let ingestionRunner: jest.Mocked<IngestionRunnerService>;
     let eventEmitter: jest.Mocked<EventEmitter2>;
 
     beforeEach(async () => {
@@ -20,8 +14,8 @@ describe('IngestionService', () => {
             providers: [
                 IngestionService,
                 {
-                    provide: PluginManagerService,
-                    useValue: { backfill: jest.fn() },
+                    provide: IngestionRunnerService,
+                    useValue: { backfillPlugin: jest.fn() },
                 },
                 {
                     provide: EventEmitter2,
@@ -31,17 +25,24 @@ describe('IngestionService', () => {
         }).compile();
 
         service = module.get(IngestionService);
-        pluginManager = module.get(PluginManagerService);
+        ingestionRunner = module.get(IngestionRunnerService);
         eventEmitter = module.get(EventEmitter2);
     });
 
     it('returns inserted count and no errors on success', async () => {
-        pluginManager.backfill.mockReturnValue(
-            asyncGen([{ inserted: 5, ids: ['a', 'b', 'c', 'd', 'e'] }]),
-        );
+        ingestionRunner.backfillPlugin.mockResolvedValue({
+            chatResults: [
+                { chatId: 'c1', chatName: 'Chat', inserted: 5, error: null },
+            ],
+        });
 
         const result = await service.ingest({
-            plugins: [{ name: 'telegram', limit: 10 }],
+            plugins: [
+                {
+                    name: 'telegram',
+                    chats: [{ chatId: 'c1', chatName: 'Chat', limit: 10 }],
+                },
+            ],
             userId: 'u1',
             organizationId: 'org-1',
         });
@@ -56,18 +57,42 @@ describe('IngestionService', () => {
     });
 
     it('collects errors without stopping other plugins', async () => {
-        pluginManager.backfill.mockImplementation((name: string) =>
-            name === 'bad'
-                ? (() => {
-                      throw new Error('fail');
-                  })()
-                : asyncGen([{ inserted: 3, ids: ['x', 'y', 'z'] }]),
+        ingestionRunner.backfillPlugin.mockImplementation((name: string) =>
+            Promise.resolve(
+                name === 'bad'
+                    ? {
+                          chatResults: [
+                              {
+                                  chatId: 'c1',
+                                  chatName: 'Bad',
+                                  inserted: 0,
+                                  error: 'fail',
+                              },
+                          ],
+                      }
+                    : {
+                          chatResults: [
+                              {
+                                  chatId: 'c2',
+                                  chatName: 'Good',
+                                  inserted: 3,
+                                  error: null,
+                              },
+                          ],
+                      },
+            ),
         );
 
         const result = await service.ingest({
             plugins: [
-                { name: 'bad', limit: 5 },
-                { name: 'good', limit: 5 },
+                {
+                    name: 'bad',
+                    chats: [{ chatId: 'c1', chatName: 'Bad', limit: 5 }],
+                },
+                {
+                    name: 'good',
+                    chats: [{ chatId: 'c2', chatName: 'Good', limit: 5 }],
+                },
             ],
             userId: 'u1',
             organizationId: 'org-1',
@@ -75,26 +100,46 @@ describe('IngestionService', () => {
 
         expect(result.inserted).toBe(3);
         expect(result.errors).toHaveLength(1);
-        expect(result.errors[0].plugin).toBe('bad');
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
+        expect(result.errors[0].plugin).toBe('bad/Bad');
     });
 
-    it('sums inserted across multiple plugins and chunks', async () => {
-        pluginManager.backfill.mockImplementation((name: string) => {
-            if (name === 'a') {
-                return asyncGen([
-                    { inserted: 3, ids: ['a1', 'a2', 'a3'] },
-                    { inserted: 2, ids: ['a4', 'a5'] },
-                ]);
-            }
-            return asyncGen([{ inserted: 4, ids: ['b1', 'b2', 'b3', 'b4'] }]);
-        });
+    it('sums inserted across multiple plugins', async () => {
+        ingestionRunner.backfillPlugin.mockImplementation((name: string) =>
+            Promise.resolve(
+                name === 'a'
+                    ? {
+                          chatResults: [
+                              {
+                                  chatId: 'c1',
+                                  chatName: 'A',
+                                  inserted: 5,
+                                  error: null,
+                              },
+                          ],
+                      }
+                    : {
+                          chatResults: [
+                              {
+                                  chatId: 'c2',
+                                  chatName: 'B',
+                                  inserted: 4,
+                                  error: null,
+                              },
+                          ],
+                      },
+            ),
+        );
 
         const result = await service.ingest({
             plugins: [
-                { name: 'a', limit: 10 },
-                { name: 'b', limit: 10 },
+                {
+                    name: 'a',
+                    chats: [{ chatId: 'c1', chatName: 'A', limit: 10 }],
+                },
+                {
+                    name: 'b',
+                    chats: [{ chatId: 'c2', chatName: 'B', limit: 10 }],
+                },
             ],
             userId: 'u1',
             organizationId: 'org-1',

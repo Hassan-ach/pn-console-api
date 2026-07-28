@@ -1,7 +1,6 @@
 import {
     BadRequestException,
     Injectable,
-    NotImplementedException,
     UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,12 +10,13 @@ import type { StoreResult } from '../../interfaces/plugin-context.interface';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
 import { normalizeTelegramMessage } from '../utils/normalizer';
-import { resolveEntities, resolveTopicId } from '../utils/telegram-utils';
+import { normalizeRawMessage, resolveTopicId } from '../utils/telegram-utils';
 import type { PluginContext } from '../../interfaces/plugin-context.interface';
 import type { TelegramMessageRaw } from '../types/telegram.types';
 import type {
     BackFillOpts,
     StreamBatch,
+    StreamOpts,
 } from '../../interfaces/plugin.interface';
 
 interface TelegramChat {
@@ -206,7 +206,7 @@ export class TelegramPluginService implements IPlugin {
                     this.config.get<number>('telegram.backfillBatchSize', 100),
                     maxLimit - totalFetched,
                 );
-                /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+                /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
                 const messages: any[] = await client.getMessages(chatEntity, {
                     limit: batchSize,
                     offsetId,
@@ -218,37 +218,6 @@ export class TelegramPluginService implements IPlugin {
                 const chunk: TelegramMessageRaw[] = [];
                 for (const msg of messages) {
                     const raw = JSON.parse(JSON.stringify(msg));
-                    const ts =
-                        msg.date instanceof Date
-                            ? msg.date
-                            : new Date((msg.date as number) * 1000);
-
-                    let channelId: string | null = null;
-                    let groupId: string | null = null;
-                    if (raw.peerId?.className === 'PeerChannel') {
-                        channelId = raw.peerId.channelId.toString();
-                    }
-                    if (raw.peerId?.className === 'PeerChat') {
-                        groupId = raw.peerId.chatId.toString();
-                    } else {
-                        groupId = chatId;
-                    }
-
-                    let authorId: string | null = null;
-                    if (raw.fromId?.userId) {
-                        authorId = raw.fromId.userId.toString();
-                    } else if (raw.fromId?.channelId) {
-                        authorId = raw.fromId.channelId.toString();
-                    } else if (raw.fromId?.chatId) {
-                        authorId = raw.fromId.chatId.toString();
-                    }
-
-                    const msgText = (msg.text ?? msg.message ?? '') as string;
-                    const resolvedEntities = resolveEntities(
-                        msgText,
-                        raw.entities ?? [],
-                    );
-
                     const topicId = resolveTopicId(msg, raw, messageToTopicMap);
                     messageToTopicMap.set(msg.id as number, topicId);
                     pendingTopicEntries.push({
@@ -256,28 +225,7 @@ export class TelegramPluginService implements IPlugin {
                         messageId: msg.id as number,
                         topicId,
                     });
-
-                    chunk.push({
-                        id: msg.id as number,
-                        channel_id: channelId,
-                        group_id: groupId,
-                        text: msgText,
-                        date: ts,
-                        replyTo:
-                            (msg.replyTo?.replyToMsgId as number | undefined) ??
-                            null,
-                        topic_id: topicId,
-                        author_id: authorId,
-                        hasAttachment: !!msg.media,
-                        reactions: raw.reactions ?? {},
-                        pinned: !!msg.pinned,
-                        editedDate: msg.editDate ?? null,
-                        resolved_entities:
-                            resolvedEntities.length > 0
-                                ? resolvedEntities
-                                : null,
-                        raw,
-                    });
+                    chunk.push(normalizeRawMessage(msg, raw, chatId, topicId));
                 }
 
                 if (chunk.length > 0) {
@@ -302,7 +250,7 @@ export class TelegramPluginService implements IPlugin {
                 }
                 if (messages.length < batchSize) break;
             }
-            /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+            /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 
             if (pendingTopicEntries.length > 0) {
                 await topicStore.setBatch(pendingTopicEntries);
@@ -312,16 +260,133 @@ export class TelegramPluginService implements IPlugin {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/require-await, require-yield
+    private streamControllers = new Map<string, AbortController>();
+
     async *startStream(
-        _chatId: string,
-        _context: PluginContext,
-        _signal?: AbortSignal,
+        { userId, chatId }: StreamOpts,
+        context: PluginContext,
+        signal?: AbortSignal,
     ): AsyncIterable<StreamBatch> {
-        throw new NotImplementedException('Streaming not implemented yet');
+        const config = await context.getConfig(userId, this.name);
+        if (!config) {
+            throw new BadRequestException('Telegram not configured');
+        }
+
+        const cfg = config as unknown as TelegramConfig;
+        if (!cfg.sessionString) {
+            throw new BadRequestException('No active Telegram session');
+        }
+
+        if (!cfg.chats?.length) {
+            throw new BadRequestException('No chats configured');
+        }
+
+        const chat = cfg.chats.find((c) => c.id === chatId);
+        if (!chat) {
+            throw new BadRequestException(
+                `Chat "${chatId}" not found in Telegram config`,
+            );
+        }
+
+        const controller = new AbortController();
+        this.streamControllers.set(chatId, controller);
+        const combinedSignal = signal
+            ? this.combineSignals(signal, controller.signal)
+            : controller.signal;
+
+        const client = this.factory.create(
+            cfg.apiId,
+            cfg.apiHash,
+            cfg.sessionString,
+        );
+        await client.connect();
+
+        const resolvedChatId = /^-?\d+$/.test(chatId) ? Number(chatId) : chatId;
+        const chatEntity = await client.getEntity(resolvedChatId);
+
+        const batchSize = this.config.get<number>('streaming.batchSize', 10);
+        const maxWindowMs = this.config.get<number>(
+            'streaming.maxWindowMs',
+            30000,
+        );
+
+        let buffer: StreamBatch['envelopes'] = [];
+        let lastFlush = Date.now();
+        let lastMessageId = 0;
+
+        try {
+            while (!combinedSignal.aborted) {
+                /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+                const messages: any[] = await client.getMessages(chatEntity, {
+                    limit: batchSize,
+                    offsetId: lastMessageId,
+                    reverse: false,
+                });
+
+                const newMessages = messages.filter(
+                    (m: any) => m.id > lastMessageId,
+                );
+
+                if (newMessages.length > 0) {
+                    for (const msg of newMessages) {
+                        const raw = JSON.parse(JSON.stringify(msg));
+                        buffer.push(
+                            normalizeTelegramMessage(
+                                normalizeRawMessage(msg, raw, chatId, null),
+                            ),
+                        );
+                        lastMessageId = msg.id as number;
+                    }
+                }
+
+                const elapsed = Date.now() - lastFlush;
+                if (buffer.length >= batchSize || elapsed >= maxWindowMs) {
+                    if (buffer.length > 0) {
+                        yield {
+                            envelopes: buffer,
+                            lastMessageId:
+                                buffer.length > 0 ? lastMessageId : undefined,
+                        };
+                        buffer = [];
+                        lastFlush = Date.now();
+                    }
+                }
+
+                if (newMessages.length === 0) {
+                    await this.sleep(1000);
+                }
+                /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+            }
+        } finally {
+            this.streamControllers.delete(chatId);
+            buffer = [];
+            await this.factory.destroy(client);
+        }
     }
 
-    stopStream(_chatId: string): Promise<void> {
-        throw new NotImplementedException('Streaming not implemented yet');
+    stopStream({ userId: _userId, chatId }: StreamOpts): void {
+        const controller = this.streamControllers.get(chatId);
+        if (controller) {
+            controller.abort();
+            this.streamControllers.delete(chatId);
+        }
+    }
+
+    private combineSignals(...signals: AbortSignal[]): AbortSignal {
+        const controller = new AbortController();
+        for (const sig of signals) {
+            if (sig.aborted) {
+                controller.abort();
+                return controller.signal;
+            }
+            sig.addEventListener('abort', () => controller.abort(), {
+                once: true,
+            });
+        }
+        return controller.signal;
+    }
+
+    private sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }

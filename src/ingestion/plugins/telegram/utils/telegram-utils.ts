@@ -1,3 +1,5 @@
+import { TelegramMessageRaw } from '../types/telegram.types';
+
 export interface ResolvedEntity {
     type: string;
     value: string | number | null;
@@ -65,3 +67,57 @@ export function resolveTopicId(
     return 1;
 }
 /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+export function normalizeRawMessage(
+    msg: any,
+    raw: any,
+    chatId: string,
+    topicId: number | null,
+): TelegramMessageRaw {
+    const ts =
+        msg.date instanceof Date
+            ? msg.date
+            : new Date((msg.date as number) * 1000);
+
+    let channelId: string | null = null;
+    let groupId: string | null = null;
+    if (raw.peerId?.className === 'PeerChannel') {
+        channelId = raw.peerId.channelId.toString();
+    }
+    if (raw.peerId?.className === 'PeerChat') {
+        groupId = raw.peerId.chatId.toString();
+    } else {
+        groupId = chatId;
+    }
+
+    let authorId: string | null = null;
+    if (raw.fromId?.userId) {
+        authorId = raw.fromId.userId.toString();
+    } else if (raw.fromId?.channelId) {
+        authorId = raw.fromId.channelId.toString();
+    } else if (raw.fromId?.chatId) {
+        authorId = raw.fromId.chatId.toString();
+    }
+
+    const msgText = (msg.text ?? msg.message ?? '') as string;
+    const resolvedEntities = resolveEntities(msgText, raw.entities ?? []);
+
+    return {
+        id: msg.id as number,
+        channel_id: channelId,
+        group_id: groupId,
+        text: msgText,
+        date: ts,
+        replyTo: (msg.replyTo?.replyToMsgId as number | undefined) ?? null,
+        topic_id: topicId,
+        author_id: authorId,
+        hasAttachment: !!msg.media,
+        reactions: raw.reactions ?? {},
+        pinned: !!msg.pinned,
+        editedDate: msg.editDate ?? null,
+        resolved_entities:
+            resolvedEntities.length > 0 ? resolvedEntities : null,
+        raw,
+    };
+}
