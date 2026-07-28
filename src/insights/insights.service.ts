@@ -29,6 +29,8 @@ export class InsightsService {
             type: InsightType;
             content: string;
             status: InsightActionStatus;
+            priority: number;
+            deadline?: Date;
         }[]
     > {
         return this.insightRepository.findByOwnerId(userId, type, status);
@@ -78,6 +80,33 @@ export class InsightsService {
         return this.insightRepository.findById(id, userId) as Promise<Insight>;
     }
 
+    async updatePriority(
+        id: string,
+        userId: string,
+        priority: number,
+    ): Promise<Insight> {
+        const insight = await this.insightRepository.findById(id, userId);
+
+        if (!insight) {
+            throw new NotFoundException('Insight not found');
+        }
+
+        const latestVersionId =
+            await this.insightRepository.getLatestVersionId(id);
+
+        if (!latestVersionId) {
+            throw new NotFoundException('Insight version not found');
+        }
+
+        await this.insightActionRepository.upsertPriority(
+            latestVersionId,
+            userId,
+            priority,
+        );
+
+        return this.insightRepository.findById(id, userId) as Promise<Insight>;
+    }
+
     async findVersionsForUser(
         id: string,
         userId: string,
@@ -88,6 +117,8 @@ export class InsightsService {
             type: InsightType;
             content: string;
             status?: InsightActionStatus;
+            priority?: number;
+            deadline?: Date;
         }[]
     > {
         const versions = await this.insightRepository.findVersionsByInsightId(
@@ -121,6 +152,8 @@ export class InsightsService {
         channelId?: string;
         topicId?: string;
         status?: InsightActionStatus;
+        priority?: number;
+        deadline?: Date;
     }> {
         const version = await this.insightRepository.findVersionById(
             id,
