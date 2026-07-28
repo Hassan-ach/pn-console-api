@@ -68,6 +68,8 @@ const sampleResult = {
             owners: [],
             envolopsRef: ['1'],
             broadcasted: false,
+            priority: 5,
+            deadline: null,
         },
     ],
     newInsights: [],
@@ -188,6 +190,8 @@ describe('InsightExtractionCapability', () => {
                     owners: [{ username: 'alice_dev' }, { id: 'tg-123' }],
                     envolopsRef: ['1'],
                     broadcasted: false,
+                    priority: 7,
+                    deadline: null,
                 },
             ],
         };
@@ -268,6 +272,8 @@ describe('InsightExtractionCapability', () => {
                     owners: [{ username: 'Alice' }],
                     envolopsRef: ['1'],
                     broadcasted: false,
+                    priority: 7,
+                    deadline: null,
                 },
             ],
         };
@@ -348,6 +354,8 @@ describe('InsightExtractionCapability', () => {
                     owners: [{ username: 'xyz_unknown' }],
                     envolopsRef: ['1'],
                     broadcasted: false,
+                    priority: 7,
+                    deadline: null,
                 },
             ],
         };
