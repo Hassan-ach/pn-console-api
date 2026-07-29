@@ -11,7 +11,6 @@ import contextConfig from './config/context.config';
 import chunkingConfig from './config/chunking.config';
 import ingestionConfig from './config/ingestion.config';
 import telegramConfig from './config/telegram.config';
-import streamingConfig from './config/streaming.config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -43,7 +42,6 @@ import { AppController } from './app.controller';
                 contextConfig,
                 chunkingConfig,
                 telegramConfig,
-                streamingConfig,
                 ingestionConfig,
             ],
         }),

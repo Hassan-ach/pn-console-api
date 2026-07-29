@@ -9,6 +9,7 @@ export default registerAs('telegram', () => ({
     backfillBatchSize: 100,
     backfillOffsetId: 1,
     defaultTopicId: 1,
+    flushIntervalMs: 5000,
     topicStoreBasePath: path.join(
         os.homedir(),
         '.pn-console',
