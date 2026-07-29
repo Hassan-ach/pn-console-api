@@ -1,4 +1,8 @@
-import { resolveEntities, resolveTopicId, normalizeRawMessage } from './telegram-utils';
+import {
+    resolveEntities,
+    resolveTopicId,
+    normalizeRawMessage,
+} from './telegram-utils';
 
 describe('resolveEntities', () => {
     it('returns [] for empty entities', () => {

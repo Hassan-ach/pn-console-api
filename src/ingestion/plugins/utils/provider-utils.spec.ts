@@ -96,10 +96,14 @@ describe('resolvePluginConfig', () => {
         (configService.get as jest.Mock).mockImplementation(
             (_key: string) => undefined,
         );
-        (configService.get as jest.Mock).mockImplementationOnce(
-            () => 42,
+        (configService.get as jest.Mock).mockImplementationOnce(() => 42);
+        const result = resolvePluginConfig(
+            configService,
+            'telegram',
+            'batchSize',
+            10,
         );
-        const result = resolvePluginConfig(configService, 'telegram', 'batchSize', 10);
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         expect(configService.get).toHaveBeenCalledWith('telegram.batchSize');
         expect(result).toBe(42);
     });
@@ -108,15 +112,27 @@ describe('resolvePluginConfig', () => {
         (configService.get as jest.Mock).mockImplementation(
             (_key: string) => undefined,
         );
-        (configService.get as jest.Mock).mockImplementationOnce(() => undefined);
+        (configService.get as jest.Mock).mockImplementationOnce(
+            () => undefined,
+        );
         (configService.get as jest.Mock).mockImplementationOnce(() => 99);
-        const result = resolvePluginConfig(configService, 'telegram', 'batchSize', 10);
+        const result = resolvePluginConfig(
+            configService,
+            'telegram',
+            'batchSize',
+            10,
+        );
         expect(result).toBe(99);
     });
 
     it('returns default when nothing configured', () => {
         (configService.get as jest.Mock).mockReturnValue(undefined);
-        const result = resolvePluginConfig(configService, 'telegram', 'batchSize', 10);
+        const result = resolvePluginConfig(
+            configService,
+            'telegram',
+            'batchSize',
+            10,
+        );
         expect(result).toBe(10);
     });
 });

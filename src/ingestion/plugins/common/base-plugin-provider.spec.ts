@@ -1,24 +1,47 @@
 import { BasePluginProvider } from './base-plugin-provider';
-import type { PluginContext, StoreResult } from '../interfaces/plugin-context.interface';
-import type { BackFillOpts, StreamBatch, StreamOpts, PlatformUserInfo } from '../interfaces/plugin.interface';
+import type {
+    PluginContext,
+    StoreResult,
+} from '../interfaces/plugin-context.interface';
+import type {
+    BackFillOpts,
+    StreamBatch,
+    StreamOpts,
+    PlatformUserInfo,
+} from '../interfaces/plugin.interface';
 import type { BaseProviderConfig } from '../interfaces/provider-config.interface';
 
 class TestPlugin extends BasePluginProvider<BaseProviderConfig> {
     readonly name = 'test';
 
-    async validateAuth(_sessionString: string, _context: PluginContext, _userId: string): Promise<PlatformUserInfo> {
+    async validateAuth(
+        _sessionString: string,
+        _context: PluginContext,
+        _userId: string,
+    ): Promise<PlatformUserInfo> {
         return { platformUserId: 'p1', platformUsername: 'test-user' };
     }
 
-    async isConnected(_context: PluginContext, _userId: string): Promise<boolean> {
+    async isConnected(
+        _context: PluginContext,
+        _userId: string,
+    ): Promise<boolean> {
         return true;
     }
 
-    async *backfill(_opts: BackFillOpts, _context: PluginContext, _signal?: AbortSignal): AsyncIterable<StoreResult> {
+    async *backfill(
+        _opts: BackFillOpts,
+        _context: PluginContext,
+        _signal?: AbortSignal,
+    ): AsyncIterable<StoreResult> {
         yield { inserted: 0, ids: [] };
     }
 
-    async *startStream(_opts: StreamOpts, _context: PluginContext, _signal?: AbortSignal): AsyncIterable<StreamBatch> {
+    async *startStream(
+        _opts: StreamOpts,
+        _context: PluginContext,
+        _signal?: AbortSignal,
+    ): AsyncIterable<StreamBatch> {
         yield { envelopes: [], lastMessageId: 0 };
     }
 }
@@ -43,7 +66,9 @@ describe('BasePluginProvider', () => {
             apiId: 12345,
             chats: [{ id: 'chat-1', name: 'General' }],
         });
-        expect(result.chats).toEqual([{ id: 'chat-1', name: 'General', historyLimit: undefined }]);
+        expect(result.chats).toEqual([
+            { id: 'chat-1', name: 'General', historyLimit: undefined },
+        ]);
     });
 
     it('parseConfig preserves extra fields', () => {
