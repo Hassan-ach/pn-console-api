@@ -2,17 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
-import {
-    EnterpriseContext,
-    PreviousIntelligenceQuery,
-} from './context/types/enterprise-context.types';
+import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
 import { DataChunk } from './chunking/types/data-chunk.type';
-import { EnvelopeWithPayload } from '../types/envelope.types';
 import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
 import { EnvelopeRepository } from '../repositories/envelope.repository';
+import { OnEvent } from '@nestjs/event-emitter';
+import { EnvelopesIngestedEvent } from '../ingestion/events/ingestion.events';
 import {
     IntelligenceJobStartedEvent,
     IntelligenceJobMessageEvent,
@@ -25,7 +23,6 @@ export class IntelligenceEngineService {
     private readonly logger = new Logger(IntelligenceEngineService.name);
 
     private readonly previousInsightLimit: number;
-    private readonly streamingPreviousInsightLimit: number;
 
     constructor(
         private readonly contextBuilder: EnterpriseContextBuilder,
@@ -41,10 +38,21 @@ export class IntelligenceEngineService {
             'engine.previousInsightLimit',
             5,
         );
-        this.streamingPreviousInsightLimit = this.config.get<number>(
-            'streaming.previousInsightLimit',
-            5,
+    }
+
+    @OnEvent('envelopes.ingested')
+    async handleEnvelopesIngested(event: EnvelopesIngestedEvent): Promise<void> {
+        this.logger.log(
+            `Received envelopes.ingested event: org=${event.organizationId}, isBackfill=${event.isBackfill}, count=${event.envelopeIds.length}`,
         );
+        await this.run(event.organizationId, {
+            envelopeIds:
+                event.isBackfill || event.envelopeIds.length === 0
+                    ? undefined
+                    : event.envelopeIds,
+            userId: event.userId,
+            progressable: event.isBackfill,
+        });
     }
 
     async run(
@@ -55,7 +63,6 @@ export class IntelligenceEngineService {
             windowStart?: Date;
             windowEnd?: Date;
             progressable?: boolean;
-            skipChunking?: boolean;
         },
     ): Promise<{ insightsPersisted: number }> {
         this.logger.log(
@@ -120,14 +127,9 @@ export class IntelligenceEngineService {
             envelopeIds?: string[];
             windowStart?: Date;
             windowEnd?: Date;
-            skipChunking?: boolean;
         },
         jobId?: string,
     ): Promise<{ insightsPersisted: number }> {
-        if (opts?.skipChunking && opts?.envelopeIds?.length) {
-            return this.executeStreamBatch(organizationId, opts, jobId);
-        }
-
         const startedAt = Date.now();
         let totalInsights = 0;
         let windowCount = 0;
@@ -238,120 +240,5 @@ export class IntelligenceEngineService {
         }
 
         return { scope, limit: this.previousInsightLimit };
-    }
-
-    private async executeStreamBatch(
-        organizationId: string,
-        opts: {
-            userId?: string;
-            envelopeIds?: string[];
-            skipChunking?: boolean;
-        },
-        _jobId?: string,
-    ): Promise<{ insightsPersisted: number }> {
-        const startedAt = Date.now();
-        let totalInsights = 0;
-
-        const contexts: EnterpriseContext[] = [];
-        for await (const ctx of this.contextBuilder.build(organizationId, {
-            envelopeIds: opts.envelopeIds,
-        })) {
-            contexts.push(ctx);
-        }
-
-        for (const ctx of contexts) {
-            if (ctx.envelopes.length === 0) continue;
-
-            const chunk = this.createStreamChunk(ctx.envelopes);
-            const query = this.buildStreamQuery(chunk);
-            const previousInsights = await ctx.previousIntelligence(query);
-
-            const { results, errors } = await this.capabilityManager.executeAll(
-                {
-                    chunk,
-                    previousIntelligence: previousInsights,
-                },
-            );
-
-            if (errors.length > 0) {
-                this.logger.warn(
-                    `Stream batch capability errors for chunk ${chunk.id}: ${JSON.stringify(errors)}`,
-                );
-                const envelopeIds = chunk.envelopes
-                    .map((e) => e.envelope.id)
-                    .filter((id): id is string => !!id);
-
-                await this.failureRepository.createMany(
-                    errors.map((err) => ({
-                        capabilityName: err.capabilityName,
-                        chunkId: chunk.id,
-                        errorMessage: err.error,
-                        envelopeIds,
-                        organizationId,
-                    })),
-                );
-            }
-
-            const insights = results.flatMap((r) => r.insights);
-            if (insights.length > 0) {
-                await this.persistence.persistAll(insights, organizationId);
-                totalInsights += insights.length;
-            }
-
-            const envIds = chunk.envelopes
-                .map((e) => e.envelope.id)
-                .filter((id): id is string => !!id);
-
-            if (envIds.length > 0) {
-                const allFailed =
-                    errors.length > 0 &&
-                    results.every((r) => r.insights.length === 0);
-                await this.envelopeRepo.markStatus(
-                    envIds,
-                    allFailed ? 'FAILED' : 'READY',
-                );
-            }
-        }
-
-        this.logger.log(
-            `Stream batch intelligence complete: ${totalInsights} insights in ${Date.now() - startedAt}ms`,
-        );
-        return { insightsPersisted: totalInsights };
-    }
-
-    private createStreamChunk(envelopes: EnvelopeWithPayload[]): DataChunk {
-        const first = envelopes[0];
-        const last = envelopes[envelopes.length - 1];
-        return {
-            id: `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            envelopes,
-            metadata: {
-                timeRange: {
-                    start: first?.envelope.occurredAt ?? new Date(),
-                    end: last?.envelope.occurredAt ?? new Date(),
-                },
-                envelopeCount: envelopes.length,
-            },
-        };
-    }
-
-    private buildStreamQuery(chunk: DataChunk): PreviousIntelligenceQuery {
-        const firstEnv = chunk.envelopes[0];
-        if (!firstEnv) return { limit: this.streamingPreviousInsightLimit };
-
-        const scope: PreviousIntelligenceQuery['scope'] = {
-            sourcePlugin: firstEnv.envelope.sourcePlugin,
-        };
-
-        if (firstEnv.payload.channelId || firstEnv.payload.topicId) {
-            if (firstEnv.payload.channelId)
-                scope.channelId = firstEnv.payload.channelId;
-            if (firstEnv.payload.topicId)
-                scope.topicId = firstEnv.payload.topicId;
-        } else if (firstEnv.payload.groupId) {
-            scope.groupId = firstEnv.payload.groupId;
-        }
-
-        return { scope, limit: this.streamingPreviousInsightLimit };
     }
 }

@@ -5,10 +5,8 @@ import * as os from 'node:os';
 export default registerAs('telegram', () => ({
     connectionRetries: 5,
     useWSS: true,
-    backfillMode: 'last', // 'first' | 'last'
-    backfillBatchSize: 100,
-    backfillOffsetId: 1,
     defaultTopicId: 1,
+    backfillOffsetId: 1,
     topicStoreBasePath: path.join(
         os.homedir(),
         '.pn-console',

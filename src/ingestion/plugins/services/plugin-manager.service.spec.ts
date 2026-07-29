@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PluginManagerService } from './plugin-manager.service';
+import { PluginConfigService } from './plugin-config.service';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
+import { ActiveChatListenerRepository } from '../../../repositories/active-chat-listener.repository';
+import { EVENT_BUS_TOKEN } from 'src/common/providers/event-bus/event-bus.interface';
 import { PluginContextService } from './plugin-context.service';
 import type { IPlugin } from '../interfaces/plugin.interface';
 import type { StoreResult } from '../interfaces/plugin-context.interface';
@@ -40,6 +43,17 @@ const mockConfigRepo = {
     remove: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockActiveChatRepo = {
+    subscribe: jest.fn().mockResolvedValue(undefined),
+    unsubscribe: jest.fn().mockResolvedValue(undefined),
+    findByPlugin: jest.fn().mockResolvedValue([]),
+};
+
+const mockEventBus = {
+    publish: jest.fn(),
+    subscribe: jest.fn(),
+};
+
 describe('PluginManagerService', () => {
     let service: PluginManagerService;
     let mockPlugin: jest.Mocked<IPlugin>;
@@ -48,7 +62,10 @@ describe('PluginManagerService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PluginManagerService,
+                PluginConfigService,
                 { provide: PluginConfigRepository, useValue: mockConfigRepo },
+                { provide: ActiveChatListenerRepository, useValue: mockActiveChatRepo },
+                { provide: EVENT_BUS_TOKEN, useValue: mockEventBus },
                 { provide: PluginContextService, useValue: mockContext },
             ],
         }).compile();
@@ -63,7 +80,6 @@ describe('PluginManagerService', () => {
             isConnected: jest.fn(),
             validateAuth: jest.fn(),
             startStream: jest.fn(),
-            stopStream: jest.fn(),
         };
     });
 
@@ -138,7 +154,6 @@ describe('PluginManagerService', () => {
                 isConnected: jest.fn().mockRejectedValue(new Error('boom')),
                 validateAuth: jest.fn(),
                 startStream: jest.fn(),
-                stopStream: jest.fn(),
             };
             service.register(mockPlugin);
             service.register(plugin2);

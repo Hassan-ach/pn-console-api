@@ -9,15 +9,13 @@ import smtpConfig from './config/smtp.config';
 import engineConfig from './config/engine.config';
 import contextConfig from './config/context.config';
 import chunkingConfig from './config/chunking.config';
+import ingestionConfig from './config/ingestion.config';
 import telegramConfig from './config/telegram.config';
-import streamingConfig from './ingestion/streaming/streaming.config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PrismaModule } from './prisma/prisma.module';
-import { StreamingModule } from './ingestion/streaming/streaming.module';
-import { PluginsModule } from './ingestion/plugins/plugins.module';
-import { TelegramPluginModule } from './ingestion/plugins/telegram/telegram-plugin.module';
+import { CommonProvidersModule } from './common/providers/common-providers.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AuthModule } from './auth/auth.module';
@@ -44,15 +42,13 @@ import { AppController } from './app.controller';
                 contextConfig,
                 chunkingConfig,
                 telegramConfig,
-                streamingConfig,
+                ingestionConfig,
             ],
         }),
         EventEmitterModule.forRoot({ wildcard: false }),
+        CommonProvidersModule,
         PrismaModule,
-        PluginsModule,
-        TelegramPluginModule,
         IngestionModule,
-        StreamingModule,
         IntelligenceModule,
         AuthModule,
         MailModule,
