@@ -67,4 +67,5 @@ export interface Insight {
     topicId?: string;
     priority?: number;
     deadline?: Date;
+    excludedUserIds?: string[];
 }

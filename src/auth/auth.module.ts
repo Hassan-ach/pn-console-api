@@ -4,8 +4,10 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppDbModule } from '../prisma/app-db/app-db.module';
 import { MailModule } from '../mail/mail.module';
+import { RepositoriesModule } from '../repositories/repositories.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SignupListener } from './listeners/signup.listener';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtLogoutStrategy } from './strategies/jwt-logout.strategy';
@@ -17,6 +19,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
         AppDbModule,
         PassportModule,
         MailModule,
+        RepositoriesModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService): JwtModuleOptions => ({
@@ -35,6 +38,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
     controllers: [AuthController],
     providers: [
         AuthService,
+        SignupListener,
         JwtStrategy,
         JwtLogoutStrategy,
         GoogleStrategy,
