@@ -1,4 +1,8 @@
-import { resolveEntities, resolveTopicId } from './telegram-utils';
+import {
+    resolveEntities,
+    resolveTopicId,
+    normalizeRawMessage,
+} from './telegram-utils';
 
 describe('resolveEntities', () => {
     it('returns [] for empty entities', () => {
@@ -78,5 +82,68 @@ describe('resolveTopicId', () => {
     it('returns 1 when no replyTo exists', () => {
         const msg = { id: 1 };
         expect(resolveTopicId(msg, {}, emptyMap)).toBe(1);
+    });
+});
+
+describe('normalizeRawMessage', () => {
+    it('converts a basic text message to TelegramMessageRaw', () => {
+        const msg = {
+            id: 100,
+            date: new Date('2025-01-01T12:00:00Z'),
+            text: 'hello world',
+            media: false,
+            pinned: false,
+            editDate: null,
+            replyTo: { replyToMsgId: 5 },
+        };
+        const raw = {
+            peerId: { className: 'PeerChannel', channelId: 777 },
+            fromId: { userId: 42 },
+            reactions: { likes: 1 },
+            entities: [{ Bold: { offset: 0, length: 5 } }],
+        };
+
+        const result = normalizeRawMessage(msg, raw, 'chat-1', 3);
+
+        expect(result.id).toBe(100);
+        expect(result.channel_id).toBe('777');
+        expect(result.group_id).toBe('chat-1');
+        expect(result.author_id).toBe('42');
+        expect(result.text).toBe('hello world');
+        expect(result.replyTo).toBe(5);
+        expect(result.topic_id).toBe(3);
+        expect(result.hasAttachment).toBe(false);
+        expect(result.pinned).toBe(false);
+        expect(result.editedDate).toBeNull();
+        expect(result.resolved_entities).toHaveLength(1);
+        expect(result.resolved_entities![0].type).toBe('Bold');
+    });
+
+    it('handles PeerChat group and fromId.channelId', () => {
+        const msg = {
+            id: 1,
+            date: 1704067200,
+            message: 'group msg',
+            media: { photo: true },
+            pinned: true,
+            editDate: new Date(),
+            replyTo: null,
+        };
+        const raw = {
+            peerId: { className: 'PeerChat', chatId: 888 },
+            fromId: { channelId: 999 },
+            reactions: {},
+            entities: [],
+        };
+
+        const result = normalizeRawMessage(msg, raw, 'chat-g', null);
+
+        expect(result.channel_id).toBeNull();
+        expect(result.group_id).toBe('888');
+        expect(result.author_id).toBe('999');
+        expect(result.text).toBe('group msg');
+        expect(result.hasAttachment).toBe(true);
+        expect(result.pinned).toBe(true);
+        expect(result.resolved_entities).toBeNull();
     });
 });
