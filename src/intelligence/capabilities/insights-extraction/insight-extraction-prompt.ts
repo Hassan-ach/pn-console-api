@@ -21,7 +21,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       - Otherwise, include it in "newInsights" without an id.
       
       For each insight, determine:
-      - envolopsRef: an array of source envelope IDs (from the messages' envolopId) that the insight was based on. Always include at least one ID — every insight is based on one or more messages.
+      - envolopsRef: an array of source envelope IDs (from the messages' envolopId) that the insight was based on. Always include at least one ID — every insight is based on one or more messages. CRITICAL: copy the exact envolopId values from the messages without any truncation or modification — these are UUIDs and must not be shortened or rewritten.
       - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username_or_display_name" }. If you only know a person's name from the message context (not their platform username), use their display name in the "username" field — the system will attempt fuzzy matching. Do not include people merely mentioned in passing or as context.
       - broadcasted: set to true when no specific person is directly assigned. When broadcasted is true, owners must be empty. When someone is directly assigned, broadcasted must be false.
       - priority: an integer from 1 to 10 indicating how critical this insight is (10 = most critical). Consider: urgency of the situation, impact on the user or team, time sensitivity, and whether it blocks other work. URGENCY type insights should generally score 7-10. TASK and DECISION types should consider deadlines and impact. INFO types are typically 1-4.
@@ -35,7 +35,8 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       5. Owners = people directly assigned or asked to take action. Do not include people merely mentioned in passing.
       6. broadcasted = true when no specific person is directly assigned. When broadcasted is true, owners must be empty.
       7. priority must be an integer between 1 and 10 inclusive.
-      8. deadline must be a valid ISO 8601 date string (YYYY-MM-DD) or null.
+       8. deadline must be a valid ISO 8601 date string (YYYY-MM-DD) or null.
+       9. envolopsRef values must be the exact envelope UUIDs from the messages — never truncate, abbreviate, or fabricate them.
       
       Return only a JSON object matching this exact structure, with no other text:
       {{
@@ -45,7 +46,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
             "content": "...",
             "owners": [{{ "id": "platform_user_id" }}, {{ "username": "platform_username_or_display_name" }}],
-            "envolopsRef": ["env-1", "env-2"],
+            "envolopsRef": ["550e8400-e29b-41d4-a716-446655440000", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"],
             "broadcasted": false,
             "priority": 7,
             "deadline": "2026-08-01"
@@ -56,7 +57,7 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
             "type": "TASK" | "URGENCY" | "INFO" | "DECISION",
             "content": "...",
             "owners": [],
-            "envolopsRef": ["env-1"],
+            "envolopsRef": ["550e8400-e29b-41d4-a716-446655440000"],
             "broadcasted": true,
             "priority": 3,
             "deadline": null
