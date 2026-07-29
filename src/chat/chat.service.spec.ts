@@ -210,7 +210,10 @@ describe('ChatService', () => {
                 // consume the stream
             }
 
-            expect(mockChatContext.buildContext).toHaveBeenCalledWith('user-1');
+            expect(mockChatContext.buildContext).toHaveBeenCalledWith(
+                'user-1',
+                'hello',
+            );
         });
 
         it('loads last 20 messages for history', async () => {

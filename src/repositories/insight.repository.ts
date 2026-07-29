@@ -659,6 +659,7 @@ export class InsightRepository {
         id: string;
         organizationId: string | null;
         versions: {
+            id: string;
             version: number;
             type: string;
             content: string;
@@ -681,6 +682,7 @@ export class InsightRepository {
         const latest = row.versions[0];
         return {
             id: row.id,
+            latestVersionId: latest.id,
             organizationId: row.organizationId ?? undefined,
             type: latest.type as Insight['type'],
             content: latest.content,

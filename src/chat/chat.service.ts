@@ -70,7 +70,10 @@ export class ChatService {
     ): AsyncGenerator<string> {
         await this.saveMessage(userId, 'USER', userMessage);
 
-        const context = await this.chatContextService.buildContext(userId);
+        const context = await this.chatContextService.buildContext(
+            userId,
+            userMessage,
+        );
 
         const history = await this.getHistory(userId);
         const last20 = history.slice(-20);

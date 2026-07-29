@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChatContextService } from './chat-context.service';
 import { InsightRepository } from 'src/repositories/insight.repository';
 import { EnvelopeRepository } from 'src/repositories/envelope.repository';
+import { EmbeddingRepository } from 'src/repositories/embedding.repository';
+import { EmbeddingService } from 'src/intelligence/embeddings/embedding.service';
 
 describe('ChatContextService', () => {
     let service: ChatContextService;
@@ -14,12 +16,22 @@ describe('ChatContextService', () => {
         findRecent: jest.fn(),
     };
 
+    const mockEmbeddingService = {
+        embed: jest.fn(),
+    };
+
+    const mockEmbeddingRepo = {
+        searchSimilar: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ChatContextService,
                 { provide: InsightRepository, useValue: mockInsightRepo },
                 { provide: EnvelopeRepository, useValue: mockEnvelopeRepo },
+                { provide: EmbeddingService, useValue: mockEmbeddingService },
+                { provide: EmbeddingRepository, useValue: mockEmbeddingRepo },
             ],
         }).compile();
 
@@ -55,7 +67,9 @@ describe('ChatContextService', () => {
 
             expect(result).toContain('## User Insights');
             expect(result).toContain('## Recent Ingested Messages');
-            expect(result).toContain('- **TASK**: Review PR');
+            expect(result).toContain(
+                '- **TASK** [PENDING] (priority: 1): Review PR',
+            );
             expect(result).toContain('- **telegram**');
             expect(result).toContain('Hello world');
         });
@@ -116,8 +130,12 @@ describe('ChatContextService', () => {
 
             const result = await service.buildContext('user-1');
 
-            expect(result).toContain('- **URGENCY**: Server down');
-            expect(result).toContain('- **DECISION**: Approve budget');
+            expect(result).toContain(
+                '- **URGENCY** [PENDING] (priority: 1): Server down',
+            );
+            expect(result).toContain(
+                '- **DECISION** [PENDING] (priority: 1): Approve budget',
+            );
         });
     });
 });

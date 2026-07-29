@@ -11,6 +11,7 @@ import { PluginConfigRepository } from './plugin-config.repository';
 import { ActiveChatListenerRepository } from './active-chat-listener.repository';
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
+import { EmbeddingRepository } from './embedding.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -25,6 +26,7 @@ import { UserRepository } from './user.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EmbeddingRepository,
     ],
     exports: [
         InsightRepository,
@@ -37,6 +39,7 @@ import { UserRepository } from './user.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EmbeddingRepository,
     ],
 })
 export class RepositoriesModule {}
