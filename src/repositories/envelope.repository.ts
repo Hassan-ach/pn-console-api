@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RawDbService } from '../prisma/raw-db/raw-db.service';
 import { Prisma } from 'generated/raw-db-client';
 
@@ -47,6 +47,8 @@ export interface CreateManyResult {
 
 @Injectable()
 export class EnvelopeRepository {
+    private readonly logger = new Logger(EnvelopeRepository.name);
+
     constructor(private readonly rawDb: RawDbService) {}
 
     async createManyWithPayload(
@@ -92,48 +94,54 @@ export class EnvelopeRepository {
                     continue;
                 }
 
-                const payload = await tx.messagePayload.create({
-                    data: {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                        type: item.payload.type as any,
-                        content: item.payload.content,
-                        groupId: item.payload.groupId,
-                        channelId: item.payload.channelId,
-                        replyTo: item.payload.replyTo,
-                        topicId: item.payload.topicId,
-                        reactions: item.payload.reactions
-                            ? toJson(item.payload.reactions)
-                            : Prisma.JsonNull,
-                        pinned: item.payload.pinned,
-                        editedDate: item.payload.editedDate,
-                        entities: item.payload.entities
-                            ? toJson(item.payload.entities)
-                            : Prisma.JsonNull,
-                        rawPayload: item.payload.rawPayload
-                            ? toJson(item.payload.rawPayload)
-                            : Prisma.JsonNull,
-                    },
-                });
+                try {
+                    const payload = await tx.messagePayload.create({
+                        data: {
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            type: item.payload.type as any,
+                            content: item.payload.content,
+                            groupId: item.payload.groupId,
+                            channelId: item.payload.channelId,
+                            replyTo: item.payload.replyTo,
+                            topicId: item.payload.topicId,
+                            reactions: item.payload.reactions
+                                ? toJson(item.payload.reactions)
+                                : Prisma.JsonNull,
+                            pinned: item.payload.pinned,
+                            editedDate: item.payload.editedDate,
+                            entities: item.payload.entities
+                                ? toJson(item.payload.entities)
+                                : Prisma.JsonNull,
+                            rawPayload: item.payload.rawPayload
+                                ? toJson(item.payload.rawPayload)
+                                : Prisma.JsonNull,
+                        },
+                    });
 
-                const envelope = await tx.envelope.create({
-                    data: {
-                        sourcePlugin: item.envelope.sourcePlugin,
-                        sourceId: item.envelope.sourceId,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                        type: item.envelope.type as any,
-                        payloadRef: payload.id,
-                        hasAttachment: item.envelope.hasAttachment,
-                        authorId: item.envelope.authorId,
-                        organizationId: item.envelope.organizationId,
-                        status: parseStatus(item.envelope.status),
-                        permissions: item.envelope.permissions
-                            ? toJson(item.envelope.permissions)
-                            : Prisma.JsonNull,
-                        occurredAt: item.envelope.occurredAt,
-                    },
-                });
+                    const envelope = await tx.envelope.create({
+                        data: {
+                            sourcePlugin: item.envelope.sourcePlugin,
+                            sourceId: item.envelope.sourceId,
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            type: item.envelope.type as any,
+                            payloadRef: payload.id,
+                            hasAttachment: item.envelope.hasAttachment,
+                            authorId: item.envelope.authorId,
+                            organizationId: item.envelope.organizationId,
+                            status: parseStatus(item.envelope.status),
+                            permissions: item.envelope.permissions
+                                ? toJson(item.envelope.permissions)
+                                : Prisma.JsonNull,
+                            occurredAt: item.envelope.occurredAt,
+                        },
+                    });
 
-                ids.push(envelope.id);
+                    ids.push(envelope.id);
+                } catch (err: any) {
+                    this.logger.warn(
+                        `Failed to store item ${key}: ${err instanceof Error ? err.message : String(err)}`,
+                    );
+                }
             }
         });
 

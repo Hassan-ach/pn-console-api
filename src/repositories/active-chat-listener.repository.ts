@@ -101,7 +101,9 @@ export class ActiveChatListenerRepository {
         });
     }
 
-    async findStale(heartbeatTimeoutMs: number): Promise<{ id: string; pluginName: string; chatId: string }[]> {
+    async findStale(
+        heartbeatTimeoutMs: number,
+    ): Promise<{ id: string; pluginName: string; chatId: string }[]> {
         const threshold = new Date(Date.now() - heartbeatTimeoutMs);
         return this.prisma.activeChatListener.findMany({
             where: {

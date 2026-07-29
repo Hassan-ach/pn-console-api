@@ -9,6 +9,8 @@ import { CapabilityManager } from './capabilities/capability-manager.service';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
 import { EnvelopeRepository } from '../repositories/envelope.repository';
+import { OnEvent } from '@nestjs/event-emitter';
+import { EnvelopesIngestedEvent } from '../ingestion/events/ingestion.events';
 import {
     IntelligenceJobStartedEvent,
     IntelligenceJobMessageEvent,
@@ -36,6 +38,18 @@ export class IntelligenceEngineService {
             'engine.previousInsightLimit',
             5,
         );
+    }
+
+    @OnEvent('envelopes.ingested')
+    async handleEnvelopesIngested(event: EnvelopesIngestedEvent): Promise<void> {
+        this.logger.log(
+            `Received envelopes.ingested event: org=${event.organizationId}, count=${event.envelopeIds.length}`,
+        );
+        await this.run(event.organizationId, {
+            envelopeIds: event.envelopeIds,
+            userId: event.userId,
+            progressable: event.isBackfill,
+        });
     }
 
     async run(

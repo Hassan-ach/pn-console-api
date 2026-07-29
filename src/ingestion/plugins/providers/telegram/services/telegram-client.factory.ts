@@ -22,6 +22,7 @@ export class TelegramClientFactory {
         apiId: number,
         apiHash: string,
         sessionString?: string,
+        connectionRetries?: number,
     ): GramJsClient {
         const session = sessionString
             ? new StringSession(sessionString)
@@ -35,10 +36,9 @@ export class TelegramClientFactory {
         }
 
         return new GramJsClient(session, apiId, apiHash, {
-            connectionRetries: this.config.get<number>(
-                'telegram.connectionRetries',
-                5,
-            ),
+            connectionRetries:
+                connectionRetries ??
+                this.config.get<number>('telegram.connectionRetries', 5),
             useWSS: this.config.get<boolean>('telegram.useWSS', true),
         });
     }

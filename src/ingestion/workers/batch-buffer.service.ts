@@ -1,21 +1,21 @@
-import type { EnvelopeWithPayload } from '../../types/envelope.types';
-
-export class BatchBuffer {
-    private buffer: EnvelopeWithPayload[] = [];
+export class BatchBuffer<T = unknown> {
+    private buffer: T[] = [];
     private timer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(
         private batchSize: number,
         private maxWindowMs: number,
-        private onFlush: (batch: EnvelopeWithPayload[]) => Promise<void>,
+        private onFlush: (batch: T[]) => Promise<void>,
     ) {}
 
-    add(envelope: EnvelopeWithPayload): void {
-        this.buffer.push(envelope);
+    add(item: T): void {
+        this.buffer.push(item);
         if (this.buffer.length >= this.batchSize) {
-            this.flush();
+            void this.flush();
         } else if (!this.timer) {
-            this.timer = setTimeout(() => this.flush(), this.maxWindowMs);
+            this.timer = setTimeout(() => {
+                void this.flush();
+            }, this.maxWindowMs);
         }
     }
 

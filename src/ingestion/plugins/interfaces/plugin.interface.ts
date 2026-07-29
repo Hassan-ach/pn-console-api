@@ -1,5 +1,12 @@
 import type { EnvelopeWithPayload } from '../../../types/envelope.types';
 import type { PluginContext, StoreResult } from './plugin-context.interface';
+import type {
+    BaseProviderConfig,
+    ConfigFieldSchema,
+    ActivationRequirementResult,
+} from './provider-config.interface';
+
+export { ConfigFieldSchema, ActivationRequirementResult };
 
 export interface PlatformUserInfo {
     platformUserId: string;
@@ -15,6 +22,7 @@ export interface BackFillOpts {
 export interface StreamOpts {
     userId: string;
     chatId: string;
+    cursor?: number;
 }
 
 export interface StreamBatch {
@@ -28,7 +36,9 @@ export interface ActivationRequirement {
     validate: (config: Record<string, unknown>) => boolean;
 }
 
-export interface IPlugin {
+export interface IPlugin<
+    TConfig extends BaseProviderConfig = BaseProviderConfig,
+> {
     readonly name: string;
 
     validateAuth(
@@ -43,6 +53,8 @@ export interface IPlugin {
         config?: Record<string, unknown>,
     ): Promise<boolean>;
 
+    parseConfig?(raw: Record<string, unknown>): TConfig;
+
     backfill(
         opts: BackFillOpts,
         context: PluginContext,
@@ -55,6 +67,8 @@ export interface IPlugin {
         signal?: AbortSignal,
     ): AsyncIterable<StreamBatch>;
 
-    getConfigSchema?(): Record<string, unknown>[];
-    getActivationRequirements?(config: Record<string, unknown>): ActivationRequirement[];
+    getConfigSchema?(): ConfigFieldSchema[];
+    getActivationRequirements?(
+        config: Record<string, unknown>,
+    ): ActivationRequirement[];
 }

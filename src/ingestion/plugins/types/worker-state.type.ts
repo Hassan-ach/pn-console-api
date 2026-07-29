@@ -3,4 +3,5 @@ export interface WorkerState {
     stream: 'IDLE' | 'LISTENING' | 'STOPPED';
     startedAt: Date;
     backfillProgress?: { inserted: number; ids: string[] };
+    flushes: number;
 }
