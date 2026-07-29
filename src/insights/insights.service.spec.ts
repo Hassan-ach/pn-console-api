@@ -34,9 +34,9 @@ describe('InsightsService', () => {
 
     const mockFindByOwnerResult = {
         id: 'insight-1',
-        type: InsightType.TASK as const,
+        type: InsightType.TASK,
         content: 'Review the PR',
-        status: InsightActionStatus.PENDING as const,
+        status: InsightActionStatus.PENDING,
         priority: 7,
         deadline: new Date('2026-08-15'),
     };
@@ -185,9 +185,9 @@ describe('InsightsService', () => {
             {
                 id: 'version-1',
                 version: 1,
-                type: InsightType.TASK as const,
+                type: InsightType.TASK,
                 content: 'Review the PR',
-                status: InsightActionStatus.PENDING as const,
+                status: InsightActionStatus.PENDING,
                 priority: 7,
                 deadline: new Date('2026-08-15'),
             },
@@ -221,7 +221,7 @@ describe('InsightsService', () => {
         const mockVersion = {
             id: 'version-1',
             organizationId: 'org-1',
-            type: InsightType.TASK as const,
+            type: InsightType.TASK,
             content: 'Review the PR',
             envolopsRef: ['env-1'],
             broadcasted: false,
@@ -229,7 +229,7 @@ describe('InsightsService', () => {
             latestVersionId: 'version-1',
             createdAt: new Date('2026-07-01'),
             sourcePlugin: 'slack',
-            status: InsightActionStatus.PENDING as const,
+            status: InsightActionStatus.PENDING,
             priority: 7,
             deadline: new Date('2026-08-15'),
         };
