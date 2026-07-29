@@ -53,4 +53,27 @@ export class InsightActionRepository {
 
         return ownerRow?.status ?? null;
     }
+
+    async upsertPriority(
+        insightVersionId: string,
+        userId: string,
+        priority: number,
+    ) {
+        return this.prisma.insightVersionOwner.upsert({
+            where: {
+                insightVersionId_userId: {
+                    insightVersionId,
+                    userId,
+                },
+            },
+            create: {
+                insightVersionId,
+                userId,
+                priority,
+            },
+            update: {
+                priority,
+            },
+        });
+    }
 }

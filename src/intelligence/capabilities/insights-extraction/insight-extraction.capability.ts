@@ -54,10 +54,12 @@ export class InsightExtractionCapability implements ICapability {
         const history = input.previousIntelligence;
         const llm = await this.llmService.createLLM();
 
+        const currentDate = new Date().toISOString().split('T')[0];
+
         const chainInput = [
             new SystemMessage(SYSTEM_PROMPT),
             new HumanMessage(
-                `Current insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
+                `Current date: ${currentDate}\n\nCurrent insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
             ),
         ];
 
@@ -144,6 +146,8 @@ export class InsightExtractionCapability implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: u.envolopsRef,
                     broadcasted: u.broadcasted,
+                    priority: u.priority,
+                    deadline: u.deadline ? new Date(u.deadline) : undefined,
                     sourcePlugin: chunkSourcePlugin,
                     groupId: chunkGroupId,
                     channelId: chunkChannelId,
@@ -160,6 +164,8 @@ export class InsightExtractionCapability implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: n.envolopsRef,
                     broadcasted: n.broadcasted,
+                    priority: n.priority,
+                    deadline: n.deadline ? new Date(n.deadline) : undefined,
                     sourcePlugin: chunkSourcePlugin,
                     groupId: chunkGroupId,
                     channelId: chunkChannelId,

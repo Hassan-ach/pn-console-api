@@ -18,6 +18,7 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { InsightActionQueryDto } from './dto/insight-action-query.dto';
 import { InsightDetailResponseDto } from './dto/insight-detail-response.dto';
+import { InsightPriorityQueryDto } from './dto/insight-priority-query.dto';
 import { InsightResponseDto } from './dto/insight-response.dto';
 import { InsightsQueryDto } from './dto/insights-query.dto';
 import { InsightsService } from './insights.service';
@@ -69,6 +70,23 @@ export class InsightsController {
             req.user.id,
             query.action,
         );
+    }
+
+    @Patch(':id/priority')
+    @ApiOperation({ summary: 'Override priority on an insight' })
+    @ApiOkResponse({ type: InsightDetailResponseDto })
+    async updatePriority(
+        @Req() req: { user: { id: string } },
+        @Param('id') id: string,
+        @Query(ValidationPipe) query: InsightPriorityQueryDto,
+    ): Promise<InsightDetailResponseDto> {
+        const insight = await this.insightsService.updatePriority(
+            id,
+            req.user.id,
+            query.priority,
+        );
+
+        return plainToInstance(InsightDetailResponseDto, insight);
     }
 
     @Get(':id/versions')

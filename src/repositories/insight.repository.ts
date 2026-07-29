@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import {
     Insight,
@@ -10,10 +11,18 @@ import { EnvelopeRepository } from './envelope.repository';
 
 @Injectable()
 export class InsightRepository {
+    private readonly deadlineWarningDays: number;
+
     constructor(
         private readonly prisma: AppDbService,
         private readonly envelopeRepository: EnvelopeRepository,
-    ) {}
+        private readonly config: ConfigService,
+    ) {
+        this.deadlineWarningDays = this.config.get<number>(
+            'engine.insightDeadlineWarningDays',
+            3,
+        );
+    }
 
     async create(data: {
         organizationId?: string;
@@ -23,6 +32,8 @@ export class InsightRepository {
         unresolvedOwners?: UnresolvedOwnerRef[];
         envolopsRef?: string[];
         broadcasted?: boolean;
+        priority?: number;
+        deadline?: Date;
         sourcePlugin?: string;
         groupId?: string;
         channelId?: string;
@@ -52,6 +63,7 @@ export class InsightRepository {
                             create: ownerIds.map((userId) => ({
                                 userId,
                                 status: 'PENDING' as const,
+                                priority: data.priority ?? null,
                             })),
                         },
                         unresolvedOwners: {
@@ -67,6 +79,7 @@ export class InsightRepository {
                         groupId: data.groupId ?? null,
                         channelId: data.channelId ?? null,
                         topicId: data.topicId ?? null,
+                        deadline: data.deadline ?? null,
                     },
                 },
             },
@@ -94,6 +107,8 @@ export class InsightRepository {
             unresolvedOwners?: UnresolvedOwnerRef[];
             envolopsRef?: string[];
             broadcasted?: boolean;
+            priority?: number;
+            deadline?: Date;
             sourcePlugin?: string;
             groupId?: string;
             channelId?: string;
@@ -133,6 +148,7 @@ export class InsightRepository {
                         create: ownerIds.map((userId) => ({
                             userId,
                             status: 'PENDING' as const,
+                            priority: data.priority ?? null,
                         })),
                     },
                     unresolvedOwners: {
@@ -148,6 +164,7 @@ export class InsightRepository {
                     groupId: data.groupId ?? null,
                     channelId: data.channelId ?? null,
                     topicId: data.topicId ?? null,
+                    deadline: data.deadline ?? null,
                 },
             });
 
@@ -253,6 +270,7 @@ export class InsightRepository {
             groupId: v.groupId ?? undefined,
             channelId: v.channelId ?? undefined,
             topicId: v.topicId ?? undefined,
+            deadline: v.deadline ?? undefined,
         }));
     }
 
@@ -266,6 +284,8 @@ export class InsightRepository {
             type: InsightType;
             content: string;
             status: InsightActionStatus;
+            priority: number;
+            deadline?: Date;
         }[]
     > {
         const versions = await this.prisma.insightVersion.findMany({
@@ -281,6 +301,7 @@ export class InsightRepository {
                 insightId: true,
                 type: true,
                 content: true,
+                deadline: true,
             },
             orderBy: { version: 'desc' },
         });
@@ -310,33 +331,81 @@ export class InsightRepository {
             select: {
                 insightVersionId: true,
                 status: true,
+                priority: true,
             },
         });
 
-        const statusMap = new Map(
-            ownerRows.map((r) => [r.insightVersionId, r.status]),
+        const ownerMap = new Map(
+            ownerRows.map((r) => [
+                r.insightVersionId,
+                { status: r.status, priority: r.priority },
+            ]),
         );
+
+        const versionMap = new Map(
+            versions.map((v) => [v.id, { deadline: v.deadline }]),
+        );
+
+        const now = new Date();
 
         const results: {
             id: string;
             type: InsightType;
             content: string;
             status: InsightActionStatus;
+            priority: number;
+            deadline?: Date;
         }[] = [];
 
         for (const v of versions) {
             if (seen.has(v.insightId)) {
                 seen.delete(v.insightId);
-                const ownerStatus = statusMap.get(v.id) ?? 'PENDING';
+                const ownerData = ownerMap.get(v.id);
+                const ownerStatus = ownerData?.status ?? 'PENDING';
+                const storedPriority = ownerData?.priority ?? 0;
+                const versionData = versionMap.get(v.id);
+                const deadline = versionData?.deadline ?? undefined;
+
                 if (status && ownerStatus !== status) continue;
+
+                let effectivePriority = storedPriority;
+
+                if (
+                    ownerStatus === 'PENDING' &&
+                    deadline &&
+                    storedPriority > 0
+                ) {
+                    const msUntilDeadline = deadline.getTime() - now.getTime();
+                    const daysUntilDeadline =
+                        msUntilDeadline / (1000 * 60 * 60 * 24);
+
+                    if (daysUntilDeadline <= this.deadlineWarningDays) {
+                        const urgency =
+                            1 -
+                            Math.max(0, daysUntilDeadline) /
+                                this.deadlineWarningDays;
+                        effectivePriority = Math.min(
+                            Math.round(
+                                storedPriority +
+                                    urgency * (10 - storedPriority),
+                            ),
+                            10,
+                        );
+                    }
+                }
+
                 results.push({
                     id: v.insightId,
                     type: v.type,
                     content: v.content,
                     status: ownerStatus,
+                    priority: effectivePriority,
+                    deadline,
                 });
             }
         }
+
+        results.sort((a, b) => b.priority - a.priority);
 
         return results;
     }
@@ -378,6 +447,8 @@ export class InsightRepository {
             owners: latest.owners.map((o) => o.userId),
             topicId: latest.topicId ?? undefined,
             status: ownerRow?.status ?? 'PENDING',
+            priority: ownerRow?.priority ?? undefined,
+            deadline: latest.deadline ?? undefined,
         };
     }
 
@@ -391,6 +462,8 @@ export class InsightRepository {
               type: InsightType;
               content: string;
               status?: InsightActionStatus;
+              priority?: number;
+              deadline?: Date;
           }[]
         | null
     > {
@@ -419,6 +492,7 @@ export class InsightRepository {
                 version: true,
                 type: true,
                 content: true,
+                deadline: true,
             },
         });
 
@@ -430,17 +504,29 @@ export class InsightRepository {
             select: {
                 insightVersionId: true,
                 status: true,
+                priority: true,
             },
         });
 
-        const statusMap = new Map(
-            ownerRows.map((r) => [r.insightVersionId, r.status]),
+        const ownerMap = new Map(
+            ownerRows.map((r) => [
+                r.insightVersionId,
+                { status: r.status, priority: r.priority },
+            ]),
         );
 
-        return allVersions.map((v) => ({
-            ...v,
-            status: statusMap.get(v.id) ?? 'PENDING',
-        }));
+        return allVersions.map((v) => {
+            const ownerData = ownerMap.get(v.id);
+            return {
+                id: v.id,
+                version: v.version,
+                type: v.type,
+                content: v.content,
+                status: ownerData?.status ?? 'PENDING',
+                priority: ownerData?.priority ?? undefined,
+                deadline: v.deadline ?? undefined,
+            };
+        });
     }
 
     async findVersionById(
@@ -462,6 +548,8 @@ export class InsightRepository {
         channelId?: string;
         topicId?: string;
         status?: InsightActionStatus;
+        priority?: number;
+        deadline?: Date;
     } | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id: insightId },
@@ -495,7 +583,7 @@ export class InsightRepository {
                     userId: ownerId,
                 },
             },
-            select: { status: true },
+            select: { status: true, priority: true },
         });
 
         return {
@@ -513,6 +601,8 @@ export class InsightRepository {
             channelId: version.channelId ?? undefined,
             topicId: version.topicId ?? undefined,
             status: ownerRow?.status ?? 'PENDING',
+            priority: ownerRow?.priority ?? undefined,
+            deadline: version.deadline ?? undefined,
         };
     }
 
@@ -585,6 +675,7 @@ export class InsightRepository {
             groupId: string | null;
             channelId: string | null;
             topicId: string | null;
+            deadline: Date | null;
         }[];
     }): Insight {
         const latest = row.versions[0];
@@ -607,6 +698,7 @@ export class InsightRepository {
             groupId: latest.groupId ?? undefined,
             channelId: latest.channelId ?? undefined,
             topicId: latest.topicId ?? undefined,
+            deadline: latest.deadline ?? undefined,
         };
     }
 }
