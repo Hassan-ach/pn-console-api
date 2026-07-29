@@ -41,7 +41,9 @@ export class IntelligenceEngineService {
     }
 
     @OnEvent('envelopes.ingested')
-    async handleEnvelopesIngested(event: EnvelopesIngestedEvent): Promise<void> {
+    async handleEnvelopesIngested(
+        event: EnvelopesIngestedEvent,
+    ): Promise<void> {
         this.logger.log(
             `Received envelopes.ingested event: org=${event.organizationId}, isBackfill=${event.isBackfill}, count=${event.envelopeIds.length}`,
         );

@@ -10,8 +10,11 @@ export function extractProviderChats(
             typeof c === 'object' && c !== null ? c : {}
         ) as Record<string, unknown>;
         return {
-            id: String(chatObj.id ?? ''),
-            name: String(chatObj.name ?? ''),
+            id:
+                typeof chatObj.id === 'string' || typeof chatObj.id === 'number'
+                    ? String(chatObj.id)
+                    : '',
+            name: typeof chatObj.name === 'string' ? chatObj.name : '',
             historyLimit:
                 typeof chatObj.historyLimit === 'number'
                     ? chatObj.historyLimit

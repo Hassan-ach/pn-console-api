@@ -16,7 +16,10 @@ export class InMemoryEventBus implements IEventBus {
     ): void {
         this.eventEmitter.on(event, (payload: T) => {
             void Promise.resolve(handler(payload)).catch((err) => {
-                console.error(`[InMemoryEventBus] Error in event listener for ${event}:`, err);
+                console.error(
+                    `[InMemoryEventBus] Error in event listener for ${event}:`,
+                    err,
+                );
             });
         });
     }

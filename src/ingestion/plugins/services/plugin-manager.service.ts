@@ -199,7 +199,8 @@ export class PluginManagerService {
             name,
             userId,
             config,
-            (sessionStr) => plugin.validateAuth(sessionStr, this.context, userId),
+            (sessionStr) =>
+                plugin.validateAuth(sessionStr, this.context, userId),
             this.context,
         );
     }

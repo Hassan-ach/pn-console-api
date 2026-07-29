@@ -155,8 +155,14 @@ export class WorkerManager
         }
 
         this.logger.log(`Starting worker for ${key}`);
-        const dbBatchSize = this.configService.get<number>('ingestion.dbBatchSize', 10);
-        const dbBatchWindowMs = this.configService.get<number>('ingestion.dbBatchWindowMs', 5000);
+        const dbBatchSize = this.configService.get<number>(
+            'ingestion.dbBatchSize',
+            10,
+        );
+        const dbBatchWindowMs = this.configService.get<number>(
+            'ingestion.dbBatchWindowMs',
+            5000,
+        );
 
         const worker = new IngestionWorker(
             pluginName,
@@ -170,8 +176,14 @@ export class WorkerManager
         this.workers.set(key, worker);
         worker
             .run()
-            .catch((err) =>
-                this.handleError(key, pluginName, chatId, config.userId, err),
+            .catch((err: unknown) =>
+                this.handleError(
+                    key,
+                    pluginName,
+                    chatId,
+                    config.userId,
+                    err instanceof Error ? err : new Error(String(err)),
+                ),
             );
     }
 

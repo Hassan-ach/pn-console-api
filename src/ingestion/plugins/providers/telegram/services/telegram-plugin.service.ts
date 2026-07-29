@@ -47,7 +47,7 @@ export class TelegramPluginService extends BasePluginProvider<TelegramConfig> {
         const chats = extractProviderChats(raw);
         return {
             apiId: Number(raw.apiId ?? 0),
-            apiHash: String(raw.apiHash ?? ''),
+            apiHash: typeof raw.apiHash === 'string' ? raw.apiHash : '',
             sessionString:
                 typeof raw.sessionString === 'string'
                     ? raw.sessionString
@@ -199,7 +199,8 @@ export class TelegramPluginService extends BasePluginProvider<TelegramConfig> {
         signal?: AbortSignal,
     ): AsyncIterable<StreamBatch> {
         const rawConfig = await context.getConfig(opts.userId, this.name);
-        if (!rawConfig) throw new BadRequestException('Telegram not configured');
+        if (!rawConfig)
+            throw new BadRequestException('Telegram not configured');
         const cfg = this.parseConfig(rawConfig);
         yield* this.streamService.run(
             opts,

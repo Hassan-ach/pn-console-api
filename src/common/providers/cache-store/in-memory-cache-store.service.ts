@@ -10,24 +10,26 @@ interface CacheEntry<T> {
 export class InMemoryCacheStore implements ICacheStore {
     private readonly store = new Map<string, CacheEntry<unknown>>();
 
-    async get<T>(key: string): Promise<T | null> {
+    get<T>(key: string): Promise<T | null> {
         const entry = this.store.get(key);
-        if (!entry) return null;
+        if (!entry) return Promise.resolve(null);
 
         if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) {
             this.store.delete(key);
-            return null;
+            return Promise.resolve(null);
         }
 
-        return entry.value as T;
+        return Promise.resolve(entry.value as T);
     }
 
-    async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
+    set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
         const expiresAt = ttlMs ? Date.now() + ttlMs : null;
         this.store.set(key, { value, expiresAt });
+        return Promise.resolve();
     }
 
-    async delete(key: string): Promise<void> {
+    delete(key: string): Promise<void> {
         this.store.delete(key);
+        return Promise.resolve();
     }
 }

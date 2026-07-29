@@ -64,7 +64,10 @@ describe('PluginManagerService', () => {
                 PluginManagerService,
                 PluginConfigService,
                 { provide: PluginConfigRepository, useValue: mockConfigRepo },
-                { provide: ActiveChatListenerRepository, useValue: mockActiveChatRepo },
+                {
+                    provide: ActiveChatListenerRepository,
+                    useValue: mockActiveChatRepo,
+                },
                 { provide: EVENT_BUS_TOKEN, useValue: mockEventBus },
                 { provide: PluginContextService, useValue: mockContext },
             ],

@@ -4,15 +4,7 @@ import { TelegramPluginModule } from './plugins/providers/telegram/telegram-plug
 import { WorkersModule } from './workers/workers.module';
 
 @Module({
-    imports: [
-        PluginsModule,
-        TelegramPluginModule,
-        WorkersModule,
-    ],
-    exports: [
-        PluginsModule,
-        TelegramPluginModule,
-        WorkersModule,
-    ],
+    imports: [PluginsModule, TelegramPluginModule, WorkersModule],
+    exports: [PluginsModule, TelegramPluginModule, WorkersModule],
 })
 export class IngestionModule {}

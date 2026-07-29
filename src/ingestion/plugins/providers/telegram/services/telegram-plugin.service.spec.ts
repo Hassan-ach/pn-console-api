@@ -2,6 +2,8 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TelegramPluginService } from './telegram-plugin.service';
 import { TelegramClientFactory } from './telegram-client.factory';
+import { TelegramBackfillService } from './telegram-backfill.service';
+import { TelegramStreamService } from './telegram-stream.service';
 import type { PluginContext } from '../../../interfaces/plugin-context.interface';
 
 const mockClient = {
@@ -37,8 +39,8 @@ const mockConfig = {
     get: jest.fn().mockReturnValue(undefined),
 } as unknown as ConfigService;
 
-const mockBackfillService = {} as any;
-const mockStreamService = {} as any;
+const mockBackfillService = {} as unknown as TelegramBackfillService;
+const mockStreamService = {} as unknown as TelegramStreamService;
 
 describe('TelegramPluginService', () => {
     let service: TelegramPluginService;

@@ -43,7 +43,7 @@ export class ActiveChatListenerRepository {
         });
     }
 
-    async unsubscribe(pluginName: string, chatId: string, userId: string) {
+    async unsubscribe(pluginName: string, chatId: string, _userId: string) {
         return this.prisma.$transaction(async (tx) => {
             const existing = await tx.activeChatListener.findUnique({
                 where: { pluginName_chatId: { pluginName, chatId } },

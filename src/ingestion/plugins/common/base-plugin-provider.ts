@@ -7,7 +7,10 @@ import {
     StreamBatch,
     StreamOpts,
 } from '../interfaces/plugin.interface';
-import { PluginContext, StoreResult } from '../interfaces/plugin-context.interface';
+import {
+    PluginContext,
+    StoreResult,
+} from '../interfaces/plugin-context.interface';
 import {
     BaseProviderConfig,
     ProviderChatEntry,
@@ -16,8 +19,7 @@ import {
 
 export abstract class BasePluginProvider<
     TConfig extends BaseProviderConfig = BaseProviderConfig,
-> implements IPlugin<TConfig>
-{
+> implements IPlugin<TConfig> {
     abstract readonly name: string;
 
     abstract validateAuth(

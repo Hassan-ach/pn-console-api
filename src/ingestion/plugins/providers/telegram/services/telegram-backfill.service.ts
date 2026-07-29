@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { PluginContext, StoreResult } from '../../../interfaces/plugin-context.interface';
+import type {
+    PluginContext,
+    StoreResult,
+} from '../../../interfaces/plugin-context.interface';
 import type { BackFillOpts } from '../../../interfaces/plugin.interface';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { TelegramTopicStore } from './telegram-topic.store';
@@ -98,7 +101,10 @@ export class TelegramBackfillService {
 
             while (totalFetched < maxLimit) {
                 const batchSize = Math.min(
-                    configService.get<number>('telegram.backfillBatchSize', 100),
+                    configService.get<number>(
+                        'telegram.backfillBatchSize',
+                        100,
+                    ),
                     maxLimit - totalFetched,
                 );
                 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */

@@ -10,11 +10,7 @@ interface LockEntry {
 export class InMemoryLockManager implements ILockManager {
     private readonly locks = new Map<string, LockEntry>();
 
-    async acquire(
-        key: string,
-        ownerId: string,
-        ttlMs?: number,
-    ): Promise<boolean> {
+    acquire(key: string, ownerId: string, ttlMs?: number): Promise<boolean> {
         const now = Date.now();
         const existing = this.locks.get(key);
 
@@ -22,37 +18,37 @@ export class InMemoryLockManager implements ILockManager {
             if (existing.expiresAt !== null && existing.expiresAt <= now) {
                 this.locks.delete(key);
             } else if (existing.ownerId !== ownerId) {
-                return false;
+                return Promise.resolve(false);
             }
         }
 
         const expiresAt = ttlMs ? now + ttlMs : null;
         this.locks.set(key, { ownerId, expiresAt });
-        return true;
+        return Promise.resolve(true);
     }
 
-    async release(key: string, ownerId: string): Promise<boolean> {
+    release(key: string, ownerId: string): Promise<boolean> {
         const existing = this.locks.get(key);
-        if (!existing) return true;
+        if (!existing) return Promise.resolve(true);
 
         if (existing.ownerId === ownerId) {
             this.locks.delete(key);
-            return true;
+            return Promise.resolve(true);
         }
 
-        return false;
+        return Promise.resolve(false);
     }
 
-    async isLocked(key: string): Promise<boolean> {
+    isLocked(key: string): Promise<boolean> {
         const now = Date.now();
         const existing = this.locks.get(key);
-        if (!existing) return false;
+        if (!existing) return Promise.resolve(false);
 
         if (existing.expiresAt !== null && existing.expiresAt <= now) {
             this.locks.delete(key);
-            return false;
+            return Promise.resolve(false);
         }
 
-        return true;
+        return Promise.resolve(true);
     }
 }

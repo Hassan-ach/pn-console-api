@@ -36,7 +36,10 @@ export class PluginsController {
 
     @Get()
     @ApiOperation({ summary: 'List registered plugins with status from DB' })
-    @ApiResponse({ status: 200, description: 'List of registered plugins loaded' })
+    @ApiResponse({
+        status: 200,
+        description: 'List of registered plugins loaded',
+    })
     async list(@Req() req: { user: { id: string } }) {
         const data = await this.pluginManager.list(req.user.id);
         return { success: true, message: 'Plugins loaded successfully', data };
@@ -192,7 +195,7 @@ export class PluginsController {
     })
     @ApiParam({ name: 'name', description: 'Plugin name (e.g. telegram)' })
     @ApiResponse({ status: 200, description: 'Config schema loaded' })
-    async getConfigSchema(@Param('name') name: string) {
+    getConfigSchema(@Param('name') name: string) {
         const schema = this.pluginManager.getConfigSchema(name);
         return { success: true, message: 'Config schema loaded', data: schema };
     }

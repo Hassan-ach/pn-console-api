@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { PluginContext } from '../../../interfaces/plugin-context.interface';
-import type { StreamBatch, StreamOpts } from '../../../interfaces/plugin.interface';
+import type {
+    StreamBatch,
+    StreamOpts,
+} from '../../../interfaces/plugin.interface';
 import { TelegramClientFactory } from './telegram-client.factory';
 import { normalizeTelegramMessage } from '../utils/normalizer';
 import { normalizeRawMessage } from '../utils/telegram-utils';
+import { resolvePluginConfig } from '../../../utils/provider-utils';
 import type { TelegramConfig } from './telegram-plugin.service';
 import { TelegramClient as GramJsClient } from 'telegram';
 import { NewMessage } from 'telegram/events';
@@ -12,7 +16,7 @@ import { NewMessage } from 'telegram/events';
 @Injectable()
 export class TelegramStreamService {
     async *run(
-        { userId, chatId, cursor: startCursor }: StreamOpts,
+        { userId: _userId, chatId, cursor: startCursor }: StreamOpts,
         context: PluginContext,
         factory: TelegramClientFactory,
         configService: ConfigService,
@@ -32,9 +36,12 @@ export class TelegramStreamService {
         }
 
         const abortSignal = signal ?? new AbortController().signal;
-        const flushInterval = configService.get<number>(
-            'streaming.flushIntervalMs',
-            3000,
+        const flushInterval = resolvePluginConfig<number>(
+            configService,
+            'telegram',
+            'providerStreamFlushIntervalMs',
+            5000,
+            'flushIntervalMs',
         );
 
         const client: GramJsClient = factory.create(
@@ -47,8 +54,9 @@ export class TelegramStreamService {
         let buffer: StreamBatch['envelopes'] = [];
         let lastMessageId = startCursor ?? 0;
 
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
         client.addEventHandler(
-            async (event: any) => {
+            (event: any) => {
                 const msg = event.message;
                 if (!msg) return;
 
@@ -66,36 +74,18 @@ export class TelegramStreamService {
             },
             new NewMessage({ chats: [chatId] }),
         );
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 
         try {
             while (!abortSignal.aborted) {
-                await new Promise<void>((resolve) => {
-                    const timer = setTimeout(resolve, flushInterval);
-                    const onAbort = () => {
-                        clearTimeout(timer);
-                        resolve();
-                    };
-                    abortSignal.addEventListener('abort', onAbort, {
-                        once: true,
-                    });
-                });
-
-                if (abortSignal.aborted) break;
-
+                await new Promise((resolve) =>
+                    setTimeout(resolve, flushInterval),
+                );
                 if (buffer.length > 0) {
-                    const batch = buffer;
+                    const batch = [...buffer];
                     buffer = [];
-
-                    yield {
-                        envelopes: batch,
-                        lastMessageId,
-                    };
+                    yield { envelopes: batch, lastMessageId };
                 }
-            }
-
-            if (buffer.length > 0) {
-                yield { envelopes: buffer, lastMessageId };
-                buffer = [];
             }
         } finally {
             await factory.destroy(client);
