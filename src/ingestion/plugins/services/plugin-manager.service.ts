@@ -8,6 +8,8 @@ import {
     IPlugin,
     BackFillOpts,
     PlatformUserInfo,
+    ConfigFieldSchema,
+    ActivationRequirementResult,
 } from '../interfaces/plugin.interface';
 import type {
     PluginContext,
@@ -15,6 +17,7 @@ import type {
 } from '../interfaces/plugin-context.interface';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { PluginContextService } from './plugin-context.service';
+import { PluginConfigService } from './plugin-config.service';
 
 @Injectable()
 export class PluginManagerService {
@@ -25,6 +28,7 @@ export class PluginManagerService {
 
     constructor(
         private readonly configRepo: PluginConfigRepository,
+        private readonly configService: PluginConfigService,
         contextService: PluginContextService,
     ) {
         this.context = contextService;
@@ -50,6 +54,26 @@ export class PluginManagerService {
 
     getContext(): PluginContext {
         return this.context;
+    }
+
+    getConfigSchema(name: string): ConfigFieldSchema[] {
+        const plugin = this.getInstance(name);
+        return plugin.getConfigSchema?.() ?? [];
+    }
+
+    async getActivationRequirements(
+        name: string,
+        userId: string,
+    ): Promise<ActivationRequirementResult[]> {
+        const plugin = this.getInstance(name);
+        const config = await this.configRepo.findUnique(userId, name);
+        const cfg = config?.config ?? {};
+        const requirements = plugin.getActivationRequirements?.(cfg) ?? [];
+        return requirements.map((r) => ({
+            field: r.field,
+            message: r.message,
+            met: r.validate(cfg),
+        }));
     }
 
     async *backfill(
@@ -129,19 +153,16 @@ export class PluginManagerService {
         config: Record<string, unknown>,
         userId: string,
     ): Promise<void> {
-        if (!this.instances.has(name))
-            throw new NotFoundException(`Plugin "${name}" not found`);
-        await this.configRepo.update(userId, name, { config: config });
+        this.getInstance(name);
+        await this.configService.updateConfig(name, config, userId);
     }
 
     async getConfig(
         name: string,
         userId: string,
     ): Promise<Record<string, unknown> | null> {
-        if (!this.instances.has(name))
-            throw new NotFoundException(`Plugin "${name}" not found`);
-        const row = await this.configRepo.findUnique(userId, name);
-        return row?.config ?? null;
+        this.getInstance(name);
+        return this.configService.getConfig(name, userId);
     }
 
     async createConfig(
@@ -153,22 +174,19 @@ export class PluginManagerService {
             metadata?: Record<string, unknown>;
         },
     ): Promise<void> {
-        await this.configRepo.upsert(userId, pluginName, data);
+        await this.configService.createConfig(userId, pluginName, data);
     }
 
     async getSanitizedConfig(
         name: string,
         userId: string,
     ): Promise<Record<string, unknown> | null> {
-        const config = await this.getConfig(name, userId);
-        if (!config) return null;
-        return { ...config };
+        return this.configService.getSanitizedConfig(name, userId);
     }
 
     async disconnect(name: string, userId: string): Promise<void> {
-        if (!this.instances.has(name))
-            throw new NotFoundException(`Plugin "${name}" not found`);
-        await this.configRepo.clearSessionString(userId, name);
+        this.getInstance(name);
+        await this.configService.disconnect(name, userId);
     }
 
     async login(
@@ -177,34 +195,19 @@ export class PluginManagerService {
         config: Record<string, unknown>,
     ): Promise<PlatformUserInfo> {
         const plugin = this.getInstance(name);
-
-        const sessionString = config.sessionString as string | undefined;
-        if (!sessionString) {
-            throw new NotFoundException(`sessionString is required for login`);
-        }
-        const configJson = { ...config };
-        delete configJson.sessionString;
-
-        await this.configRepo.upsert(userId, name, {
-            organizationId: this.context.resolveOrgId(userId),
-            config: configJson,
-        });
-
-        const userInfo = await plugin.validateAuth(
-            sessionString,
-            this.context,
+        return this.configService.login(
+            name,
             userId,
+            config,
+            (sessionStr) =>
+                plugin.validateAuth(sessionStr, this.context, userId),
+            this.context,
         );
-
-        await this.configRepo.updateSessionString(userId, name, sessionString);
-
-        return userInfo;
     }
 
     async deleteConfig(name: string, userId: string): Promise<void> {
-        if (!this.instances.has(name))
-            throw new NotFoundException(`Plugin "${name}" not found`);
-        await this.configRepo.remove(userId, name);
+        this.getInstance(name);
+        await this.configService.deleteConfig(name, userId);
     }
 
     private getInstance(name: string): IPlugin {

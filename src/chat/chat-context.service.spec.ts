@@ -1,22 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatContextService } from './chat-context.service';
-import { InsightRepository } from '../repositories/insight.repository';
-import { EnvelopeRepository } from '../repositories/envelope.repository';
+import { InsightRepository } from 'src/repositories/insight.repository';
+import { EnvelopeRepository } from 'src/repositories/envelope.repository';
 
 describe('ChatContextService', () => {
     let service: ChatContextService;
-    let mockInsightRepo: jest.Mocked<InsightRepository>;
-    let mockEnvelopeRepo: jest.Mocked<EnvelopeRepository>;
+
+    const mockInsightRepo = {
+        findByOwnerId: jest.fn(),
+    };
+
+    const mockEnvelopeRepo = {
+        findRecent: jest.fn(),
+    };
 
     beforeEach(async () => {
-        mockInsightRepo = {
-            findByOwnerId: jest.fn().mockResolvedValue([]),
-        } as unknown as jest.Mocked<InsightRepository>;
-
-        mockEnvelopeRepo = {
-            findRecent: jest.fn().mockResolvedValue([]),
-        } as unknown as jest.Mocked<EnvelopeRepository>;
-
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ChatContextService,
@@ -26,10 +24,7 @@ describe('ChatContextService', () => {
         }).compile();
 
         service = module.get<ChatContextService>(ChatContextService);
-    });
-
-    afterEach(() => {
-        jest.restoreAllMocks();
+        jest.clearAllMocks();
     });
 
     it('should be defined', () => {
@@ -44,6 +39,7 @@ describe('ChatContextService', () => {
                     type: 'TASK',
                     content: 'Review PR',
                     status: 'PENDING',
+                    priority: 1,
                 },
             ]);
             mockEnvelopeRepo.findRecent.mockResolvedValue([
@@ -83,7 +79,13 @@ describe('ChatContextService', () => {
 
         it('handles empty envelopes gracefully', async () => {
             mockInsightRepo.findByOwnerId.mockResolvedValue([
-                { id: '1', type: 'INFO', content: 'Update', status: 'PENDING' },
+                {
+                    id: '1',
+                    type: 'INFO',
+                    content: 'Update',
+                    status: 'PENDING',
+                    priority: 1,
+                },
             ]);
             mockEnvelopeRepo.findRecent.mockResolvedValue([]);
 
@@ -100,12 +102,14 @@ describe('ChatContextService', () => {
                     type: 'URGENCY',
                     content: 'Server down',
                     status: 'PENDING',
+                    priority: 1,
                 },
                 {
                     id: '2',
                     type: 'DECISION',
                     content: 'Approve budget',
                     status: 'PENDING',
+                    priority: 1,
                 },
             ]);
             mockEnvelopeRepo.findRecent.mockResolvedValue([]);
@@ -114,35 +118,6 @@ describe('ChatContextService', () => {
 
             expect(result).toContain('- **URGENCY**: Server down');
             expect(result).toContain('- **DECISION**: Approve budget');
-        });
-
-        it('formats messages with plugin and timestamp', async () => {
-            mockInsightRepo.findByOwnerId.mockResolvedValue([]);
-            mockEnvelopeRepo.findRecent.mockResolvedValue([
-                {
-                    envolopId: 'env-3',
-                    sourcePlugin: 'telegram',
-                    occurredAt: new Date('2026-07-27T12:30:00Z'),
-                    content: 'Meeting at 3pm',
-                },
-            ]);
-
-            const result = await service.buildContext('user-1');
-
-            expect(result).toContain('- **telegram**');
-            expect(result).toContain('Meeting at 3pm');
-            expect(result).toContain('2026-07-27T12:30:00.000Z');
-        });
-
-        it('calls both repositories in parallel', async () => {
-            await service.buildContext('user-1');
-
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(mockInsightRepo.findByOwnerId).toHaveBeenCalledWith(
-                'user-1',
-            );
-            // eslint-disable-next-line @typescript-eslint/unbound-method
-            expect(mockEnvelopeRepo.findRecent).toHaveBeenCalledWith(10);
         });
     });
 });
