@@ -32,6 +32,8 @@ import {
     isSessionExpired,
 } from './worker-recovery.service';
 
+import { ConfigService } from '@nestjs/config';
+
 @Injectable()
 export class WorkerManager
     implements OnApplicationBootstrap, OnApplicationShutdown
@@ -46,6 +48,7 @@ export class WorkerManager
         private readonly pluginManager: PluginManagerService,
         private readonly intelligenceEngine: IntelligenceEngineService,
         private readonly recoveryService: WorkerRecoveryService,
+        private readonly configService: ConfigService,
         @Inject(LOCK_MANAGER_TOKEN) private readonly lockManager: ILockManager,
         @Inject(EVENT_BUS_TOKEN) private readonly eventBus: IEventBus,
     ) {
@@ -121,7 +124,6 @@ export class WorkerManager
         const activeChatIds = new Set(chats.map((c) => c.id));
         const prefix = `${config.pluginName}:`;
 
-        // 1. Stop workers for chats removed from config
         for (const [key] of this.workers) {
             if (key.startsWith(prefix)) {
                 const chatId = key.substring(prefix.length);
@@ -132,7 +134,6 @@ export class WorkerManager
             }
         }
 
-        // 2. Start workers for newly added chats in config
         for (const chat of chats) {
             const key = `${config.pluginName}:${chat.id}`;
             if (!this.workers.has(key)) {
@@ -154,6 +155,9 @@ export class WorkerManager
         }
 
         this.logger.log(`Starting worker for ${key}`);
+        const dbBatchSize = this.configService.get<number>('ingestion.dbBatchSize', 10);
+        const dbBatchWindowMs = this.configService.get<number>('ingestion.dbBatchWindowMs', 5000);
+
         const worker = new IngestionWorker(
             pluginName,
             chatId,
@@ -161,6 +165,7 @@ export class WorkerManager
             this.pluginManager,
             this.intelligenceEngine,
             this.eventBus,
+            { batchSize: dbBatchSize, batchWindowMs: dbBatchWindowMs },
         );
         this.workers.set(key, worker);
         worker
