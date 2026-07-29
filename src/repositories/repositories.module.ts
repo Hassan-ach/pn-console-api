@@ -8,6 +8,7 @@ import { CapabilityFailureRepository } from './capability-failure.repository';
 import { EnvelopeRepository } from './envelope.repository';
 import { UnresolvedOwnerRepository } from './unresolved-owner.repository';
 import { PluginConfigRepository } from './plugin-config.repository';
+import { ActiveChatListenerRepository } from './active-chat-listener.repository';
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
 
@@ -21,6 +22,7 @@ import { UserRepository } from './user.repository';
         EnvelopeRepository,
         UnresolvedOwnerRepository,
         PluginConfigRepository,
+        ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
     ],
@@ -32,6 +34,7 @@ import { UserRepository } from './user.repository';
         EnvelopeRepository,
         UnresolvedOwnerRepository,
         PluginConfigRepository,
+        ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
     ],

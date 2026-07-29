@@ -117,7 +117,14 @@ export class PluginContextService implements PluginContext {
             },
             payload: item.payload,
         }));
-        return this.envelopeRepo.createManyWithPayload(inputs);
+        this.nestLogger.debug(
+            `storeEnvelopes: ${items.length} items for user ${userId}`,
+        );
+        const result = await this.envelopeRepo.createManyWithPayload(inputs);
+        this.nestLogger.debug(
+            `storeEnvelopes result: ${result.inserted} inserted`,
+        );
+        return result;
     }
 
     resolveOrgId(_userId: string): string {
