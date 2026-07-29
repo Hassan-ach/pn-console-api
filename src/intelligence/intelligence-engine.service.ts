@@ -43,10 +43,13 @@ export class IntelligenceEngineService {
     @OnEvent('envelopes.ingested')
     async handleEnvelopesIngested(event: EnvelopesIngestedEvent): Promise<void> {
         this.logger.log(
-            `Received envelopes.ingested event: org=${event.organizationId}, count=${event.envelopeIds.length}`,
+            `Received envelopes.ingested event: org=${event.organizationId}, isBackfill=${event.isBackfill}, count=${event.envelopeIds.length}`,
         );
         await this.run(event.organizationId, {
-            envelopeIds: event.envelopeIds,
+            envelopeIds:
+                event.isBackfill || event.envelopeIds.length === 0
+                    ? undefined
+                    : event.envelopeIds,
             userId: event.userId,
             progressable: event.isBackfill,
         });

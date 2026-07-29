@@ -18,7 +18,6 @@ export class IngestionWorker {
         startedAt: new Date(),
         flushes: 0,
     };
-    private backfillEnvelopeIds: string[] = [];
     private dbBatchBuffer: BatchBuffer;
 
     constructor(
@@ -31,13 +30,14 @@ export class IngestionWorker {
         },
         private intelligenceEngine?: IntelligenceEngineService,
         private eventBus?: IEventBus,
+        batchOpts?: { batchSize?: number; batchWindowMs?: number },
     ) {
         const context = this.pluginManager.getContext();
         const orgId = context.resolveOrgId(this.config.userId);
 
         this.dbBatchBuffer = new BatchBuffer(
-            10,
-            5000,
+            batchOpts?.batchSize ?? 10,
+            batchOpts?.batchWindowMs ?? 5000,
             async (batch: EnvelopeWithPayload[]) => {
                 const result = await context.storeEnvelopes(
                     batch,
@@ -88,27 +88,24 @@ export class IngestionWorker {
         await backfillPromise;
         this.state.backfill = 'COMPLETED';
 
-        if (this.backfillEnvelopeIds.length > 0) {
-            const orgId = context.resolveOrgId(this.config.userId);
-            if (this.eventBus) {
-                this.eventBus.publish(
-                    'envelopes.ingested',
-                    new EnvelopesIngestedEvent(
-                        orgId,
-                        this.config.userId,
-                        this.pluginName,
-                        this.chatId,
-                        this.backfillEnvelopeIds,
-                        true,
-                    ),
-                );
-            } else if (this.intelligenceEngine) {
-                await this.intelligenceEngine.run(orgId, {
-                    envelopeIds: this.backfillEnvelopeIds,
-                    userId: this.config.userId,
-                    progressable: true,
-                });
-            }
+        const orgId = context.resolveOrgId(this.config.userId);
+        if (this.eventBus) {
+            this.eventBus.publish(
+                'envelopes.ingested',
+                new EnvelopesIngestedEvent(
+                    orgId,
+                    this.config.userId,
+                    this.pluginName,
+                    this.chatId,
+                    [],
+                    true,
+                ),
+            );
+        } else if (this.intelligenceEngine) {
+            await this.intelligenceEngine.run(orgId, {
+                userId: this.config.userId,
+                progressable: true,
+            });
         }
 
         await streamPromise;
@@ -130,7 +127,6 @@ export class IngestionWorker {
                 this.backfillAbort.signal,
             )) {
                 this.state.backfillProgress = result;
-                this.backfillEnvelopeIds.push(...result.ids);
             }
         } catch (err) {
             if (!this.backfillAbort.signal.aborted) throw err;
