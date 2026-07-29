@@ -278,6 +278,7 @@ export class InsightRepository {
         ownerId: string,
         type?: InsightType,
         status?: InsightActionStatus,
+        limit?: number,
     ): Promise<
         {
             id: string;
@@ -406,6 +407,10 @@ export class InsightRepository {
         }
 
         results.sort((a, b) => b.priority - a.priority);
+
+        if (limit !== undefined) {
+            return results.slice(0, limit);
+        }
 
         return results;
     }

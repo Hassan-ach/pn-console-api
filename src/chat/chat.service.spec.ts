@@ -29,7 +29,9 @@ function createMockChatContextService() {
     return {
         buildContext: jest
             .fn()
-            .mockResolvedValue('## User Insights\n\nmock context'),
+            .mockResolvedValue(
+                '## Current Date\n\n2026-07-29T00:00:00.000Z\n\n## Relevant Insights\n\nmock context',
+            ),
     };
 }
 
@@ -181,6 +183,32 @@ describe('ChatService', () => {
             });
         });
 
+        it('fetches history before saving user message to avoid duplication', async () => {
+            const callOrder: string[] = [];
+            mockAppDb.chatMessage.findMany.mockImplementation(() => {
+                callOrder.push('findMany');
+                return Promise.resolve([]);
+            });
+            mockAppDb.chatMessage.create.mockImplementation(() => {
+                callOrder.push('create');
+                return Promise.resolve({
+                    id: 'msg-1',
+                    role: 'USER',
+                    content: 'hello',
+                    createdAt: new Date(),
+                });
+            });
+
+            const gen = service.streamResponse('user-1', 'hello');
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _token of gen) {
+                // consume the stream
+            }
+
+            expect(callOrder[0]).toBe('findMany');
+            expect(callOrder[1]).toBe('create');
+        });
+
         it('saves user message before streaming', async () => {
             const gen = service.streamResponse('user-1', 'What are my tasks?');
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -244,11 +272,36 @@ describe('ChatService', () => {
                 content: string;
             }[];
             expect(messages[0]).toHaveProperty('content');
-            expect(messages[0].content).toContain('read-only assistant');
             expect(messages[0].content).toContain('mock context');
+            // History messages should not include the current user message
             expect(messages[1].content).toBe('old question');
             expect(messages[2].content).toBe('old answer');
+            // Last message is the current user question
             expect(messages[3].content).toBe('hello');
+        });
+
+        it('includes no-context fallback message when context is empty', async () => {
+            mockChatContext.buildContext.mockResolvedValue('');
+            const llmStream = jest.fn().mockResolvedValue(mockStream(['ok']));
+            mockLlmService.createStreamingLLM.mockResolvedValue({
+                stream: llmStream,
+            });
+            mockAppDb.chatMessage.findMany.mockResolvedValue([]);
+
+            const gen = service.streamResponse('user-1', 'hello');
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _token of gen) {
+                // consume the stream
+            }
+
+            expect(llmStream).toHaveBeenCalled();
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            const messages = llmStream.mock.calls[0][0] as {
+                content: string;
+            }[];
+            expect(messages[0].content).toContain(
+                'No relevant insights found for this query',
+            );
         });
 
         it('yields tokens from LLM stream', async () => {
