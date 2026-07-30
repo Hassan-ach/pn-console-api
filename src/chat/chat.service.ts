@@ -269,6 +269,21 @@ export class ChatService {
         }
     }
 
+    async deleteConversation(
+        userId: string,
+        conversationId: string,
+    ): Promise<void> {
+        const conversation = await this.appDb.conversation.findFirst({
+            where: { id: conversationId, userId },
+        });
+        if (!conversation) {
+            throw new Error('Conversation not found');
+        }
+        await this.appDb.conversation.delete({
+            where: { id: conversationId },
+        });
+    }
+
     async retractLastMessages(
         userId: string,
         conversationId: string,

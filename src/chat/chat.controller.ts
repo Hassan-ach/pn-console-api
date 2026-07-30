@@ -4,6 +4,7 @@ import {
     DefaultValuePipe,
     Delete,
     Get,
+    Param,
     ParseIntPipe,
     Post,
     Query,
@@ -49,6 +50,16 @@ export class ChatController {
         @Req() req: Request & { user: { id: string } },
     ) {
         return this.chatService.createConversation(req.user.id);
+    }
+
+    @Delete('conversations/:id')
+    @ApiOperation({ summary: 'Delete a conversation and all its messages' })
+    async deleteConversation(
+        @Req() req: Request & { user: { id: string } },
+        @Param('id') id: string,
+    ) {
+        await this.chatService.deleteConversation(req.user.id, id);
+        return { success: true };
     }
 
     @Get('messages')
