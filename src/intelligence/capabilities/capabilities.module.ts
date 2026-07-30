@@ -23,8 +23,8 @@ import { CAPABILITY } from './capability.token';
             useFactory: (
                 insightService: InsightExtractionCapability,
                 kgService: KnowledgeGraphExtractionCapability,
-                insightV2Service: InsightExtractionCapabilityV2,
-            ) => [kgService, insightV2Service], // V2 is used by default in intelligence pipeline
+                _insightV2Service: InsightExtractionCapabilityV2,
+            ) => [kgService, insightService], // V1 is used by default in intelligence pipeline
             inject: [
                 InsightExtractionCapability,
                 KnowledgeGraphExtractionCapability,

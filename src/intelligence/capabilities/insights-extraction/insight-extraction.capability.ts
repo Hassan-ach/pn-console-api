@@ -42,6 +42,7 @@ export class InsightExtractionCapability implements ICapability {
             replyTo: env.payload.replyTo,
             reactions: env.payload.reactions,
             pinned: env.payload.pinned,
+            occurredAt: env.envelope.occurredAt.toISOString(),
             editedDate: env.payload.editedDate?.toISOString() ?? null,
             entities: env.payload.entities,
         }));
@@ -85,10 +86,16 @@ export class InsightExtractionCapability implements ICapability {
 
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                const response = await llm.invoke(chainInput);
-                result = InsightResultSchema.parse(
-                    JSON.parse(response.content as string),
-                );
+                const responseContent = await llm.invoke(chainInput);
+                const rawString =
+                    typeof responseContent.content === 'string'
+                        ? responseContent.content
+                        : JSON.stringify(responseContent.content);
+                const cleaned = rawString
+                    .replace(/```json/g, '')
+                    .replace(/```/g, '')
+                    .trim();
+                result = InsightResultSchema.parse(JSON.parse(cleaned));
                 this.logger.debug(
                     `LLM returned ${result.updatedInsights.length} updated, ${result.newInsights.length} new insights`,
                 );
