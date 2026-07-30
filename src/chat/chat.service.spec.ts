@@ -5,8 +5,27 @@ import { AppDbService } from '../prisma/app-db/app-db.service';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
 
-function createMockAppDb() {
+interface MockAppDb {
+    $transaction: jest.Mock;
+    chatMessage: Record<string, jest.Mock>;
+}
+
+function createMockAppDb(): MockAppDb {
     return {
+        $transaction: jest
+            .fn()
+            .mockImplementation(
+                async (
+                    cb: (tx: { chatMessage: { delete: jest.Mock } }) => unknown,
+                ) => {
+                    const tx = {
+                        chatMessage: {
+                            delete: jest.fn().mockResolvedValue({}),
+                        },
+                    };
+                    return cb(tx);
+                },
+            ),
         chatMessage: {
             findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({
@@ -15,6 +34,7 @@ function createMockAppDb() {
                 content: 'test',
                 createdAt: new Date(),
             }),
+            deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
         },
     };
 }
@@ -29,7 +49,9 @@ function createMockChatContextService() {
     return {
         buildContext: jest
             .fn()
-            .mockResolvedValue('## User Insights\n\nmock context'),
+            .mockResolvedValue(
+                '## Current Date\n\n2026-07-29T00:00:00.000Z\n\n## Relevant Insights\n\nmock context',
+            ),
     };
 }
 
@@ -78,6 +100,8 @@ describe('ChatService', () => {
             expect(mockAppDb.chatMessage.findMany).toHaveBeenCalledWith({
                 where: { userId: 'user-1' },
                 orderBy: { createdAt: 'asc' },
+                skip: 0,
+                take: 50,
                 select: {
                     id: true,
                     role: true,
@@ -160,17 +184,18 @@ describe('ChatService', () => {
 
     describe('streamResponse', () => {
         beforeEach(() => {
+            // Mock returns messages in desc order (newest first) to match getRecentHistory
             mockAppDb.chatMessage.findMany.mockResolvedValue([
-                {
-                    id: '1',
-                    role: 'USER',
-                    content: 'old question',
-                    createdAt: new Date(),
-                },
                 {
                     id: '2',
                     role: 'ASSISTANT',
                     content: 'old answer',
+                    createdAt: new Date(),
+                },
+                {
+                    id: '1',
+                    role: 'USER',
+                    content: 'old question',
                     createdAt: new Date(),
                 },
             ]);
@@ -181,18 +206,59 @@ describe('ChatService', () => {
             });
         });
 
-        it('saves user message before streaming', async () => {
+        it('fetches history before saving messages (history used for LLM context, save happens after stream)', async () => {
+            const callOrder: string[] = [];
+            mockAppDb.chatMessage.findMany.mockImplementation(() => {
+                callOrder.push('findMany');
+                return Promise.resolve([]);
+            });
+            mockAppDb.chatMessage.create.mockImplementation(() => {
+                callOrder.push('create');
+                return Promise.resolve({
+                    id: 'msg-1',
+                    role: 'USER',
+                    content: 'hello',
+                    createdAt: new Date(),
+                });
+            });
+
+            const gen = service.streamResponse('user-1', 'hello');
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _token of gen) {
+                // consume the stream
+            }
+
+            expect(callOrder[0]).toBe('findMany');
+            expect(callOrder[1]).toBe('create');
+        });
+
+        it('saves both user message and assistant response after streaming', async () => {
             const gen = service.streamResponse('user-1', 'What are my tasks?');
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for await (const _token of gen) {
                 // consume the stream
             }
 
+            // First create call should save USER message
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(1, {
                 data: {
                     userId: 'user-1',
                     role: 'USER',
                     content: 'What are my tasks?',
+                },
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
+            });
+            // Second create call should save ASSISTANT response
+            expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
+                data: {
+                    userId: 'user-1',
+                    role: 'ASSISTANT',
+                    content: 'Hello world',
                 },
                 select: {
                     id: true,
@@ -210,17 +276,25 @@ describe('ChatService', () => {
                 // consume the stream
             }
 
-            expect(mockChatContext.buildContext).toHaveBeenCalledWith('user-1');
+            expect(mockChatContext.buildContext).toHaveBeenCalledWith(
+                'user-1',
+                'hello',
+            );
         });
 
-        it('loads last 20 messages for history', async () => {
+        it('loads last 20 messages with desc ordering for history', async () => {
             const gen = service.streamResponse('user-1', 'hello');
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for await (const _token of gen) {
                 // consume the stream
             }
 
-            expect(mockAppDb.chatMessage.findMany).toHaveBeenCalled();
+            expect(mockAppDb.chatMessage.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    orderBy: { createdAt: 'desc' },
+                    take: 20,
+                }),
+            );
         });
 
         it('constructs LangChain messages with system prompt and context', async () => {
@@ -241,11 +315,36 @@ describe('ChatService', () => {
                 content: string;
             }[];
             expect(messages[0]).toHaveProperty('content');
-            expect(messages[0].content).toContain('read-only assistant');
             expect(messages[0].content).toContain('mock context');
+            // History messages should not include the current user message
             expect(messages[1].content).toBe('old question');
             expect(messages[2].content).toBe('old answer');
+            // Last message is the current user question
             expect(messages[3].content).toBe('hello');
+        });
+
+        it('includes no-context fallback message when context is empty', async () => {
+            mockChatContext.buildContext.mockResolvedValue('');
+            const llmStream = jest.fn().mockResolvedValue(mockStream(['ok']));
+            mockLlmService.createStreamingLLM.mockResolvedValue({
+                stream: llmStream,
+            });
+            mockAppDb.chatMessage.findMany.mockResolvedValue([]);
+
+            const gen = service.streamResponse('user-1', 'hello');
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _token of gen) {
+                // consume the stream
+            }
+
+            expect(llmStream).toHaveBeenCalled();
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            const messages = llmStream.mock.calls[0][0] as {
+                content: string;
+            }[];
+            expect(messages[0].content).toContain(
+                'No relevant insights found for this query',
+            );
         });
 
         it('yields tokens from LLM stream', async () => {
@@ -323,6 +422,86 @@ describe('ChatService', () => {
                     role: true,
                     content: true,
                     createdAt: true,
+                },
+            });
+        });
+
+        it('passes abort signal to LLM stream', async () => {
+            const abortController = new AbortController();
+            const llmStream = jest.fn().mockResolvedValue(mockStream(['ok']));
+            mockLlmService.createStreamingLLM.mockResolvedValue({
+                stream: llmStream,
+            });
+
+            const gen = service.streamResponse(
+                'user-1',
+                'hello',
+                abortController.signal,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _token of gen) {
+                // consume the stream
+            }
+
+            expect(llmStream).toHaveBeenCalledWith(
+                expect.any(Array),
+                expect.objectContaining({
+                    signal: abortController.signal,
+                }),
+            );
+        });
+    });
+
+    describe('retractLastMessages', () => {
+        it('throws when there are fewer than 2 messages', async () => {
+            mockAppDb.chatMessage.findMany.mockResolvedValue([
+                {
+                    id: '1',
+                    role: 'USER',
+                    content: 'hello',
+                    createdAt: new Date(),
+                },
+            ]);
+
+            await expect(service.retractLastMessages('user-1')).rejects.toThrow(
+                'Not enough messages to retract',
+            );
+        });
+
+        it('throws when the last two messages are not USER+ASSISTANT', async () => {
+            mockAppDb.chatMessage.findMany.mockResolvedValue([
+                {
+                    id: '1',
+                    role: 'USER',
+                    content: 'first',
+                    createdAt: new Date(),
+                },
+                {
+                    id: '2',
+                    role: 'USER',
+                    content: 'second',
+                    createdAt: new Date(),
+                },
+            ]);
+
+            await expect(service.retractLastMessages('user-1')).rejects.toThrow(
+                'not a valid USER+ASSISTANT pair',
+            );
+        });
+
+        it('deletes the last two messages via deleteMany', async () => {
+            const messages = [
+                { id: '1', role: 'USER' as const, createdAt: new Date() },
+                { id: '2', role: 'ASSISTANT' as const, createdAt: new Date() },
+            ];
+            mockAppDb.chatMessage.findMany.mockResolvedValue(messages);
+
+            await service.retractLastMessages('user-1');
+
+            expect(mockAppDb.chatMessage.deleteMany).toHaveBeenCalledWith({
+                where: {
+                    id: { in: ['1', '2'] },
+                    userId: 'user-1',
                 },
             });
         });

@@ -1,7 +1,8 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class SendMessageDto {
     @IsString()
     @IsNotEmpty()
-    message: string | undefined;
+    @MaxLength(10000)
+    message!: string;
 }

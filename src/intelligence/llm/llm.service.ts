@@ -55,6 +55,50 @@ export class LlmService {
         });
     }
 
+    async createGraphLLM(): Promise<BaseChatModel> {
+        const provider =
+            this.config.get<string>('llm.graphProvider') ||
+            this.requireConfig('llm.provider');
+        const model =
+            this.config.get<string>('llm.graphModel') ||
+            this.requireConfig('llm.model');
+
+        let providerFields: Record<string, unknown>;
+        let modelProvider = provider;
+
+        if (provider === 'ollama') {
+            providerFields = {
+                baseUrl:
+                    this.config.get<string>('llm.graphBaseUrl') ||
+                    this.config.get<string>('llm.baseUrl'),
+                think: false,
+            };
+        } else if (provider === 'openrouter') {
+            modelProvider = 'openai';
+            providerFields = {
+                apiKey:
+                    this.config.get<string>('llm.graphApiKey') ||
+                    this.config.get<string>('llm.apiKey'),
+                configuration: {
+                    baseURL: 'https://openrouter.ai/api/v1',
+                },
+            };
+        } else {
+            providerFields = {
+                apiKey:
+                    this.config.get<string>('llm.graphApiKey') ||
+                    this.config.get<string>('llm.apiKey'),
+            };
+        }
+
+        return initChatModel(model, {
+            modelProvider,
+            temperature: 0,
+            streaming: false,
+            ...providerFields,
+        });
+    }
+
     async createStreamingLLM(): Promise<BaseChatModel> {
         const provider = this.requireConfig('llm.provider');
         const model = this.requireConfig('llm.model');
@@ -104,7 +148,7 @@ export class LlmService {
     async createToolChain(
         config: ToolCallingChainConfig,
     ): Promise<Runnable<ToolChainInput, unknown>> {
-        const llm = await this.createLLM();
+        const llm = config.model ?? (await this.createLLM());
 
         if (!llm.bindTools) {
             throw new Error(
