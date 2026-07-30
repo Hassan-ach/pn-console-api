@@ -252,6 +252,10 @@ enum SuggestionActionType {
   RECOMMENDATION
   RISK_MITIGATION
   NEXT_STEP
+  REASSIGN
+  ESCALATE
+  DELEGATE
+  DISMISS
 }
 
 enum SuggestionStatus {

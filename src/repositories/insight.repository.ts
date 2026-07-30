@@ -439,7 +439,7 @@ export class InsightRepository {
         return results;
     }
 
-    async findById(id: string, ownerId: string): Promise<Insight | null> {
+    async findById(id: string, ownerId?: string): Promise<Insight | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id },
             include: {
@@ -454,11 +454,14 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((o) => o.userId === ownerId);
+        if (ownerId) {
+            const isOwner = latest.owners.some((o) => o.userId === ownerId);
+            if (!isOwner && !latest.broadcasted) return null;
+        }
 
-        if (!isOwner && !latest.broadcasted) return null;
-
-        const ownerRow = latest.owners.find((o) => o.userId === ownerId);
+        const ownerRow = ownerId
+            ? latest.owners.find((o) => o.userId === ownerId)
+            : undefined;
 
         return {
             id: insight.id,
