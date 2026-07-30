@@ -12,4 +12,3 @@ export interface ToolCallingChainConfig {
 export interface ToolChainInput {
     messages: BaseMessage[];
 }
-

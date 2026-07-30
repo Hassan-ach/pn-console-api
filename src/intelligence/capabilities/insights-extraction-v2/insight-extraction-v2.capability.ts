@@ -51,7 +51,8 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         }));
 
         const pluginName = messages[0]?.sourcePlugin ?? 'unknown';
-        const orgId = input.chunk.envelopes[0]?.envelope.organizationId ?? undefined;
+        const orgId =
+            input.chunk.envelopes[0]?.envelope.organizationId ?? undefined;
 
         this.logger.log(
             `[V2] Extracting insights with Knowledge Graph tools: ${messages.length} envelopes, plugin=${pluginName}`,

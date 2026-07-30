@@ -5,23 +5,22 @@ import { GraphToolsService } from '../../tools/graph-tools.service';
 
 describe('KnowledgeGraphExtractionCapability', () => {
     let capability: KnowledgeGraphExtractionCapability;
-    let mockLlmService: any;
-    let mockGraphToolsService: any;
-    let mockChain: any;
+    let mockLlmService: {
+        createGraphLLM: jest.Mock;
+        createToolChain: jest.Mock;
+    };
+    let mockGraphToolsService: { getTools: jest.Mock };
+    let mockChain: { invoke: jest.Mock };
 
     beforeEach(async () => {
-        mockChain = {
-            invoke: jest.fn().mockResolvedValue('Done'),
-        };
+        mockChain = { invoke: jest.fn().mockResolvedValue('Done') };
 
         mockLlmService = {
             createGraphLLM: jest.fn().mockResolvedValue({}),
             createToolChain: jest.fn().mockResolvedValue(mockChain),
         };
 
-        mockGraphToolsService = {
-            getTools: jest.fn().mockReturnValue([]),
-        };
+        mockGraphToolsService = { getTools: jest.fn().mockReturnValue([]) };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -41,8 +40,10 @@ describe('KnowledgeGraphExtractionCapability', () => {
     });
 
     it('should return empty insights and skip processing if envelopes array is empty', async () => {
-        const input: any = { chunk: { envelopes: [] } };
-        const result = await capability.execute(input);
+        const result = await capability.execute({
+            chunk: { envelopes: [] } as never,
+            previousIntelligence: [] as never,
+        });
 
         expect(result.capabilityName).toBe('knowledge-graph-extractor');
         expect(result.insights).toEqual([]);
@@ -67,7 +68,7 @@ describe('KnowledgeGraphExtractionCapability', () => {
         ];
 
         const result = await capability.execute({
-            chunk: { envelopes: sampleEnvelopes } as any,
+            chunk: { envelopes: sampleEnvelopes } as never,
             previousIntelligence: [],
         });
 

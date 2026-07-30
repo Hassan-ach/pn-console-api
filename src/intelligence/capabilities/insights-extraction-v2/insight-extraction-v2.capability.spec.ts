@@ -7,15 +7,13 @@ import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
     let capability: InsightExtractionCapabilityV2;
-    let mockLlmService: any;
-    let mockGraphToolsService: any;
-    let mockPlatformUserMappingRepo: any;
-    let mockChain: any;
+    let mockLlmService: { createToolChain: jest.Mock };
+    let mockGraphToolsService: { getTools: jest.Mock };
+    let mockPlatformUserMappingRepo: { findWithUser: jest.Mock };
+    let mockChain: { invoke: jest.Mock };
 
     beforeEach(async () => {
-        mockChain = {
-            invoke: jest.fn(),
-        };
+        mockChain = { invoke: jest.fn() };
 
         mockLlmService = {
             createToolChain: jest.fn().mockResolvedValue(mockChain),
@@ -93,7 +91,7 @@ describe('InsightExtractionCapabilityV2', () => {
         mockChain.invoke.mockResolvedValue(llmResult);
 
         const result = await capability.execute({
-            chunk: { envelopes: sampleEnvelopes } as any,
+            chunk: { envelopes: sampleEnvelopes } as never,
             previousIntelligence: [],
         });
 
