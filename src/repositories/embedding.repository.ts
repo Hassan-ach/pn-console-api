@@ -13,6 +13,7 @@ export interface SimilarityResult {
     channelId: string | null;
     topicId: string | null;
     deadline: Date | null;
+    createdAt: Date;
     similarity: number;
 }
 
@@ -66,6 +67,7 @@ export class EmbeddingRepository {
                 iv."channel_id" AS "channelId",
                 iv."topic_id" AS "topicId",
                 iv."deadline" AS "deadline",
+                iv."created_at" AS "createdAt",
                 ${ownerSelect}
                 ${similarityExpr} AS similarity
             FROM "insight_versions" iv
@@ -94,6 +96,7 @@ export class EmbeddingRepository {
                 channelId: string | null;
                 topicId: string | null;
                 deadline: Date | null;
+                createdAt: Date;
                 status: string | null;
                 priority: number | null;
                 similarity: number;
@@ -143,6 +146,7 @@ export class EmbeddingRepository {
                 iv."channel_id"   AS "channelId",
                 iv."topic_id"     AS "topicId",
                 iv."deadline"     AS "deadline",
+                iv."created_at"   AS "createdAt",
                 ivo."status",
                 ivo."priority"
             FROM "insight_versions" iv
@@ -174,6 +178,7 @@ export class EmbeddingRepository {
                 channelId: string | null;
                 topicId: string | null;
                 deadline: Date | null;
+                createdAt: Date;
                 status: string | null;
                 priority: number | null;
             }>

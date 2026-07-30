@@ -55,6 +55,7 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: null,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 0.85,
                 },
             ]);
@@ -103,6 +104,7 @@ describe('ChatContextService', () => {
                         channelId: null,
                         topicId: null,
                         deadline: null,
+                        createdAt: new Date('2026-07-28'),
                         similarity: 0.5,
                     },
                 ]);
@@ -136,6 +138,7 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: null,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 0.92,
                 },
                 {
@@ -150,6 +153,7 @@ describe('ChatContextService', () => {
                     channelId: 'finance',
                     topicId: null,
                     deadline: null,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 0.78,
                 },
             ]);
@@ -157,10 +161,10 @@ describe('ChatContextService', () => {
             const result = await service.buildContext('user-1', 'urgent items');
 
             expect(result).toContain(
-                '- **URGENCY** [PENDING] (priority: 8/10) from telegram/team-a: Server down',
+                '- **URGENCY** [PENDING] (priority: 8/10) from telegram/team-a [created: 2026-07-28]: Server down',
             );
             expect(result).toContain(
-                '- **DECISION** [DECIDED] from discord/finance: Approve budget',
+                '- **DECISION** [DECIDED] from discord/finance [created: 2026-07-28]: Approve budget',
             );
         });
 
@@ -181,6 +185,7 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: pastDate,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 0.88,
                 },
             ]);
@@ -207,7 +212,8 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: futureDate,
-                    similarity: 0.80,
+                    createdAt: new Date('2026-07-28'),
+                    similarity: 0.8,
                 },
             ]);
 
@@ -231,6 +237,7 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: 'engineering',
                     deadline: null,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 0.75,
                 },
             ]);
@@ -276,7 +283,8 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: null,
-                    similarity: 0.70,
+                    createdAt: new Date('2026-07-28'),
+                    similarity: 0.7,
                 },
             ]);
 
@@ -306,11 +314,15 @@ describe('ChatContextService', () => {
                     channelId: null,
                     topicId: null,
                     deadline: null,
+                    createdAt: new Date('2026-07-28'),
                     similarity: 1.0,
                 },
             ]);
 
-            const result = await service.buildContext('user-1', 'list all pending tasks');
+            const result = await service.buildContext(
+                'user-1',
+                'list all pending tasks',
+            );
 
             expect(mockEmbeddingRepo.findByFilters).toHaveBeenCalledWith(
                 'user-1',
@@ -322,7 +334,7 @@ describe('ChatContextService', () => {
 
         it('deduplicates results from findByFilters and searchSimilar', async () => {
             mockEmbeddingService.embed.mockResolvedValue([0.1, 0.2, 0.3]);
-            
+
             const sharedResult = {
                 insightVersionId: 'v1',
                 insightId: 'i1',
@@ -335,17 +347,19 @@ describe('ChatContextService', () => {
                 channelId: null,
                 topicId: null,
                 deadline: null,
+                createdAt: new Date('2026-07-28'),
                 similarity: 0.9,
             };
 
             mockEmbeddingRepo.findByFilters.mockResolvedValue([
                 { ...sharedResult, similarity: 1.0 },
             ]);
-            mockEmbeddingRepo.searchSimilar.mockResolvedValue([
-                sharedResult,
-            ]);
+            mockEmbeddingRepo.searchSimilar.mockResolvedValue([sharedResult]);
 
-            const result = await service.buildContext('user-1', 'pending tasks');
+            const result = await service.buildContext(
+                'user-1',
+                'pending tasks',
+            );
 
             // Expect to see the string only once in the context, but since we format it
             // let's just make sure it returns something and deduplicated correctly.

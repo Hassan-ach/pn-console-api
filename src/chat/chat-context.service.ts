@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EmbeddingRepository, SimilarityResult } from '../repositories/embedding.repository';
+import {
+    EmbeddingRepository,
+    SimilarityResult,
+} from '../repositories/embedding.repository';
 import { EmbeddingService } from '../intelligence/embeddings/embedding.service';
 
 /** Maps user-facing keywords to DB insight types */
@@ -64,7 +67,10 @@ export class ChatContextService {
         }
 
         for (const [keyword, status] of Object.entries(STATUS_KEYWORDS)) {
-            const regex = new RegExp(`\\b${keyword.replace('_', '[_\\s]')}\\b`, 'i');
+            const regex = new RegExp(
+                `\\b${keyword.replace('_', '[_\\s]')}\\b`,
+                'i',
+            );
             if (regex.test(lower)) statuses.add(status);
         }
 
@@ -134,7 +140,21 @@ export class ChatContextService {
                 }
             }
 
-            if (combined.length === 0) return '';
+            // Fallback: when no insights matched semantically or by filter,
+            // return the most recent insights so the LLM has something to work with
+            // (e.g. for broad queries like "Summarize my day")
+            if (combined.length === 0) {
+                this.logger.debug(
+                    'No RAG results — fetching recent insights as fallback',
+                );
+                const recent = await this.embeddingRepository.findByFilters(
+                    userId,
+                    10,
+                    {},
+                );
+                if (recent.length === 0) return '';
+                combined.push(...recent);
+            }
 
             const nowIso = now.toISOString();
             const lines = combined.map((r) => this.formatInsightLine(r, now));
@@ -158,6 +178,9 @@ export class ChatContextService {
             else if (r.groupId) source += `/${r.groupId}`;
         }
 
+        // Creation date
+        const createdLabel = ` [created: ${r.createdAt.toISOString().split('T')[0]}]`;
+
         // Deadline with human-readable urgency label
         let deadlineLabel = '';
         if (r.deadline) {
@@ -177,7 +200,7 @@ export class ChatContextService {
         let line = `- **${r.type}**`;
         if (r.status) line += ` [${r.status}]`;
         if (r.priority != null) line += ` (priority: ${r.priority}/10)`;
-        line += `${source}${deadlineLabel}: ${r.content}`;
+        line += `${source}${createdLabel}${deadlineLabel}: ${r.content}`;
         return line;
     }
 }

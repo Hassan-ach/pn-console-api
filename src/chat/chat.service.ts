@@ -18,7 +18,7 @@ The ## Current Date section tells you today's date — use it to compute relativ
 The ## Relevant Insights section contains the most semantically relevant insights for the user's question.
 
 Each insight line follows this format:
-  - **TYPE** [STATUS] (priority: N/10) from PLUGIN/SCOPE [deadline: DATE — STATUS] (relevance: XX%): CONTENT
+  - **TYPE** [STATUS] (priority: N/10) from PLUGIN/SCOPE [created: YYYY-MM-DD] [deadline: DATE — STATUS] (relevance: XX%): CONTENT
 
 ## Insight Types
 
