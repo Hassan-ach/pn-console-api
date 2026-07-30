@@ -11,6 +11,9 @@ import { PluginConfigRepository } from './plugin-config.repository';
 import { ActiveChatListenerRepository } from './active-chat-listener.repository';
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
+import { EntityRepository } from './entity.repository';
+import { RelationshipRepository } from './relationship.repository';
+import { InsightSuggestionRepository } from './insight-suggestion.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -25,6 +28,9 @@ import { UserRepository } from './user.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EntityRepository,
+        RelationshipRepository,
+        InsightSuggestionRepository,
     ],
     exports: [
         InsightRepository,
@@ -37,6 +43,10 @@ import { UserRepository } from './user.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EntityRepository,
+        RelationshipRepository,
+        InsightSuggestionRepository,
     ],
 })
 export class RepositoriesModule {}
+
