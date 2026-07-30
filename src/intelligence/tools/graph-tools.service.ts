@@ -52,7 +52,9 @@ export class GraphToolsService {
             func: async ({ id }) => {
                 const entity = await this.entityRepo.findById(id);
                 if (!entity) {
-                    return JSON.stringify({ error: `Entity with ID ${id} not found` });
+                    return JSON.stringify({
+                        error: `Entity with ID ${id} not found`,
+                    });
                 }
                 const relationships =
                     await this.relationshipRepo.findBySourceOrTarget(id);
@@ -65,9 +67,7 @@ export class GraphToolsService {
             description:
                 'Retrieve connected neighboring entities and relationships for a target entity ID up to a max depth limit.',
             schema: z.object({
-                entityId: z
-                    .string()
-                    .describe('The UUID of the root entity'),
+                entityId: z.string().describe('The UUID of the root entity'),
                 depth: z
                     .number()
                     .optional()
@@ -123,7 +123,10 @@ export class GraphToolsService {
                     });
                     results.push(saved);
                 }
-                return JSON.stringify({ createdOrMerged: results.length, entities: results });
+                return JSON.stringify({
+                    createdOrMerged: results.length,
+                    entities: results,
+                });
             },
         });
 
@@ -150,7 +153,10 @@ export class GraphToolsService {
                     });
                     updated.push(res);
                 }
-                return JSON.stringify({ updatedCount: updated.length, updated });
+                return JSON.stringify({
+                    updatedCount: updated.length,
+                    updated,
+                });
             },
         });
 
@@ -161,8 +167,12 @@ export class GraphToolsService {
             schema: z.object({
                 relationships: z.array(
                     z.object({
-                        sourceEntityId: z.string().describe('Source entity UUID'),
-                        targetEntityId: z.string().describe('Target entity UUID'),
+                        sourceEntityId: z
+                            .string()
+                            .describe('Source entity UUID'),
+                        targetEntityId: z
+                            .string()
+                            .describe('Target entity UUID'),
                         type: z
                             .string()
                             .describe(
@@ -184,7 +194,10 @@ export class GraphToolsService {
                     });
                     results.push(saved);
                 }
-                return JSON.stringify({ createdOrMerged: results.length, relationships: results });
+                return JSON.stringify({
+                    createdOrMerged: results.length,
+                    relationships: results,
+                });
             },
         });
 

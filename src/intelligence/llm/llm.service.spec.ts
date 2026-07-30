@@ -574,12 +574,15 @@ describe('LlmService', () => {
 
             await service.createGraphLLM();
 
-            expect(mockInitChatModel).toHaveBeenCalledWith('claude-3-5-sonnet', {
-                modelProvider: 'anthropic',
-                temperature: 0,
-                streaming: false,
-                apiKey: 'graph-key',
-            });
+            expect(mockInitChatModel).toHaveBeenCalledWith(
+                'claude-3-5-sonnet',
+                {
+                    modelProvider: 'anthropic',
+                    temperature: 0,
+                    streaming: false,
+                    apiKey: 'graph-key',
+                },
+            );
         });
 
         it('falls back to main LLM config when graph config is absent', async () => {
@@ -609,4 +612,3 @@ describe('LlmService', () => {
         });
     });
 });
-
