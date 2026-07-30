@@ -6,6 +6,7 @@ import {
     Get,
     Param,
     ParseIntPipe,
+    ParseUUIDPipe,
     Post,
     Query,
     Req,
@@ -68,7 +69,7 @@ export class ChatController {
     })
     async getHistory(
         @Req() req: Request & { user: { id: string } },
-        @Query('conversationId') conversationId: string,
+        @Query('conversationId', ParseUUIDPipe) conversationId: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     ) {
@@ -86,7 +87,7 @@ export class ChatController {
     })
     async retractLast(
         @Req() req: Request & { user: { id: string } },
-        @Query('conversationId') conversationId: string,
+        @Query('conversationId', ParseUUIDPipe) conversationId: string,
     ) {
         return this.chatService.retractLastMessages(
             req.user.id,
@@ -94,7 +95,7 @@ export class ChatController {
         );
     }
 
-    @Post('message')
+    @Post('messages')
     @ApiOperation({
         summary: 'Send a message and receive a streaming LLM response',
     })
@@ -104,52 +105,77 @@ export class ChatController {
         @Req() req: Request & { user: { id: string } },
         @Res() res: Response,
     ) {
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-
-        const conversationId = await this.chatService.resolveConversation(
-            req.user.id,
-            dto.conversationId,
-        );
-
-        res.write(
-            `data: ${JSON.stringify({ type: 'metadata', conversationId })}\n\n`,
-        );
-
-        const abortController = new AbortController();
         let isConnectionClosed = false;
+        const abortController = new AbortController();
 
-        req.on('close', () => {
-            isConnectionClosed = true;
-            abortController.abort();
-        });
+        const safeWrite = (data: string) => {
+            if (!isConnectionClosed) {
+                try {
+                    res.write(data);
+                } catch {
+                    isConnectionClosed = true;
+                }
+            }
+        };
+
+        const endResponse = () => {
+            if (!isConnectionClosed) {
+                try {
+                    res.end();
+                } catch {
+                    isConnectionClosed = true;
+                }
+            }
+        };
 
         try {
-            for await (const token of this.chatService.streamResponse(
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            const conversationId = await this.chatService.resolveConversation(
                 req.user.id,
-                conversationId,
-                dto.message,
-                abortController.signal,
-            )) {
-                if (isConnectionClosed) break;
-                res.write(
-                    `data: ${JSON.stringify({ type: 'token', content: token })}\n\n`,
-                );
-            }
-            if (!isConnectionClosed) {
-                res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-            }
-        } catch (error) {
-            if (!isConnectionClosed) {
-                res.write(
+                dto.conversationId,
+            );
+
+            safeWrite(
+                `data: ${JSON.stringify({ type: 'metadata', conversationId })}\n\n`,
+            );
+
+            req.on('close', () => {
+                isConnectionClosed = true;
+                abortController.abort();
+            });
+
+            const heartbeat = setInterval(() => {
+                safeWrite(':keepalive\n\n');
+            }, 15_000);
+
+            try {
+                for await (const token of this.chatService.streamResponse(
+                    req.user.id,
+                    conversationId,
+                    dto.message,
+                    abortController.signal,
+                )) {
+                    safeWrite(
+                        `data: ${JSON.stringify({ type: 'token', content: token })}\n\n`,
+                    );
+                }
+                safeWrite(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+            } catch (error) {
+                safeWrite(
                     `data: ${JSON.stringify({ type: 'error', message: (error as Error).message })}\n\n`,
                 );
+            } finally {
+                clearInterval(heartbeat);
             }
-        }
-
-        if (!isConnectionClosed) {
-            res.end();
+        } catch (error) {
+            safeWrite(
+                `data: ${JSON.stringify({ type: 'error', message: (error as Error).message })}\n\n`,
+            );
+        } finally {
+            endResponse();
         }
     }
 }

@@ -5,6 +5,11 @@ import { AppDbService } from '../prisma/app-db/app-db.service';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
 
+type MockTx = {
+    chatMessage: Record<string, jest.Mock>;
+    conversation: Record<string, jest.Mock>;
+};
+
 interface MockAppDb {
     $transaction: jest.Mock;
     chatMessage: Record<string, jest.Mock>;
@@ -12,42 +17,62 @@ interface MockAppDb {
 }
 
 function createMockAppDb(): MockAppDb {
+    const mockCreateMsg = jest.fn().mockResolvedValue({
+        id: 'msg-1',
+        role: 'USER',
+        content: 'test',
+        createdAt: new Date(),
+    });
+
+    const mockFindManyMsg = jest.fn().mockResolvedValue([]);
+    const mockDeleteMany = jest.fn().mockResolvedValue({ count: 2 });
+    const mockCount = jest.fn().mockResolvedValue(0);
+
+    const mockFindFirstConv = jest.fn().mockResolvedValue(null);
+    const mockFindUniqueConv = jest.fn().mockResolvedValue(null);
+    const mockFindManyConv = jest.fn().mockResolvedValue([]);
+    const mockCreateConv = jest.fn().mockResolvedValue({
+        id: 'conv-1',
+        title: 'New chat',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
+    const mockUpdateConv = jest.fn().mockResolvedValue({});
+
+    const tx: MockTx = {
+        chatMessage: {
+            create: mockCreateMsg,
+            findMany: mockFindManyMsg,
+            deleteMany: mockDeleteMany,
+            count: mockCount,
+        },
+        conversation: {
+            findFirst: mockFindFirstConv,
+            findUnique: mockFindUniqueConv,
+            findMany: mockFindManyConv,
+            create: mockCreateConv,
+            update: mockUpdateConv,
+        },
+    };
+
     return {
         $transaction: jest
             .fn()
             .mockImplementation(
-                async (
-                    cb: (tx: { chatMessage: { delete: jest.Mock } }) => unknown,
-                ) => {
-                    const tx = {
-                        chatMessage: {
-                            delete: jest.fn().mockResolvedValue({}),
-                        },
-                    };
-                    return cb(tx);
-                },
+                async (cb: (tx: MockTx) => unknown) => cb(tx),
             ),
         chatMessage: {
-            findMany: jest.fn().mockResolvedValue([]),
-            create: jest.fn().mockResolvedValue({
-                id: 'msg-1',
-                role: 'USER',
-                content: 'test',
-                createdAt: new Date(),
-            }),
-            deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
-            count: jest.fn().mockResolvedValue(0),
+            findMany: mockFindManyMsg,
+            create: mockCreateMsg,
+            deleteMany: mockDeleteMany,
+            count: mockCount,
         },
         conversation: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            findMany: jest.fn().mockResolvedValue([]),
-            create: jest.fn().mockResolvedValue({
-                id: 'conv-1',
-                title: 'New chat',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            }),
-            update: jest.fn().mockResolvedValue({}),
+            findFirst: mockFindFirstConv,
+            findUnique: mockFindUniqueConv,
+            findMany: mockFindManyConv,
+            create: mockCreateConv,
+            update: mockUpdateConv,
         },
     };
 }
@@ -192,7 +217,7 @@ describe('ChatService', () => {
 
     describe('resolveConversation', () => {
         it('returns existing conversation when conversationId is provided', async () => {
-            mockAppDb.conversation.findFirst.mockResolvedValue({
+            mockAppDb.conversation.findUnique = jest.fn().mockResolvedValue({
                 id: 'conv-existing',
                 userId: 'user-1',
                 title: 'Test',
@@ -509,18 +534,39 @@ describe('ChatService', () => {
             ).rejects.toThrow('Not enough messages to retract');
         });
 
-        it('throws when the last two messages are not USER+ASSISTANT', async () => {
+        it('throws when the last two messages are not USER+ASSISTANT in order', async () => {
             mockAppDb.chatMessage.findMany.mockResolvedValue([
+                {
+                    id: '2',
+                    role: 'USER',
+                    content: 'second',
+                    createdAt: new Date(),
+                },
                 {
                     id: '1',
                     role: 'USER',
                     content: 'first',
                     createdAt: new Date(),
                 },
+            ]);
+
+            await expect(
+                service.retractLastMessages('user-1', 'conv-1'),
+            ).rejects.toThrow('not a valid USER+ASSISTANT pair');
+        });
+
+        it('throws when newest is not ASSISTANT', async () => {
+            mockAppDb.chatMessage.findMany.mockResolvedValue([
                 {
                     id: '2',
-                    role: 'USER',
-                    content: 'second',
+                    role: 'ASSISTANT',
+                    content: 'answer',
+                    createdAt: new Date(),
+                },
+                {
+                    id: '1',
+                    role: 'ASSISTANT',
+                    content: 'another answer',
                     createdAt: new Date(),
                 },
             ]);
@@ -532,8 +578,8 @@ describe('ChatService', () => {
 
         it('deletes the last two messages via deleteMany', async () => {
             const messages = [
-                { id: '1', role: 'USER' as const, createdAt: new Date() },
                 { id: '2', role: 'ASSISTANT' as const, createdAt: new Date() },
+                { id: '1', role: 'USER' as const, createdAt: new Date() },
             ];
             mockAppDb.chatMessage.findMany.mockResolvedValue(messages);
 
@@ -541,7 +587,7 @@ describe('ChatService', () => {
 
             expect(mockAppDb.chatMessage.deleteMany).toHaveBeenCalledWith({
                 where: {
-                    id: { in: ['1', '2'] },
+                    id: { in: ['2', '1'] },
                     userId: 'user-1',
                 },
             });
