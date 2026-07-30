@@ -42,5 +42,5 @@ When you have finished reasoning and using tools, output strictly valid JSON in 
   ]
 }
 
-Only return valid JSON when outputting the final result.
+CRITICAL: Return ONLY valid JSON starting with '{' and ending with '}'. DO NOT include conversational text (such as "Now I have...", "Based on...", or "Here is the JSON:") before or after the JSON.
 `.trim();

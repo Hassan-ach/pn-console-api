@@ -3,6 +3,7 @@ import { PluginContextService } from './plugin-context.service';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { EnvelopeRepository } from '../../../repositories/envelope.repository';
 import { PlatformUserMappingRepository } from '../../../repositories/platform-user-mapping.repository';
+import { UserRepository } from '../../../repositories/user.repository';
 import { RawDbService } from '../../../prisma/raw-db/raw-db.service';
 
 const mockConfigRepo = {
@@ -26,6 +27,10 @@ const mockRawDb = {
     },
 };
 
+const mockUserRepo = {
+    findById: jest.fn().mockResolvedValue({ id: 'u1', organizationId: 'org-1' }),
+};
+
 describe('PluginContextService', () => {
     let service: PluginContextService;
 
@@ -39,6 +44,7 @@ describe('PluginContextService', () => {
                     provide: PlatformUserMappingRepository,
                     useValue: mockMappingRepo,
                 },
+                { provide: UserRepository, useValue: mockUserRepo },
                 { provide: RawDbService, useValue: mockRawDb },
             ],
         }).compile();

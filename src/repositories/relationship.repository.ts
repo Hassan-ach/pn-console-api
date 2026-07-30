@@ -16,6 +16,11 @@ export interface GraphNeighborhood {
     relationships: Relationship[];
 }
 
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+function isUuid(id: string): boolean {
+    return UUID_REGEX.test(id);
+}
+
 @Injectable()
 export class RelationshipRepository {
     constructor(private readonly prisma: AppDbService) {}
@@ -57,6 +62,7 @@ export class RelationshipRepository {
     }
 
     async findById(id: string) {
+        if (!isUuid(id)) return null;
         return this.prisma.relationship.findUnique({
             where: { id },
             include: {
@@ -67,6 +73,7 @@ export class RelationshipRepository {
     }
 
     async findBySourceOrTarget(entityId: string) {
+        if (!isUuid(entityId)) return [];
         return this.prisma.relationship.findMany({
             where: {
                 OR: [
@@ -85,6 +92,7 @@ export class RelationshipRepository {
         entityId: string,
         maxDepth = 2,
     ): Promise<GraphNeighborhood | null> {
+        if (!isUuid(entityId)) return null;
         const rootEntity = await this.prisma.entity.findUnique({
             where: { id: entityId },
         });
@@ -146,6 +154,7 @@ export class RelationshipRepository {
     }
 
     async delete(id: string) {
+        if (!isUuid(id)) return null;
         return this.prisma.relationship.delete({
             where: { id },
         });

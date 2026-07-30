@@ -29,6 +29,7 @@ export function toEnvelopeWithPayload(env: any): EnvelopeWithPayload {
             type: env.type.toLowerCase() as 'message',
             hasAttachment: env.hasAttachment,
             authorId: env.authorId,
+            organizationId: env.organizationId ?? 'org-1',
             occurredAt: env.occurredAt,
         },
         payload: {

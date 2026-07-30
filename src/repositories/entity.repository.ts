@@ -15,6 +15,11 @@ export interface UpdateEntityInput {
     metadata?: Record<string, any>;
 }
 
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+function isUuid(id: string): boolean {
+    return UUID_REGEX.test(id);
+}
+
 @Injectable()
 export class EntityRepository {
     constructor(private readonly prisma: AppDbService) {}
@@ -72,6 +77,7 @@ export class EntityRepository {
     }
 
     async findById(id: string) {
+        if (!isUuid(id)) return null;
         return this.prisma.entity.findUnique({
             where: { id },
         });
@@ -122,6 +128,7 @@ export class EntityRepository {
     }
 
     async update(id: string, data: UpdateEntityInput) {
+        if (!isUuid(id)) return null;
         const updateData: Prisma.EntityUpdateInput = {};
         if (data.name !== undefined) updateData.name = data.name.trim();
         if (data.type !== undefined) updateData.type = data.type.trim();
@@ -136,6 +143,7 @@ export class EntityRepository {
     }
 
     async delete(id: string) {
+        if (!isUuid(id)) return null;
         return this.prisma.entity.delete({
             where: { id },
         });

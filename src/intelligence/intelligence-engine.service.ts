@@ -170,33 +170,71 @@ export class IntelligenceEngineService {
                     `Chunk ${chunk.id}: ${chunk.envelopes.length} envelopes, ${previousInsights.length} previous insights`,
                 );
 
-                const { results, errors } =
-                    await this.capabilityManager.executeAll({
-                        chunk,
-                        previousIntelligence: previousInsights,
-                    });
+                const capabilityInput = {
+                    chunk,
+                    previousIntelligence: previousInsights,
+                };
 
-                if (errors.length > 0) {
-                    this.logger.warn(
-                        `Capability errors for chunk ${chunk.id}: ${JSON.stringify(errors)}`,
+                // 1. Execute Knowledge Graph Extraction by name
+                try {
+                    await this.capabilityManager.executeByName(
+                        'knowledge-graph-extractor',
+                        capabilityInput,
                     );
-
+                } catch (kgError) {
+                    const errorMsg =
+                        kgError instanceof Error
+                            ? kgError.message
+                            : String(kgError);
+                    this.logger.warn(
+                        `Knowledge graph extraction failed for chunk ${chunk.id}: ${errorMsg}`,
+                    );
                     const envelopeIds = chunk.envelopes
                         .map((e) => e.envelope.id)
                         .filter((id): id is string => !!id);
 
-                    await this.failureRepository.createMany(
-                        errors.map((err) => ({
-                            capabilityName: err.capabilityName,
+                    await this.failureRepository.createMany([
+                        {
+                            capabilityName: 'knowledge-graph-extractor',
                             chunkId: chunk.id,
-                            errorMessage: err.error,
+                            errorMessage: errorMsg,
                             envelopeIds,
                             organizationId,
-                        })),
-                    );
+                        },
+                    ]);
                 }
 
-                const insights = results.flatMap((r) => r.insights);
+                // 2. Execute single Insight Extractor capability by name (Insights Extraction V2)
+                let insightResult: { insights: any[] } | null = null;
+                try {
+                    insightResult = await this.capabilityManager.executeByName(
+                        'insights-extractor-v2',
+                        capabilityInput,
+                    );
+                } catch (insightError) {
+                    const errorMsg =
+                        insightError instanceof Error
+                            ? insightError.message
+                            : String(insightError);
+                    this.logger.warn(
+                        `Insights extraction V2 failed for chunk ${chunk.id}: ${errorMsg}`,
+                    );
+                    const envelopeIds = chunk.envelopes
+                        .map((e) => e.envelope.id)
+                        .filter((id): id is string => !!id);
+
+                    await this.failureRepository.createMany([
+                        {
+                            capabilityName: 'insights-extractor-v2',
+                            chunkId: chunk.id,
+                            errorMessage: errorMsg,
+                            envelopeIds,
+                            organizationId,
+                        },
+                    ]);
+                }
+
+                const insights = insightResult?.insights ?? [];
                 if (insights.length > 0) {
                     await this.persistence.persistAll(insights, organizationId);
                     totalInsights += insights.length;
@@ -207,11 +245,7 @@ export class IntelligenceEngineService {
                     .filter((id): id is string => !!id);
 
                 if (envelopeIds.length > 0) {
-                    const allFailed =
-                        errors.length > 0 &&
-                        results.every((r) => r.insights.length === 0);
-                    const status = allFailed ? 'FAILED' : 'READY';
-
+                    const status = insightResult ? 'READY' : 'FAILED';
                     await this.envelopeRepo.markStatus(envelopeIds, status);
                 }
             }

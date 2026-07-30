@@ -40,21 +40,25 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
             occurredAt: env.envelope.occurredAt?.toISOString() ?? null,
         }));
 
-        const orgId = envelopes[0]?.envelope.organizationId ?? undefined;
+        const orgId = envelopes[0]?.envelope.organizationId ?? 'org-1';
 
         this.logger.log(
-            `Executing agentic Knowledge Graph extraction on ${messages.length} envelopes (orgId: ${orgId ?? 'none'})`,
+            `Executing agentic Knowledge Graph extraction on ${messages.length} envelopes (orgId: ${orgId})`,
         );
 
         const tools = this.graphToolsService.getTools(orgId);
         const graphModel = await this.llmService.createGraphLLM();
 
         const MAX_RETRIES = parseInt(process.env.LLM_MAX_RETRIES ?? '3', 10);
+        const maxIterations = parseInt(
+            process.env.LLM_MAX_TOOL_ITERATIONS ?? '15',
+            10,
+        );
 
         const chain = await this.llmService.createToolChain({
             tools,
             model: graphModel,
-            maxIterations: 5,
+            maxIterations,
         });
 
         const chainInputMessages = [
