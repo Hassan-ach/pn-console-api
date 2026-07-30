@@ -12,7 +12,6 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import {
     ApiBearerAuth,
@@ -51,9 +50,11 @@ export class ChatController {
         return this.chatService.retractLastMessages(req.user.id);
     }
 
-    @Post('messages')
-    @Throttle({ default: { limit: 10, ttl: 60_000 } })
-    @ApiOperation({ summary: 'Send a message and receive an SSE stream' })
+    @Post('message')
+    @ApiOperation({
+        summary: 'Send a message and receive a streaming LLM response',
+    })
+    @ApiOkResponse({ description: 'Server-Sent Events (SSE) stream' })
     async sendMessage(
         @Body() dto: SendMessageDto,
         @Req() req: Request & { user: { id: string } },

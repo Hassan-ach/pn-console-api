@@ -74,6 +74,7 @@ enum ProviderType {
 
 model User {
   id                  String                @id @default(uuid()) @db.Uuid
+  organizationId      String?               @map("organization_id")
   firstName           String                @map("first_name")
   lastName            String?               @map("last_name")
   email               String
@@ -88,6 +89,7 @@ model User {
   chatMessages        ChatMessage[]
 
   @@unique([email, providerType])
+  @@index([organizationId])
   @@map("users")
 }
 

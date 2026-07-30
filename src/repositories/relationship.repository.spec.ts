@@ -88,12 +88,14 @@ describe('RelationshipRepository', () => {
     });
 
     it('should fetch neighbors up to maxDepth', async () => {
-        const rootEntity = { id: 'ent-1', name: 'ServiceA', type: 'Service' };
-        const neighborEntity = { id: 'ent-2', name: 'TeamA', type: 'Team' };
+        const rootId = '11111111-1111-1111-1111-111111111111';
+        const neighborId = '22222222-2222-2222-2222-222222222222';
+        const rootEntity = { id: rootId, name: 'ServiceA', type: 'Service' };
+        const neighborEntity = { id: neighborId, name: 'TeamA', type: 'Team' };
         const rel = {
-            id: 'rel-1',
-            sourceEntityId: 'ent-2',
-            targetEntityId: 'ent-1',
+            id: '33333333-3333-3333-3333-333333333333',
+            sourceEntityId: neighborId,
+            targetEntityId: rootId,
             type: 'OWNS',
             sourceEntity: neighborEntity,
             targetEntity: rootEntity,
@@ -104,7 +106,7 @@ describe('RelationshipRepository', () => {
             .mockResolvedValueOnce([rel])
             .mockResolvedValueOnce([]);
 
-        const neighborhood = await repository.getNeighbors('ent-1', 2);
+        const neighborhood = await repository.getNeighbors(rootId, 2);
 
         expect(neighborhood).not.toBeNull();
         expect(neighborhood?.rootEntity).toEqual(rootEntity);

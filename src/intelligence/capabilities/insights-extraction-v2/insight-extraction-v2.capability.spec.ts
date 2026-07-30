@@ -3,6 +3,7 @@ import { InsightExtractionCapabilityV2 } from './insight-extraction-v2.capabilit
 import { LlmService } from '../../llm/llm.service';
 import { GraphToolsService } from '../../tools/graph-tools.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { UserRepository } from 'src/repositories/user.repository';
 import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
@@ -35,6 +36,17 @@ describe('InsightExtractionCapabilityV2', () => {
             ]),
         };
 
+        const mockUserRepo = {
+            findByOrganization: jest.fn().mockResolvedValue([
+                {
+                    id: 'app-user-1',
+                    firstName: 'Alice',
+                    lastName: 'Smith',
+                    email: 'alice@example.com',
+                },
+            ]),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 InsightExtractionCapabilityV2,
@@ -44,6 +56,7 @@ describe('InsightExtractionCapabilityV2', () => {
                     provide: PlatformUserMappingRepository,
                     useValue: mockPlatformUserMappingRepo,
                 },
+                { provide: UserRepository, useValue: mockUserRepo },
             ],
         }).compile();
 
