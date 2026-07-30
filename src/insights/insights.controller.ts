@@ -78,7 +78,8 @@ export class InsightsController {
     async updatePriority(
         @Req() req: { user: { id: string } },
         @Param('id') id: string,
-        @Query(ValidationPipe) query: InsightPriorityQueryDto,
+        @Query(new ValidationPipe({ transform: true }))
+        query: InsightPriorityQueryDto,
     ): Promise<InsightDetailResponseDto> {
         const insight = await this.insightsService.updatePriority(
             id,

@@ -11,6 +11,7 @@ import { InputMessage } from './types';
 import { Insight, UnresolvedOwnerRef } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { PlatformUserMappingWithUser } from 'src/repositories/platform-user-mapping.repository';
 import {
     ICapability,
     CapabilityInput,
@@ -50,6 +51,19 @@ export class InsightExtractionCapability implements ICapability {
         this.logger.log(
             `Extracting insights: ${messages.length} envelopes, plugin=${pluginName}`,
         );
+
+        const allMappings =
+            await this.platformUserMappingRepo.findWithUser(pluginName);
+
+        const platformToAppUser = new Map<string, string>();
+        for (const m of allMappings) {
+            platformToAppUser.set(m.platformUserId, m.appUserId);
+        }
+
+        const msgAuthors = new Map<string, string | null>();
+        for (const msg of messages) {
+            msgAuthors.set(msg.envolopId, msg.authorId);
+        }
 
         const history = input.previousIntelligence;
         const llm = await this.llmService.createLLM();
@@ -112,7 +126,7 @@ export class InsightExtractionCapability implements ICapability {
 
         const resolvedMap =
             allOwnerRefs.length > 0
-                ? await this.resolveOwnersBatch(allOwnerRefs, pluginName)
+                ? this.resolveOwnersBatch(allOwnerRefs, allMappings)
                 : new Map<string, string | null>();
 
         const resolveOwners = (
@@ -135,17 +149,44 @@ export class InsightExtractionCapability implements ICapability {
             return { resolved, unresolved };
         };
 
+        const getExcludedUserIds = (envolopsRef: string[]): string[] => {
+            const excluded = new Set<string>();
+            for (const ref of envolopsRef) {
+                const platformAuthorId = msgAuthors.get(ref);
+                if (platformAuthorId) {
+                    const appUserId = platformToAppUser.get(platformAuthorId);
+                    if (appUserId) {
+                        excluded.add(appUserId);
+                    }
+                }
+            }
+            return [...excluded];
+        };
+
         const insights: Insight[] = [
             ...result.updatedInsights.map((u) => {
                 const { resolved, unresolved } = resolveOwners(u.owners);
+                const excludedUserIds = u.excludeAuthor
+                    ? getExcludedUserIds(u.envolopsRef)
+                    : [];
+                const filteredOwners = resolved.filter(
+                    (id) => !excludedUserIds.includes(id),
+                );
+                const isBroadcasted =
+                    u.broadcasted ||
+                    (excludedUserIds.length > 0 && filteredOwners.length === 0);
                 return {
                     id: u.id,
                     type: u.type,
                     content: u.content,
-                    owners: resolved,
+                    owners: filteredOwners,
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: u.envolopsRef,
-                    broadcasted: u.broadcasted,
+                    broadcasted: isBroadcasted,
+                    excludedUserIds:
+                        excludedUserIds.length > 0
+                            ? excludedUserIds
+                            : undefined,
                     priority: u.priority,
                     deadline: u.deadline ? new Date(u.deadline) : undefined,
                     sourcePlugin: chunkSourcePlugin,
@@ -156,14 +197,27 @@ export class InsightExtractionCapability implements ICapability {
             }),
             ...result.newInsights.map((n) => {
                 const { resolved, unresolved } = resolveOwners(n.owners);
+                const excludedUserIds = n.excludeAuthor
+                    ? getExcludedUserIds(n.envolopsRef)
+                    : [];
+                const filteredOwners = resolved.filter(
+                    (id) => !excludedUserIds.includes(id),
+                );
+                const isBroadcasted =
+                    n.broadcasted ||
+                    (excludedUserIds.length > 0 && filteredOwners.length === 0);
                 return {
                     id: null,
                     type: n.type,
                     content: n.content,
-                    owners: resolved,
+                    owners: filteredOwners,
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: n.envolopsRef,
-                    broadcasted: n.broadcasted,
+                    broadcasted: isBroadcasted,
+                    excludedUserIds:
+                        excludedUserIds.length > 0
+                            ? excludedUserIds
+                            : undefined,
                     priority: n.priority,
                     deadline: n.deadline ? new Date(n.deadline) : undefined,
                     sourcePlugin: chunkSourcePlugin,
@@ -181,16 +235,13 @@ export class InsightExtractionCapability implements ICapability {
         return { capabilityName: this.name, insights };
     }
 
-    private async resolveOwnersBatch(
+    private resolveOwnersBatch(
         allOwnerRefs: OwnerRef[],
-        pluginName: string,
-    ): Promise<Map<string, string | null>> {
+        allMappings: PlatformUserMappingWithUser[],
+    ): Map<string, string | null> {
         this.logger.debug(
-            `Resolving ${allOwnerRefs.length} unique owner refs for plugin=${pluginName}`,
+            `Resolving ${allOwnerRefs.length} unique owner refs (${allMappings.length} mappings available)`,
         );
-
-        const allMappings =
-            await this.platformUserMappingRepo.findWithUser(pluginName);
 
         const maxDistance = parseInt(
             process.env.OWNER_RESOLVER_MAX_DISTANCE ?? '1',

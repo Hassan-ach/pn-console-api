@@ -15,6 +15,7 @@ export const UpdatedInsightSchema = z.object({
     owners: z.array(OwnerRefSchema),
     envolopsRef: z.array(z.string()),
     broadcasted: z.boolean(),
+    excludeAuthor: z.boolean().optional(),
     priority: z.number().int().min(1).max(10),
     deadline: z.string().nullable(),
 });
@@ -25,6 +26,7 @@ export const NewInsightSchema = z.object({
     owners: z.array(OwnerRefSchema),
     envolopsRef: z.array(z.string()),
     broadcasted: z.boolean(),
+    excludeAuthor: z.boolean().optional(),
     priority: z.number().int().min(1).max(10),
     deadline: z.string().nullable(),
 });

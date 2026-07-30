@@ -67,6 +67,36 @@ export class UnresolvedOwnerRepository {
         return owners.map((o) => this.toUnresolvedOwner(o));
     }
 
+    async findAllWithUsername(): Promise<UnresolvedOwner[]> {
+        const owners = await this.prisma.unresolvedOwner.findMany({
+            where: { platformUsername: { not: null } },
+        });
+
+        return owners.map((o) => this.toUnresolvedOwner(o));
+    }
+
+    async findByPlatformUserId(
+        platformUserId: string,
+        pluginName: string,
+    ): Promise<UnresolvedOwner[]> {
+        const owners = await this.prisma.unresolvedOwner.findMany({
+            where: { platformUserId, pluginName },
+        });
+
+        return owners.map((o) => this.toUnresolvedOwner(o));
+    }
+
+    async findByPlatformUsername(
+        platformUsername: string,
+        pluginName: string,
+    ): Promise<UnresolvedOwner[]> {
+        const owners = await this.prisma.unresolvedOwner.findMany({
+            where: { platformUsername, pluginName },
+        });
+
+        return owners.map((o) => this.toUnresolvedOwner(o));
+    }
+
     async deleteByInsightVersionId(insightVersionId: string): Promise<void> {
         await this.prisma.unresolvedOwner.deleteMany({
             where: { insightVersionId },
@@ -76,6 +106,13 @@ export class UnresolvedOwnerRepository {
     async delete(id: string): Promise<void> {
         await this.prisma.unresolvedOwner.delete({
             where: { id },
+        });
+    }
+
+    async deleteMany(ids: string[]): Promise<void> {
+        if (ids.length === 0) return;
+        await this.prisma.unresolvedOwner.deleteMany({
+            where: { id: { in: ids } },
         });
     }
 
