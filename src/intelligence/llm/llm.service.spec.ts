@@ -551,4 +551,62 @@ describe('LlmService', () => {
             );
         });
     });
+
+    describe('createGraphLLM', () => {
+        it('uses graph-specific config when provided', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4o',
+                'llm.apiKey': 'main-key',
+                'llm.graphProvider': 'anthropic',
+                'llm.graphModel': 'claude-3-5-sonnet',
+                'llm.graphApiKey': 'graph-key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            mockInitChatModel.mockResolvedValue({} as any);
+
+            await service.createGraphLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith('claude-3-5-sonnet', {
+                modelProvider: 'anthropic',
+                temperature: 0,
+                streaming: false,
+                apiKey: 'graph-key',
+            });
+        });
+
+        it('falls back to main LLM config when graph config is absent', async () => {
+            mockConfig = createMockConfig({
+                'llm.provider': 'openai',
+                'llm.model': 'gpt-4o-mini',
+                'llm.apiKey': 'main-key',
+            });
+            const module = await Test.createTestingModule({
+                providers: [
+                    LlmService,
+                    { provide: ConfigService, useValue: mockConfig },
+                ],
+            }).compile();
+            service = module.get<LlmService>(LlmService);
+
+            mockInitChatModel.mockResolvedValue({} as any);
+
+            await service.createGraphLLM();
+
+            expect(mockInitChatModel).toHaveBeenCalledWith('gpt-4o-mini', {
+                modelProvider: 'openai',
+                temperature: 0,
+                streaming: false,
+                apiKey: 'main-key',
+            });
+        });
+    });
 });
+
