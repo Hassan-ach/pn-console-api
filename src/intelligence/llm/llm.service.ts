@@ -148,7 +148,7 @@ export class LlmService {
     async createToolChain(
         config: ToolCallingChainConfig,
     ): Promise<Runnable<ToolChainInput, unknown>> {
-        const llm = await this.createLLM();
+        const llm = config.model ?? (await this.createLLM());
 
         if (!llm.bindTools) {
             throw new Error(
