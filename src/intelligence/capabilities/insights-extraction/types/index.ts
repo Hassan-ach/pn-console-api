@@ -10,6 +10,7 @@ export interface InputMessage {
     replyTo: string | null;
     reactions: Record<string, unknown>;
     pinned: boolean;
+    occurredAt: string;
     editedDate: string | null;
     entities: Record<string, unknown> | null;
 }
