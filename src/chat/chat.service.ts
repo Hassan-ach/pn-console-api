@@ -70,10 +70,16 @@ export class ChatService {
         private readonly chatContextService: ChatContextService,
     ) {}
 
-    async getHistory(userId: string): Promise<ChatMessageRecord[]> {
+    async getHistory(
+        userId: string,
+        page = 1,
+        limit = 50,
+    ): Promise<ChatMessageRecord[]> {
         return this.appDb.chatMessage.findMany({
             where: { userId },
             orderBy: { createdAt: 'asc' },
+            skip: (page - 1) * limit,
+            take: limit,
             select: {
                 id: true,
                 role: true,
@@ -81,6 +87,24 @@ export class ChatService {
                 createdAt: true,
             },
         });
+    }
+
+    private async getRecentHistory(
+        userId: string,
+        count: number,
+    ): Promise<ChatMessageRecord[]> {
+        const messages = await this.appDb.chatMessage.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: count,
+            select: {
+                id: true,
+                role: true,
+                content: true,
+                createdAt: true,
+            },
+        });
+        return messages.reverse();
     }
 
     async saveMessage(
@@ -103,16 +127,39 @@ export class ChatService {
         });
     }
 
+    async retractLastMessages(userId: string): Promise<void> {
+        const lastTwo = await this.appDb.chatMessage.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 2,
+            select: { id: true, role: true },
+        });
+
+        if (lastTwo.length < 2) {
+            throw new Error('Not enough messages to retract');
+        }
+
+        const roles = lastTwo.map((m) => m.role);
+        if (!roles.includes('USER') || !roles.includes('ASSISTANT')) {
+            throw new Error(
+                'Last two messages are not a valid USER+ASSISTANT pair',
+            );
+        }
+
+        await this.appDb.chatMessage.deleteMany({
+            where: {
+                id: { in: lastTwo.map((m) => m.id) },
+                userId,
+            },
+        });
+    }
+
     async *streamResponse(
         userId: string,
         userMessage: string,
+        signal?: AbortSignal,
     ): AsyncGenerator<string> {
-        // Fetch history BEFORE saving the new user message to avoid
-        // including it twice in the conversation sent to the LLM
-        const history = await this.getHistory(userId);
-        const last20 = history.slice(-20);
-
-        await this.saveMessage(userId, 'USER', userMessage);
+        const history = await this.getRecentHistory(userId, 20);
 
         const context = await this.chatContextService.buildContext(
             userId,
@@ -125,7 +172,7 @@ export class ChatService {
 
         const messages = [
             new SystemMessage(`${SYSTEM_PROMPT}${contextSection}`),
-            ...last20.map((m) =>
+            ...history.map((m) =>
                 m.role === 'USER'
                     ? new HumanMessage(m.content)
                     : new AIMessage(m.content),
@@ -137,13 +184,14 @@ export class ChatService {
         let fullResponse = '';
 
         try {
-            const stream = await llm.stream(messages);
+            const stream = await llm.stream(messages, { signal });
             for await (const chunk of stream) {
                 const token = chunk.content as string;
                 fullResponse += token;
                 yield token;
             }
         } catch (error) {
+            if ((error as Error).name === 'AbortError') return;
             this.logger.error(`Stream failed: ${(error as Error).message}`);
             const errorMsg =
                 'Sorry, an error occurred while processing your request.';
@@ -151,6 +199,9 @@ export class ChatService {
             yield errorMsg;
         }
 
+        // Save both messages only after streaming completes
+        // This prevents orphaned user messages when streaming fails
+        await this.saveMessage(userId, 'USER', userMessage);
         await this.saveMessage(userId, 'ASSISTANT', fullResponse);
     }
 }

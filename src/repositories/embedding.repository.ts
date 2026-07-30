@@ -54,7 +54,10 @@ export class EmbeddingRepository {
             whereClause += ` AND (ivo."user_id" = $1::uuid OR iv."broadcasted" = true)`;
         }
 
-        const similarityExpr = `1 - (iv."embedding" <=> '${vector}'::vector)`;
+        params.push(vector);
+        const vectorIdx = params.length;
+
+        const similarityExpr = `1 - (iv."embedding" <=> $${vectorIdx}::vector)`;
 
         const sql = `
             SELECT

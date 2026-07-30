@@ -1,14 +1,19 @@
 import {
     Body,
     Controller,
+    DefaultValuePipe,
+    Delete,
     Get,
+    ParseIntPipe,
     Post,
+    Query,
     Req,
     Res,
     UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import {
     ApiBearerAuth,
     ApiOkResponse,
@@ -28,39 +33,68 @@ export class ChatController {
     @Get('messages')
     @ApiOperation({ summary: 'Get chat history for the authenticated user' })
     @ApiOkResponse({
-        description: 'Returns all chat messages ordered by createdAt asc',
+        description: 'Returns paginated chat messages ordered by createdAt asc',
     })
-    async getHistory(@Req() req: { user: { id: string } }) {
-        return this.chatService.getHistory(req.user.id);
+    async getHistory(
+        @Req() req: Request & { user: { id: string } },
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    ) {
+        return this.chatService.getHistory(req.user.id, page, limit);
+    }
+
+    @Delete('messages/retract-last')
+    @ApiOperation({
+        summary: 'Delete the last USER+ASSISTANT message pair (for retry)',
+    })
+    async retractLast(@Req() req: Request & { user: { id: string } }) {
+        return this.chatService.retractLastMessages(req.user.id);
     }
 
     @Post('messages')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @ApiOperation({ summary: 'Send a message and receive an SSE stream' })
     async sendMessage(
         @Body() dto: SendMessageDto,
-        @Req() req: { user: { id: string } },
+        @Req() req: Request & { user: { id: string } },
         @Res() res: Response,
     ) {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
+        const abortController = new AbortController();
+        let isConnectionClosed = false;
+
+        req.on('close', () => {
+            isConnectionClosed = true;
+            abortController.abort();
+        });
+
         try {
             for await (const token of this.chatService.streamResponse(
                 req.user.id,
-                dto.message!,
+                dto.message,
+                abortController.signal,
             )) {
+                if (isConnectionClosed) break;
                 res.write(
                     `data: ${JSON.stringify({ type: 'token', content: token })}\n\n`,
                 );
             }
-            res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+            if (!isConnectionClosed) {
+                res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+            }
         } catch (error) {
-            res.write(
-                `data: ${JSON.stringify({ type: 'error', message: (error as Error).message })}\n\n`,
-            );
+            if (!isConnectionClosed) {
+                res.write(
+                    `data: ${JSON.stringify({ type: 'error', message: (error as Error).message })}\n\n`,
+                );
+            }
         }
 
-        res.end();
+        if (!isConnectionClosed) {
+            res.end();
+        }
     }
 }
