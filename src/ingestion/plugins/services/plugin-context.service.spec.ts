@@ -28,7 +28,9 @@ const mockRawDb = {
 };
 
 const mockUserRepo = {
-    findById: jest.fn().mockResolvedValue({ id: 'u1', organizationId: 'org-1' }),
+    findById: jest
+        .fn()
+        .mockResolvedValue({ id: 'u1', organizationId: 'org-1' }),
 };
 
 describe('PluginContextService', () => {

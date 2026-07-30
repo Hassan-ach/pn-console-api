@@ -17,10 +17,7 @@ import { ChatService } from './chat.service';
         AuthModule,
     ],
     controllers: [ChatController],
-    providers: [
-        ChatContextService,
-        ChatService,
-    ],
+    providers: [ChatContextService, ChatService],
     exports: [ChatContextService, ChatService],
 })
 export class ChatModule {}

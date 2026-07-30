@@ -372,7 +372,8 @@ export class AuthService {
                         is_new_user: false,
                         user: {
                             id: raceCreated.id,
-                            organizationId: raceCreated.organizationId ?? 'org-1',
+                            organizationId:
+                                raceCreated.organizationId ?? 'org-1',
                             firstName: raceCreated.firstName,
                             lastName: raceCreated.lastName,
                             email: raceCreated.email,

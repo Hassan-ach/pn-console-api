@@ -38,7 +38,12 @@ describe('InsightExtractionCapabilityV2', () => {
 
         const mockUserRepo = {
             findByOrganization: jest.fn().mockResolvedValue([
-                { id: 'app-user-1', firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com' },
+                {
+                    id: 'app-user-1',
+                    firstName: 'Alice',
+                    lastName: 'Smith',
+                    email: 'alice@example.com',
+                },
             ]),
         };
 

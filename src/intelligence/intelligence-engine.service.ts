@@ -6,6 +6,7 @@ import { PreviousIntelligenceQuery } from './context/types/enterprise-context.ty
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
 import { DataChunk } from './chunking/types/data-chunk.type';
 import { CapabilityManager } from './capabilities/capability-manager.service';
+import { Insight } from 'src/types/insight.types';
 import { InsightPersistenceService } from './store/insight-persistence.service';
 import { CapabilityFailureRepository } from '../repositories/capability-failure.repository';
 import { EnvelopeRepository } from '../repositories/envelope.repository';
@@ -205,7 +206,7 @@ export class IntelligenceEngineService {
                 }
 
                 // 2. Execute single Insight Extractor capability by name (Insights Extraction V2)
-                let insightResult: { insights: any[] } | null = null;
+                let insightResult: { insights: Insight[] } | null = null;
                 try {
                     insightResult = await this.capabilityManager.executeByName(
                         'insights-extractor-v2',

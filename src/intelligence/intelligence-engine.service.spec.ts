@@ -72,26 +72,14 @@ function makeContext(
     };
 }
 
-async function* singleCtx(ctx: EnterpriseContext): AsyncIterable<EnterpriseContext> {
+async function* singleCtx(
+    ctx: EnterpriseContext,
+): AsyncIterable<EnterpriseContext> {
     yield ctx;
 }
 
-async function* multiCtx(...ctxs: EnterpriseContext[]): AsyncIterable<EnterpriseContext> {
-    for (const c of ctxs) {
-        yield c;
-    }
-}
-
-async function* noCtx(): AsyncIterable<EnterpriseContext> {}
-
 async function* singleChunk(chunk: DataChunk): AsyncIterable<DataChunk> {
     yield chunk;
-}
-
-async function* multiChunk(...chunks: DataChunk[]): AsyncIterable<DataChunk> {
-    for (const c of chunks) {
-        yield c;
-    }
 }
 
 describe('IntelligenceEngineService', () => {
@@ -107,12 +95,14 @@ describe('IntelligenceEngineService', () => {
 
     beforeEach(async () => {
         jest.clearAllMocks();
-        jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        jest.spyOn(Logger.prototype, 'warn').mockImplementation(
+            () => undefined,
+        );
         jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 
         mockContextBuilder = {
             build: jest.fn(),
-        } as unknown as jest.Mocked<EnterpriseContextBuilder>;
+        };
 
         mockPipeline = {
             run: jest.fn(),
@@ -121,9 +111,15 @@ describe('IntelligenceEngineService', () => {
         mockCapabilityManager = {
             executeByName: jest.fn().mockImplementation(async (name) => {
                 if (name === 'knowledge-graph-extractor') {
-                    return { capabilityName: 'knowledge-graph-extractor', insights: [] };
+                    return {
+                        capabilityName: 'knowledge-graph-extractor',
+                        insights: [],
+                    };
                 }
-                return { capabilityName: 'insights-extractor-v2', insights: [] };
+                return {
+                    capabilityName: 'insights-extractor-v2',
+                    insights: [],
+                };
             }),
             executeAll: jest.fn(),
         } as unknown as jest.Mocked<CapabilityManager>;
@@ -157,18 +153,29 @@ describe('IntelligenceEngineService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 IntelligenceEngineService,
-                { provide: EnterpriseContextBuilder, useValue: mockContextBuilder },
+                {
+                    provide: EnterpriseContextBuilder,
+                    useValue: mockContextBuilder,
+                },
                 { provide: ChunkingPipeline, useValue: mockPipeline },
                 { provide: CapabilityManager, useValue: mockCapabilityManager },
-                { provide: InsightPersistenceService, useValue: mockPersistence },
-                { provide: CapabilityFailureRepository, useValue: mockFailureRepository },
+                {
+                    provide: InsightPersistenceService,
+                    useValue: mockPersistence,
+                },
+                {
+                    provide: CapabilityFailureRepository,
+                    useValue: mockFailureRepository,
+                },
                 { provide: EnvelopeRepository, useValue: mockEnvelopeRepo },
                 { provide: ConfigService, useValue: mockConfig },
                 { provide: EventEmitter2, useValue: mockEventEmitter },
             ],
         }).compile();
 
-        engine = module.get<IntelligenceEngineService>(IntelligenceEngineService);
+        engine = module.get<IntelligenceEngineService>(
+            IntelligenceEngineService,
+        );
     });
 
     it('builds context, chunks, executes capabilities by name, and persists results', async () => {
@@ -186,9 +193,15 @@ describe('IntelligenceEngineService', () => {
         mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
         mockCapabilityManager.executeByName.mockImplementation(async (name) => {
             if (name === 'knowledge-graph-extractor') {
-                return { capabilityName: 'knowledge-graph-extractor', insights: [] };
+                return {
+                    capabilityName: 'knowledge-graph-extractor',
+                    insights: [],
+                };
             }
-            return { capabilityName: 'insights-extractor-v2', insights: [insight] };
+            return {
+                capabilityName: 'insights-extractor-v2',
+                insights: [insight],
+            };
         });
 
         const result = await engine.run('org-1');
@@ -271,7 +284,10 @@ describe('IntelligenceEngineService', () => {
 
         mockCapabilityManager.executeByName.mockImplementation(async (name) => {
             if (name === 'knowledge-graph-extractor') {
-                return { capabilityName: 'knowledge-graph-extractor', insights: [] };
+                return {
+                    capabilityName: 'knowledge-graph-extractor',
+                    insights: [],
+                };
             }
             throw new Error('LLM timeout');
         });
@@ -307,9 +323,15 @@ describe('IntelligenceEngineService', () => {
         mockPipeline.run.mockImplementation(() => singleChunk(baseChunk));
         mockCapabilityManager.executeByName.mockImplementation(async (name) => {
             if (name === 'knowledge-graph-extractor') {
-                return { capabilityName: 'knowledge-graph-extractor', insights: [] };
+                return {
+                    capabilityName: 'knowledge-graph-extractor',
+                    insights: [],
+                };
             }
-            return { capabilityName: 'insights-extractor-v2', insights: [insight] };
+            return {
+                capabilityName: 'insights-extractor-v2',
+                insights: [insight],
+            };
         });
 
         await engine.run('org-1');

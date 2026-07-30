@@ -51,7 +51,9 @@ export class ChatController {
     }
 
     @Post('message')
-    @ApiOperation({ summary: 'Send a message and receive a streaming LLM response' })
+    @ApiOperation({
+        summary: 'Send a message and receive a streaming LLM response',
+    })
     @ApiOkResponse({ description: 'Server-Sent Events (SSE) stream' })
     async sendMessage(
         @Body() dto: SendMessageDto,

@@ -28,7 +28,9 @@ function extractJsonString(raw: unknown): string {
         str = raw;
     } else if (Array.isArray(raw)) {
         str = raw
-            .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+            .map((item) =>
+                typeof item === 'string' ? item : JSON.stringify(item),
+            )
             .join('\n');
     } else if (raw && typeof raw === 'object') {
         const obj = raw as Record<string, unknown>;
@@ -193,7 +195,11 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
         const resolvedMap =
             allOwnerRefs.length > 0
-                ? this.resolveOwnersBatch(allOwnerRefs, allMappings, allOrgUsers)
+                ? this.resolveOwnersBatch(
+                      allOwnerRefs,
+                      allMappings,
+                      allOrgUsers,
+                  )
                 : new Map<string, string | null>();
 
         const resolveOwners = (
