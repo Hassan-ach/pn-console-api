@@ -11,6 +11,7 @@ import { PluginConfigRepository } from './plugin-config.repository';
 import { ActiveChatListenerRepository } from './active-chat-listener.repository';
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
+import { EmbeddingRepository } from './embedding.repository';
 import { EntityRepository } from './entity.repository';
 import { RelationshipRepository } from './relationship.repository';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
@@ -28,6 +29,7 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EmbeddingRepository,
         EntityRepository,
         RelationshipRepository,
         InsightSuggestionRepository,
@@ -43,6 +45,7 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         ActiveChatListenerRepository,
         JobRepository,
         UserRepository,
+        EmbeddingRepository,
         EntityRepository,
         RelationshipRepository,
         InsightSuggestionRepository,

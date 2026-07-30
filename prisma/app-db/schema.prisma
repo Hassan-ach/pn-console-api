@@ -20,24 +20,25 @@ model Insight {
 }
 
 model InsightVersion {
-  id               String                @id @default(uuid()) @db.Uuid
-  insightId        String                @db.Uuid
-  version          Int
-  type             InsightType
-  content          String
-  owners           InsightVersionOwner[]
-  unresolvedOwners UnresolvedOwner[]
-  broadcasted      Boolean               @default(false)
-  envolopsRef      String[]              @default([])
+    id               String                @id @default(uuid()) @db.Uuid
+    insightId        String                @db.Uuid
+    version          Int
+    type             InsightType
+    content          String
+    owners           InsightVersionOwner[]
+    unresolvedOwners UnresolvedOwner[]
+    broadcasted      Boolean               @default(false)
+    envolopsRef      String[]              @default([])
 
-  sourcePlugin String?   @map("source_plugin")
-  groupId      String?   @map("group_id")
-  channelId    String?   @map("channel_id")
-  topicId      String?   @map("topic_id")
-  deadline     DateTime? @map("deadline")
+    sourcePlugin String?   @map("source_plugin")
+    groupId      String?   @map("group_id")
+    channelId    String?   @map("channel_id")
+    topicId      String?   @map("topic_id")
+    deadline     DateTime? @map("deadline")
+    embedding    Unsupported("vector(1536)")?
 
-  createdAt DateTime @default(now()) @map("created_at")
-  insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now()) @map("created_at")
+    insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@unique([insightId, version])
   @@index([insightId])
