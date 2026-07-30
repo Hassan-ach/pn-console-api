@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { EnvelopesIngestedEvent } from './envelopes-ingested.event';
+import { EnvelopesIngestedEvent } from 'src/ingestion/events/ingestion.events';
 import { IntelligenceEngineService } from '../intelligence-engine.service';
 
 @Injectable()
@@ -11,23 +11,23 @@ export class EnvelopesIngestedListener {
 
     @OnEvent('envelopes.ingested')
     async handle(event: EnvelopesIngestedEvent) {
-        if (event.inserted === 0) {
+        const count = event.envelopeIds?.length ?? 0;
+        if (count === 0) {
             this.logger.log(
-                `Skipping intelligence: ${event.inserted} envelopes inserted`,
+                `Skipping intelligence: 0 envelopes ingested in org=${event.organizationId}`,
             );
             return;
         }
 
         this.logger.log(
-            `Triggered by ${event.type}: ${event.inserted} envelopes in org=${event.organizationId}`,
+            `Triggered by envelopes.ingested: ${count} envelopes in org=${event.organizationId}`,
         );
 
         try {
             const result = await this.engine.run(event.organizationId, {
                 userId: event.userId,
-                ...(event.envelopeIds?.length
-                    ? { envelopeIds: event.envelopeIds }
-                    : {}),
+                envelopeIds: event.envelopeIds,
+                progressable: event.isBackfill,
             });
 
             this.logger.log(
@@ -35,7 +35,7 @@ export class EnvelopesIngestedListener {
             );
         } catch (error) {
             this.logger.error(
-                `Intelligence engine failed after ${event.type}: ${error instanceof Error ? error.message : error}`,
+                `Intelligence engine failed for org=${event.organizationId}: ${error instanceof Error ? error.message : error}`,
             );
         }
     }
