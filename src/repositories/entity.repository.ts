@@ -56,7 +56,7 @@ export class EntityRepository {
             return this.prisma.entity.update({
                 where: { id: existing.id },
                 data: {
-                    metadata: mergedMetadata as Prisma.InputJsonValue,
+                    metadata: mergedMetadata,
                 },
             });
         }

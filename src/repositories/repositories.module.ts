@@ -49,4 +49,3 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
     ],
 })
 export class RepositoriesModule {}
-

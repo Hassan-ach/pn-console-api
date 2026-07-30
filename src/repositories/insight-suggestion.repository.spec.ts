@@ -1,11 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
-import { SuggestionActionType, SuggestionStatus } from 'generated/app-db-client';
+import {
+    SuggestionActionType,
+    SuggestionStatus,
+} from 'generated/app-db-client';
 
 describe('InsightSuggestionRepository', () => {
     let repository: InsightSuggestionRepository;
-    let mockAppDb: any;
+    let mockAppDb: Record<string, Record<string, jest.Mock>>;
 
     beforeEach(async () => {
         mockAppDb = {
@@ -23,11 +26,16 @@ describe('InsightSuggestionRepository', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 InsightSuggestionRepository,
-                { provide: AppDbService, useValue: mockAppDb },
+                {
+                    provide: AppDbService,
+                    useValue: mockAppDb,
+                },
             ],
         }).compile();
 
-        repository = module.get<InsightSuggestionRepository>(InsightSuggestionRepository);
+        repository = module.get<InsightSuggestionRepository>(
+            InsightSuggestionRepository,
+        );
     });
 
     it('should create a suggestion', async () => {
@@ -37,7 +45,11 @@ describe('InsightSuggestionRepository', () => {
             description: 'Update repository config',
             actionType: SuggestionActionType.RECOMMENDATION,
         };
-        const expected = { id: 'sug-1', ...input, status: SuggestionStatus.PENDING };
+        const expected = {
+            id: 'sug-1',
+            ...input,
+            status: SuggestionStatus.PENDING,
+        };
         mockAppDb.insightSuggestion.create.mockResolvedValue(expected);
 
         const result = await repository.create(input);
@@ -52,7 +64,10 @@ describe('InsightSuggestionRepository', () => {
             status: SuggestionStatus.ACCEPTED,
         });
 
-        const result = await repository.updateStatus('sug-1', SuggestionStatus.ACCEPTED);
+        const result = await repository.updateStatus(
+            'sug-1',
+            SuggestionStatus.ACCEPTED,
+        );
 
         expect(mockAppDb.insightSuggestion.update).toHaveBeenCalledWith({
             where: { id: 'sug-1' },

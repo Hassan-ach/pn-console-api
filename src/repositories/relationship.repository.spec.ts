@@ -4,7 +4,7 @@ import { AppDbService } from 'src/prisma/app-db/app-db.service';
 
 describe('RelationshipRepository', () => {
     let repository: RelationshipRepository;
-    let mockAppDb: any;
+    let mockAppDb: Record<string, Record<string, jest.Mock>>;
 
     beforeEach(async () => {
         mockAppDb = {
@@ -23,7 +23,10 @@ describe('RelationshipRepository', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 RelationshipRepository,
-                { provide: AppDbService, useValue: mockAppDb },
+                {
+                    provide: AppDbService,
+                    useValue: mockAppDb,
+                },
             ],
         }).compile();
 
@@ -37,7 +40,10 @@ describe('RelationshipRepository', () => {
             targetEntityId: 'ent-2',
             type: 'OWNS',
         };
-        mockAppDb.relationship.create.mockResolvedValue({ id: 'rel-1', ...input });
+        mockAppDb.relationship.create.mockResolvedValue({
+            id: 'rel-1',
+            ...input,
+        });
 
         const result = await repository.create(input);
 
@@ -60,7 +66,10 @@ describe('RelationshipRepository', () => {
             type: 'OWNS',
             metadata: { weight: 1 },
         };
-        mockAppDb.relationship.upsert.mockResolvedValue({ id: 'rel-1', ...input });
+        mockAppDb.relationship.upsert.mockResolvedValue({
+            id: 'rel-1',
+            ...input,
+        });
 
         const result = await repository.upsert(input);
 
@@ -72,8 +81,8 @@ describe('RelationshipRepository', () => {
                     type: 'OWNS',
                 },
             },
-            create: expect.any(Object),
-            update: expect.any(Object),
+            create: expect.any(Object) as Record<string, unknown>,
+            update: expect.any(Object) as Record<string, unknown>,
         });
         expect(result.id).toBe('rel-1');
     });

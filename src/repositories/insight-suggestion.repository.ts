@@ -28,7 +28,8 @@ export class InsightSuggestionRepository {
                 organizationId: data.organizationId ?? null,
                 title: data.title,
                 description: data.description,
-                actionType: data.actionType ?? SuggestionActionType.RECOMMENDATION,
+                actionType:
+                    data.actionType ?? SuggestionActionType.RECOMMENDATION,
                 reasoning: data.reasoning ?? null,
                 status: data.status ?? SuggestionStatus.PENDING,
                 metadata: (data.metadata as Prisma.InputJsonValue) ?? {},

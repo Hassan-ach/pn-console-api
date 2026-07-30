@@ -4,7 +4,7 @@ import { AppDbService } from 'src/prisma/app-db/app-db.service';
 
 describe('EntityRepository', () => {
     let repository: EntityRepository;
-    let mockAppDb: any;
+    let mockAppDb: Record<string, Record<string, jest.Mock>>;
 
     beforeEach(async () => {
         mockAppDb = {
@@ -21,7 +21,10 @@ describe('EntityRepository', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 EntityRepository,
-                { provide: AppDbService, useValue: mockAppDb },
+                {
+                    provide: AppDbService,
+                    useValue: mockAppDb,
+                },
             ],
         }).compile();
 
@@ -35,7 +38,12 @@ describe('EntityRepository', () => {
             type: 'Service',
             metadata: { owner: 'backend' },
         };
-        const expected = { id: 'ent-1', ...input, createdAt: new Date(), updatedAt: new Date() };
+        const expected = {
+            id: 'ent-1',
+            ...input,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
         mockAppDb.entity.create.mockResolvedValue(expected);
 
         const result = await repository.create(input);
@@ -53,7 +61,11 @@ describe('EntityRepository', () => {
 
     it('should upsert entity by creating if not existing', async () => {
         mockAppDb.entity.findFirst.mockResolvedValue(null);
-        const expected = { id: 'ent-1', name: 'pn-console-api', type: 'Service' };
+        const expected = {
+            id: 'ent-1',
+            name: 'pn-console-api',
+            type: 'Service',
+        };
         mockAppDb.entity.create.mockResolvedValue(expected);
 
         const result = await repository.upsert({
@@ -103,7 +115,12 @@ describe('EntityRepository', () => {
             { id: 'ent-1', name: 'pn-console-api', type: 'Service' },
         ]);
 
-        const results = await repository.search('org-1', 'console', 'Service', 10);
+        const results = await repository.search(
+            'org-1',
+            'console',
+            'Service',
+            10,
+        );
 
         expect(mockAppDb.entity.findMany).toHaveBeenCalledWith({
             where: {
