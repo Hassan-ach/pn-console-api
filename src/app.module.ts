@@ -26,6 +26,7 @@ import { InsightsModule } from './insights/insights.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ProfileModule } from './profile/profile.module';
 import { ChatModule } from './chat/chat.module';
+import { GraphModule } from './graph/graph.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -50,6 +51,7 @@ import { AppController } from './app.controller';
         EventEmitterModule.forRoot({ wildcard: false }),
         CommonProvidersModule,
         PrismaModule,
+        GraphModule,
         IngestionModule,
         IntelligenceModule,
         AuthModule,

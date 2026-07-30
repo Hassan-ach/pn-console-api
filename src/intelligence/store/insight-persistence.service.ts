@@ -1,18 +1,49 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InsightRepository } from 'src/repositories/insight.repository';
 import { EmbeddingRepository } from 'src/repositories/embedding.repository';
-import { EmbeddingService } from '../embeddings/embedding.service';
 import { Insight } from 'src/types/insight.types';
+import {
+    EVENT_BUS_TOKEN,
+    type IEventBus,
+} from 'src/common/providers/event-bus/event-bus.interface';
 
 @Injectable()
-export class InsightPersistenceService {
+export class InsightPersistenceService implements OnModuleInit {
     private readonly logger = new Logger(InsightPersistenceService.name);
 
     constructor(
         private readonly repo: InsightRepository,
-        private readonly embeddingService: EmbeddingService,
         private readonly embeddingRepository: EmbeddingRepository,
+        private readonly eventEmitter: EventEmitter2,
+        @Inject(EVENT_BUS_TOKEN) private readonly eventBus: IEventBus,
     ) {}
+
+    async onModuleInit(): Promise<void> {
+        await this.triggerMissingEmbeddingsBackfill();
+    }
+
+    async triggerMissingEmbeddingsBackfill(): Promise<void> {
+        try {
+            const nullVersions = await this.embeddingRepository.findNullEmbeddings(50);
+            if (nullVersions.length === 0) return;
+
+            this.logger.log(
+                `Found ${nullVersions.length} insight_versions with missing embeddings; dispatching background event...`,
+            );
+
+            const items = nullVersions.map((v) => ({
+                versionId: v.id,
+                content: v.content,
+            }));
+
+            this.eventBus.publish('embeddings.generate', { items });
+        } catch (error) {
+            this.logger.warn(
+                `Failed to query missing embeddings for backfill event: ${(error as Error).message}`,
+            );
+        }
+    }
 
     async persistAll(
         insights: Insight[],
@@ -65,43 +96,22 @@ export class InsightPersistenceService {
             }),
         );
 
-        await this.generateEmbeddings(persisted);
+        // Dispatch background embedding generation event
+        const itemsToEmbed = persisted
+            .filter((i): i is Insight & { latestVersionId: string } => !!i.latestVersionId)
+            .map((i) => ({ versionId: i.latestVersionId, content: i.content }));
+
+        if (itemsToEmbed.length > 0) {
+            this.logger.debug(
+                `Publishing 'insight.versions.created' event for ${itemsToEmbed.length} items to process in background`,
+            );
+            this.eventBus.publish('insight.versions.created', { items: itemsToEmbed });
+        }
 
         this.logger.log(`Persistence complete: ${insights.length} insights`);
     }
 
     async persist(insight: Insight, organizationId: string): Promise<void> {
         return this.persistAll([insight], organizationId);
-    }
-
-    private async generateEmbeddings(persisted: Insight[]): Promise<void> {
-        const withVersionId = persisted.filter(
-            (i): i is Insight & { latestVersionId: string } =>
-                !!i.latestVersionId,
-        );
-
-        if (withVersionId.length === 0) return;
-
-        const contents = withVersionId.map((i) => i.content);
-        const versionIds = withVersionId.map((i) => i.latestVersionId);
-
-        try {
-            const embeddings =
-                await this.embeddingService.embedDocuments(contents);
-
-            await Promise.all(
-                versionIds.map((versionId, idx) =>
-                    this.embeddingRepository.upsert(versionId, embeddings[idx]),
-                ),
-            );
-
-            this.logger.debug(
-                `Generated and stored ${embeddings.length} embeddings`,
-            );
-        } catch (error) {
-            this.logger.warn(
-                `Failed to generate embeddings: ${(error as Error).message}`,
-            );
-        }
     }
 }

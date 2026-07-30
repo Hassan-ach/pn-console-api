@@ -200,4 +200,12 @@ export class EmbeddingRepository {
             insightVersionId,
         );
     }
+
+    async findNullEmbeddings(limit = 50): Promise<Array<{ id: string; content: string }>> {
+        return this.prisma.$queryRawUnsafe<Array<{ id: string; content: string }>>(
+            `SELECT "id", "content" FROM "insight_versions" WHERE "embedding" IS NULL LIMIT $1::int`,
+            limit,
+        );
+    }
 }
+

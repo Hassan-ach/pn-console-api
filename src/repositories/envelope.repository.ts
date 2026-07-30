@@ -241,4 +241,50 @@ export class EnvelopeRepository {
         if (sourcePlugin) where.sourcePlugin = sourcePlugin;
         return this.rawDb.envelope.count({ where });
     }
+
+    async searchMessages(
+        query: string,
+        limit = 20,
+    ): Promise<
+        {
+            envolopId: string;
+            sourcePlugin: string;
+            authorId: string | null;
+            occurredAt: Date;
+            content: string;
+        }[]
+    > {
+        if (!query.trim()) return [];
+
+        const envelopes = await this.rawDb.envelope.findMany({
+            where: {
+                payload: {
+                    content: {
+                        contains: query,
+                        mode: 'insensitive',
+                    },
+                },
+            },
+            take: limit,
+            orderBy: { occurredAt: 'desc' },
+            select: {
+                id: true,
+                sourcePlugin: true,
+                authorId: true,
+                occurredAt: true,
+                payload: {
+                    select: { content: true },
+                },
+            },
+        });
+
+        return envelopes.map((e) => ({
+            envolopId: e.id,
+            sourcePlugin: e.sourcePlugin,
+            authorId: e.authorId,
+            occurredAt: e.occurredAt,
+            content: e.payload.content,
+        }));
+    }
 }
+
