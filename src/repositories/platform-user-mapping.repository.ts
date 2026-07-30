@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 
 export interface PlatformUserMapping {
@@ -18,6 +18,8 @@ export interface PlatformUserMappingWithUser extends PlatformUserMapping {
 
 @Injectable()
 export class PlatformUserMappingRepository {
+    private readonly logger = new Logger(PlatformUserMappingRepository.name);
+
     constructor(private readonly prisma: AppDbService) {}
 
     async create(data: {
@@ -34,6 +36,13 @@ export class PlatformUserMappingRepository {
                 platformUsername: data.platformUsername,
             },
         });
+
+        await this.resolveUnresolvedOwners(
+            data.platformUserId,
+            data.platformUsername,
+            data.pluginName,
+            data.appUserId,
+        );
 
         return this.toMapping(mapping);
     }
@@ -115,6 +124,14 @@ export class PlatformUserMappingRepository {
                 platformUsername: data.platformUsername,
             },
         });
+
+        await this.resolveUnresolvedOwners(
+            data.platformUserId,
+            data.platformUsername,
+            data.pluginName,
+            data.appUserId,
+        );
+
         return this.toMapping(mapping);
     }
 
@@ -127,6 +144,55 @@ export class PlatformUserMappingRepository {
                 },
             },
         });
+    }
+
+    private async resolveUnresolvedOwners(
+        platformUserId: string,
+        platformUsername: string,
+        pluginName: string,
+        appUserId: string,
+    ): Promise<void> {
+        const unresolved = await this.prisma.unresolvedOwner.findMany({
+            where: {
+                pluginName,
+                OR: [{ platformUserId }, { platformUsername }],
+            },
+        });
+
+        if (unresolved.length === 0) return;
+
+        const existing = await this.prisma.insightVersionOwner.findMany({
+            where: {
+                userId: appUserId,
+                insightVersionId: {
+                    in: unresolved.map((u) => u.insightVersionId),
+                },
+            },
+            select: { insightVersionId: true },
+        });
+
+        const existingIds = new Set(existing.map((e) => e.insightVersionId));
+        const toCreate = unresolved.filter(
+            (u) => !existingIds.has(u.insightVersionId),
+        );
+
+        if (toCreate.length > 0) {
+            await this.prisma.insightVersionOwner.createMany({
+                data: toCreate.map((u) => ({
+                    userId: appUserId,
+                    insightVersionId: u.insightVersionId,
+                    status: 'PENDING' as const,
+                })),
+            });
+        }
+
+        await this.prisma.unresolvedOwner.deleteMany({
+            where: { id: { in: unresolved.map((u) => u.id) } },
+        });
+
+        this.logger.log(
+            `Resolved ${unresolved.length} unresolved owner(s) via mapping (platformUserId=${platformUserId})`,
+        );
     }
 
     private toMapping(row: {

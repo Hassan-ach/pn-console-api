@@ -6,6 +6,7 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
@@ -14,6 +15,7 @@ import { MailService } from '../mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SignupDto } from './dto/signup.dto';
+import { UserSignedUpEvent } from './events/user-signed-up.event';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +26,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly mailService: MailService,
         private readonly configService: ConfigService,
+        private readonly eventEmitter: EventEmitter2,
     ) {}
 
     async loginOrCreateGoogleUser(profile: {
@@ -86,6 +89,16 @@ export class AuthService {
             email: user.email,
             tokenVersion: user.tokenVersion,
         });
+
+        this.eventEmitter.emit(
+            'user.signed.up',
+            new UserSignedUpEvent(
+                user.id,
+                user.firstName,
+                user.lastName,
+                user.email,
+            ),
+        );
 
         return {
             access_token: token,
@@ -366,6 +379,16 @@ export class AuthService {
             email: user.email,
             tokenVersion: user.tokenVersion,
         });
+
+        this.eventEmitter.emit(
+            'user.signed.up',
+            new UserSignedUpEvent(
+                user.id,
+                user.firstName,
+                user.lastName,
+                user.email,
+            ),
+        );
 
         return {
             access_token: token,

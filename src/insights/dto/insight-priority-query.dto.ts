@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { IsInt, IsNotEmpty, Max, Min } from 'class-validator';
 
 export class InsightPriorityQueryDto {
@@ -7,6 +8,7 @@ export class InsightPriorityQueryDto {
         minimum: 1,
         maximum: 10,
     })
+    @Type(() => Number)
     @IsNotEmpty()
     @IsInt()
     @Min(1)

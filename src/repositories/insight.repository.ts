@@ -32,6 +32,7 @@ export class InsightRepository {
         unresolvedOwners?: UnresolvedOwnerRef[];
         envolopsRef?: string[];
         broadcasted?: boolean;
+        excludedUserIds?: string[];
         priority?: number;
         deadline?: Date;
         sourcePlugin?: string;
@@ -40,9 +41,20 @@ export class InsightRepository {
         topicId?: string;
     }): Promise<Insight> {
         const isBroadcasted = data.broadcasted ?? false;
+        const excludedUserIds = data.excludedUserIds ?? [];
 
         let ownerIds: string[];
-        if (isBroadcasted) {
+        let storeAsBroadcasted = isBroadcasted;
+
+        if (isBroadcasted && excludedUserIds.length > 0) {
+            const allUsers = await this.prisma.user.findMany({
+                select: { id: true },
+            });
+            ownerIds = allUsers
+                .map((u) => u.id)
+                .filter((id) => !excludedUserIds.includes(id));
+            storeAsBroadcasted = false;
+        } else if (isBroadcasted) {
             const allUsers = await this.prisma.user.findMany({
                 select: { id: true },
             });
@@ -73,7 +85,7 @@ export class InsightRepository {
                                 pluginName: u.pluginName,
                             })),
                         },
-                        broadcasted: isBroadcasted,
+                        broadcasted: storeAsBroadcasted,
                         envolopsRef: data.envolopsRef ?? [],
                         sourcePlugin: data.sourcePlugin ?? null,
                         groupId: data.groupId ?? null,
@@ -107,6 +119,7 @@ export class InsightRepository {
             unresolvedOwners?: UnresolvedOwnerRef[];
             envolopsRef?: string[];
             broadcasted?: boolean;
+            excludedUserIds?: string[];
             priority?: number;
             deadline?: Date;
             sourcePlugin?: string;
@@ -127,9 +140,20 @@ export class InsightRepository {
             const maxVersion = latestVersions[0]?._max.version ?? 0;
 
             const isBroadcasted = data.broadcasted ?? false;
+            const excludedUserIds = data.excludedUserIds ?? [];
 
             let ownerIds: string[];
-            if (isBroadcasted) {
+            let storeAsBroadcasted = isBroadcasted;
+
+            if (isBroadcasted && excludedUserIds.length > 0) {
+                const allUsers = await tx.user.findMany({
+                    select: { id: true },
+                });
+                ownerIds = allUsers
+                    .map((u) => u.id)
+                    .filter((id) => !excludedUserIds.includes(id));
+                storeAsBroadcasted = false;
+            } else if (isBroadcasted) {
                 const allUsers = await tx.user.findMany({
                     select: { id: true },
                 });
@@ -158,7 +182,7 @@ export class InsightRepository {
                             pluginName: u.pluginName,
                         })),
                     },
-                    broadcasted: isBroadcasted,
+                    broadcasted: storeAsBroadcasted,
                     envolopsRef: data.envolopsRef ?? [],
                     sourcePlugin: data.sourcePlugin ?? null,
                     groupId: data.groupId ?? null,
