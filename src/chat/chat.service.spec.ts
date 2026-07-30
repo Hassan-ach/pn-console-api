@@ -5,16 +5,27 @@ import { AppDbService } from '../prisma/app-db/app-db.service';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
 
-function createMockAppDb() {
+interface MockAppDb {
+    $transaction: jest.Mock;
+    chatMessage: Record<string, jest.Mock>;
+}
+
+function createMockAppDb(): MockAppDb {
     return {
-        $transaction: jest.fn().mockImplementation(async (cb) => {
-            const tx = {
-                chatMessage: {
-                    delete: jest.fn().mockResolvedValue({}),
+        $transaction: jest
+            .fn()
+            .mockImplementation(
+                async (
+                    cb: (tx: { chatMessage: { delete: jest.Mock } }) => unknown,
+                ) => {
+                    const tx = {
+                        chatMessage: {
+                            delete: jest.fn().mockResolvedValue({}),
+                        },
+                    };
+                    return cb(tx);
                 },
-            };
-            return cb(tx);
-        }),
+            ),
         chatMessage: {
             findMany: jest.fn().mockResolvedValue([]),
             create: jest.fn().mockResolvedValue({
@@ -452,9 +463,9 @@ describe('ChatService', () => {
                 },
             ]);
 
-            await expect(
-                service.retractLastMessages('user-1'),
-            ).rejects.toThrow('Not enough messages to retract');
+            await expect(service.retractLastMessages('user-1')).rejects.toThrow(
+                'Not enough messages to retract',
+            );
         });
 
         it('throws when the last two messages are not USER+ASSISTANT', async () => {
@@ -473,9 +484,9 @@ describe('ChatService', () => {
                 },
             ]);
 
-            await expect(
-                service.retractLastMessages('user-1'),
-            ).rejects.toThrow('not a valid USER+ASSISTANT pair');
+            await expect(service.retractLastMessages('user-1')).rejects.toThrow(
+                'not a valid USER+ASSISTANT pair',
+            );
         });
 
         it('deletes the last two messages via deleteMany', async () => {
