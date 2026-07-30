@@ -26,6 +26,11 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         JobsModule,
         SuggestionsModule,
     ],
-    exports: [ContextModule, StoreModule, IntelligenceEngineService, SuggestionsModule],
+    exports: [
+        ContextModule,
+        StoreModule,
+        IntelligenceEngineService,
+        SuggestionsModule,
+    ],
 })
 export class IntelligenceModule {}

@@ -27,10 +27,18 @@ export class SuggestionsService {
     async getInsightSuggestions(insightId: string, organizationId?: string) {
         const insight = await this.insightRepo.findById(insightId);
         if (!insight) {
-            throw new NotFoundException(`Insight with ID ${insightId} not found`);
+            throw new NotFoundException(
+                `Insight with ID ${insightId} not found`,
+            );
         }
-        if (organizationId && insight.organizationId && insight.organizationId !== organizationId) {
-            throw new NotFoundException(`Insight with ID ${insightId} not found`);
+        if (
+            organizationId &&
+            insight.organizationId &&
+            insight.organizationId !== organizationId
+        ) {
+            throw new NotFoundException(
+                `Insight with ID ${insightId} not found`,
+            );
         }
         return this.suggestionRepo.findByInsightId(insightId);
     }
@@ -42,7 +50,9 @@ export class SuggestionsService {
     ) {
         const insight = await this.insightRepo.findById(insightId);
         if (!insight) {
-            throw new NotFoundException(`Insight with ID ${insightId} not found`);
+            throw new NotFoundException(
+                `Insight with ID ${insightId} not found`,
+            );
         }
 
         const orgId = organizationId ?? insight.organizationId ?? 'org-1';
@@ -62,14 +72,18 @@ export class SuggestionsService {
         }
 
         if (
-            (status === SuggestionStatus.ACCEPTED || status === SuggestionStatus.COMPLETED) &&
+            (status === SuggestionStatus.ACCEPTED ||
+                status === SuggestionStatus.COMPLETED) &&
             existing.insightId
         ) {
             const peerSuggestions = await this.suggestionRepo.findByInsightId(
                 existing.insightId,
             );
             for (const peer of peerSuggestions) {
-                if (peer.id !== id && peer.status !== SuggestionStatus.PENDING) {
+                if (
+                    peer.id !== id &&
+                    peer.status !== SuggestionStatus.PENDING
+                ) {
                     await this.suggestionRepo.updateStatus(
                         peer.id,
                         SuggestionStatus.PENDING,
@@ -88,7 +102,9 @@ export class SuggestionsService {
     ) {
         const insight = await this.insightRepo.findById(insightId);
         if (!insight) {
-            throw new NotFoundException(`Insight with ID ${insightId} not found`);
+            throw new NotFoundException(
+                `Insight with ID ${insightId} not found`,
+            );
         }
 
         const orgId = organizationId ?? insight.organizationId ?? 'org-1';

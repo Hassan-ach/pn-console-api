@@ -28,7 +28,10 @@ describe('SuggestionsCapability', () => {
                 SuggestionsCapability,
                 { provide: LlmService, useValue: mockLlmService },
                 { provide: GraphToolsService, useValue: mockGraphToolsService },
-                { provide: InsightSuggestionRepository, useValue: mockSuggestionRepo },
+                {
+                    provide: InsightSuggestionRepository,
+                    useValue: mockSuggestionRepo,
+                },
             ],
         }).compile();
 
@@ -69,10 +72,12 @@ describe('SuggestionsCapability', () => {
                         {
                             label: 'Option A',
                             title: 'Escalate to DevOps Team',
-                            description: 'Reassign outage ticket to billing maintainers',
+                            description:
+                                'Reassign outage ticket to billing maintainers',
                             actionType: 'ESCALATE',
                             risk: 'Low',
-                            reasoning: 'Billing service outage requires senior engineer response',
+                            reasoning:
+                                'Billing service outage requires senior engineer response',
                         },
                     ],
                 },
@@ -83,7 +88,7 @@ describe('SuggestionsCapability', () => {
 
         const result = await capability.execute({
             chunk: { envelopes: sampleEnvelopes } as never,
-            previousIntelligence: sampleHistory,
+            previousIntelligence: sampleHistory as never,
         });
 
         expect(result.capabilityName).toBe('suggestions-extractor');
@@ -94,7 +99,8 @@ describe('SuggestionsCapability', () => {
                 title: 'Escalate to DevOps Team',
                 description: 'Reassign outage ticket to billing maintainers',
                 actionType: 'ESCALATE',
-                reasoning: 'Billing service outage requires senior engineer response',
+                reasoning:
+                    'Billing service outage requires senior engineer response',
                 metadata: {
                     contextSummary: ['Billing service spend is high'],
                     optionLabel: 'Option A',

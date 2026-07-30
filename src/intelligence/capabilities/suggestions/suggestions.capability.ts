@@ -13,7 +13,10 @@ import {
 } from 'src/repositories/insight-suggestion.repository';
 import { SuggestionActionType } from 'generated/app-db-client';
 import { SYSTEM_PROMPT } from './suggestions-prompt';
-import { SuggestionsResultSchema, SuggestionsResult } from './suggestions-schema';
+import {
+    SuggestionsResultSchema,
+    SuggestionsResult,
+} from './suggestions-schema';
 
 function extractJsonString(raw: unknown): string {
     let str = '';
@@ -21,7 +24,9 @@ function extractJsonString(raw: unknown): string {
         str = raw;
     } else if (Array.isArray(raw)) {
         str = raw
-            .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+            .map((item) =>
+                typeof item === 'string' ? item : JSON.stringify(item),
+            )
             .join('\n');
     } else if (raw && typeof raw === 'object') {
         const obj = raw as Record<string, unknown>;
@@ -131,44 +136,47 @@ export class SuggestionsCapability implements ICapability {
         }
 
         if (result.suggestions.length > 0) {
-            const recordsToCreate: CreateSuggestionInput[] = result.suggestions.flatMap((s) => {
-                const contextSummary = s.contextSummary ?? [];
-                const options = s.options ?? [];
+            const recordsToCreate: CreateSuggestionInput[] =
+                result.suggestions.flatMap((s) => {
+                    const contextSummary = s.contextSummary ?? [];
+                    const options = s.options ?? [];
 
-                if (options.length > 0) {
-                    return options.map((opt) => ({
-                        insightId: s.insightId,
-                        organizationId: orgId,
-                        title: s.title || opt.title,
-                        description: opt.description || opt.title,
-                        actionType: (opt.actionType as SuggestionActionType) ?? SuggestionActionType.RECOMMENDATION,
-                        reasoning: opt.reasoning,
-                        metadata: {
-                            contextSummary,
-                            optionLabel: opt.label,
-                            optionTitle: opt.title,
-                            risk: opt.risk,
-                        },
-                    }));
-                }
+                    if (options.length > 0) {
+                        return options.map((opt) => ({
+                            insightId: s.insightId,
+                            organizationId: orgId,
+                            title: s.title || opt.title,
+                            description: opt.description || opt.title,
+                            actionType:
+                                opt.actionType ??
+                                SuggestionActionType.RECOMMENDATION,
+                            reasoning: opt.reasoning,
+                            metadata: {
+                                contextSummary,
+                                optionLabel: opt.label,
+                                optionTitle: opt.title,
+                                risk: opt.risk,
+                            },
+                        }));
+                    }
 
-                return [
-                    {
-                        insightId: s.insightId,
-                        organizationId: orgId,
-                        title: s.title,
-                        description: s.title,
-                        actionType: SuggestionActionType.RECOMMENDATION,
-                        reasoning: undefined,
-                        metadata: {
-                            contextSummary,
-                            optionLabel: 'Option A',
-                            optionTitle: s.title,
-                            risk: undefined,
+                    return [
+                        {
+                            insightId: s.insightId,
+                            organizationId: orgId,
+                            title: s.title,
+                            description: s.title,
+                            actionType: SuggestionActionType.RECOMMENDATION,
+                            reasoning: undefined,
+                            metadata: {
+                                contextSummary,
+                                optionLabel: 'Option A',
+                                optionTitle: s.title,
+                                risk: undefined,
+                            },
                         },
-                    },
-                ];
-            });
+                    ];
+                });
 
             await this.suggestionRepo.createMany(recordsToCreate);
             this.logger.log(

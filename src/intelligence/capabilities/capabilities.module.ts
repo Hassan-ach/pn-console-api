@@ -28,7 +28,12 @@ import { CAPABILITY } from './capability.token';
                 kgService: KnowledgeGraphExtractionCapability,
                 insightV2Service: InsightExtractionCapabilityV2,
                 suggestionsService: SuggestionsCapability,
-            ) => [kgService, insightService, insightV2Service, suggestionsService],
+            ) => [
+                kgService,
+                insightService,
+                insightV2Service,
+                suggestionsService,
+            ],
             inject: [
                 InsightExtractionCapability,
                 KnowledgeGraphExtractionCapability,

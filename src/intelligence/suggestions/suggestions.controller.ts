@@ -57,8 +57,13 @@ export class SuggestionsController {
     }
 
     @Get('insight/:insightId')
-    @ApiOperation({ summary: 'Get or auto-generate AI suggestions for a specific insight item' })
-    @ApiOkResponse({ description: 'List of suggestions for the specified insight item' })
+    @ApiOperation({
+        summary:
+            'Get or auto-generate AI suggestions for a specific insight item',
+    })
+    @ApiOkResponse({
+        description: 'List of suggestions for the specified insight item',
+    })
     async getInsightSuggestions(
         @Param('insightId') insightId: string,
         @Req() req: Request & { user: AuthenticatedUser },
@@ -72,7 +77,8 @@ export class SuggestionsController {
 
     @Post('generate/:insightId')
     @ApiOperation({
-        summary: 'Trigger manual on-demand AI suggestion generation for an insight',
+        summary:
+            'Trigger manual on-demand AI suggestion generation for an insight',
     })
     @ApiOkResponse({
         description: 'Newly generated AI suggestions for the insight',

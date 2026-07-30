@@ -18,7 +18,10 @@ describe('SuggestionsController', () => {
         const module: TestingModule = await Test.createTestingModule({
             controllers: [SuggestionsController],
             providers: [
-                { provide: SuggestionsService, useValue: mockSuggestionsService },
+                {
+                    provide: SuggestionsService,
+                    useValue: mockSuggestionsService,
+                },
             ],
         }).compile();
 
@@ -27,9 +30,13 @@ describe('SuggestionsController', () => {
 
     it('getUserSuggestions should pass user id and organizationId', async () => {
         mockSuggestionsService.getUserSuggestions.mockResolvedValue([]);
-        const req = { user: { id: 'u1', organizationId: 'org-1' } } as any;
+        const req = { user: { id: 'u1', organizationId: 'org-1' } } as never;
 
-        const result = await controller.getUserSuggestions(req, SuggestionStatus.PENDING);
+        const result = await controller.getUserSuggestions(
+            req,
+            SuggestionStatus.PENDING,
+        );
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         expect(mockSuggestionsService.getUserSuggestions).toHaveBeenCalledWith(
             'u1',
             'org-1',
@@ -42,12 +49,13 @@ describe('SuggestionsController', () => {
         mockSuggestionsService.updateStatus.mockResolvedValue({
             id: 'sug-1',
             status: SuggestionStatus.ACCEPTED,
-        } as any);
+        } as never);
 
         const result = await controller.updateStatus('sug-1', {
             status: SuggestionStatus.ACCEPTED,
         });
 
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         expect(mockSuggestionsService.updateStatus).toHaveBeenCalledWith(
             'sug-1',
             SuggestionStatus.ACCEPTED,

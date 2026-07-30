@@ -459,7 +459,9 @@ export class InsightRepository {
             if (!isOwner && !latest.broadcasted) return null;
         }
 
-        const ownerRow = ownerId ? latest.owners.find((o) => o.userId === ownerId) : undefined;
+        const ownerRow = ownerId
+            ? latest.owners.find((o) => o.userId === ownerId)
+            : undefined;
 
         return {
             id: insight.id,
