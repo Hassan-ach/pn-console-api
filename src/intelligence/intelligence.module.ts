@@ -8,6 +8,7 @@ import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
 import { JobsModule } from '../jobs/jobs.module';
+import { SuggestionsModule } from './suggestions/suggestions.module';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listener';
 
@@ -23,7 +24,8 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         ToolsModule,
         RepositoriesModule,
         JobsModule,
+        SuggestionsModule,
     ],
-    exports: [ContextModule, StoreModule, IntelligenceEngineService],
+    exports: [ContextModule, StoreModule, IntelligenceEngineService, SuggestionsModule],
 })
 export class IntelligenceModule {}

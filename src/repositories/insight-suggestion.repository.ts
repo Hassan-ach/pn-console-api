@@ -73,7 +73,7 @@ export class InsightSuggestionRepository {
     async findByInsightId(insightId: string) {
         return this.prisma.insightSuggestion.findMany({
             where: { insightId },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         });
     }
 
@@ -85,6 +85,41 @@ export class InsightSuggestionRepository {
             where: {
                 ...(organizationId ? { organizationId } : {}),
                 ...(options?.status ? { status: options.status } : {}),
+            },
+            include: {
+                insight: {
+                    include: {
+                        versions: {
+                            orderBy: { version: 'desc' },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: options?.limit ?? 50,
+        });
+    }
+
+    async findByUser(
+        userId: string,
+        organizationId?: string,
+        options?: { status?: SuggestionStatus; limit?: number },
+    ) {
+        return this.prisma.insightSuggestion.findMany({
+            where: {
+                ...(organizationId ? { organizationId } : {}),
+                ...(options?.status ? { status: options.status } : {}),
+                insight: {
+                    versions: {
+                        some: {
+                            OR: [
+                                { broadcasted: true },
+                                { owners: { some: { userId } } },
+                            ],
+                        },
+                    },
+                },
             },
             include: {
                 insight: {
