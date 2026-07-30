@@ -272,11 +272,7 @@ export class ChatService {
         userMessage: string,
         signal?: AbortSignal,
     ): AsyncGenerator<string> {
-        const history = await this.getRecentHistory(
-            userId,
-            conversationId,
-            20,
-        );
+        const history = await this.getRecentHistory(userId, conversationId, 20);
 
         const context = await this.chatContextService.buildContext(
             userId,
@@ -317,13 +313,33 @@ export class ChatService {
         }
 
         await this.appDb.$transaction(async (tx) => {
-            const userMsg = await tx.chatMessage.create({
-                data: { userId, conversationId, role: 'USER', content: userMessage },
-                select: { id: true, role: true, content: true, createdAt: true },
+            await tx.chatMessage.create({
+                data: {
+                    userId,
+                    conversationId,
+                    role: 'USER',
+                    content: userMessage,
+                },
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
             });
-            const assistantMsg = await tx.chatMessage.create({
-                data: { userId, conversationId, role: 'ASSISTANT', content: fullResponse },
-                select: { id: true, role: true, content: true, createdAt: true },
+            await tx.chatMessage.create({
+                data: {
+                    userId,
+                    conversationId,
+                    role: 'ASSISTANT',
+                    content: fullResponse,
+                },
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
             });
 
             const count = await tx.chatMessage.count({

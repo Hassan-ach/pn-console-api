@@ -34,7 +34,8 @@ export class ChatController {
     @Get('conversations')
     @ApiOperation({ summary: 'List conversations for the authenticated user' })
     @ApiOkResponse({
-        description: 'Returns paginated conversations ordered by updatedAt desc',
+        description:
+            'Returns paginated conversations ordered by updatedAt desc',
     })
     async getConversations(
         @Req() req: Request & { user: { id: string } },
@@ -46,9 +47,7 @@ export class ChatController {
 
     @Post('conversations')
     @ApiOperation({ summary: 'Create a new empty conversation' })
-    async createConversation(
-        @Req() req: Request & { user: { id: string } },
-    ) {
+    async createConversation(@Req() req: Request & { user: { id: string } }) {
         return this.chatService.createConversation(req.user.id);
     }
 
