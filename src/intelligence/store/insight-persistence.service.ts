@@ -25,7 +25,8 @@ export class InsightPersistenceService implements OnModuleInit {
 
     async triggerMissingEmbeddingsBackfill(): Promise<void> {
         try {
-            const nullVersions = await this.embeddingRepository.findNullEmbeddings(50);
+            const nullVersions =
+                await this.embeddingRepository.findNullEmbeddings(50);
             if (nullVersions.length === 0) return;
 
             this.logger.log(
@@ -98,14 +99,19 @@ export class InsightPersistenceService implements OnModuleInit {
 
         // Dispatch background embedding generation event
         const itemsToEmbed = persisted
-            .filter((i): i is Insight & { latestVersionId: string } => !!i.latestVersionId)
+            .filter(
+                (i): i is Insight & { latestVersionId: string } =>
+                    !!i.latestVersionId,
+            )
             .map((i) => ({ versionId: i.latestVersionId, content: i.content }));
 
         if (itemsToEmbed.length > 0) {
             this.logger.debug(
                 `Publishing 'insight.versions.created' event for ${itemsToEmbed.length} items to process in background`,
             );
-            this.eventBus.publish('insight.versions.created', { items: itemsToEmbed });
+            this.eventBus.publish('insight.versions.created', {
+                items: itemsToEmbed,
+            });
         }
 
         this.logger.log(`Persistence complete: ${insights.length} insights`);

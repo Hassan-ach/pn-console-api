@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/unbound-method */
 import { ConfigService } from '@nestjs/config';
 import { TelegramBackfillService } from './telegram-backfill.service';
 import type { PluginContext } from '../../../interfaces/plugin-context.interface';
@@ -26,7 +27,9 @@ describe('TelegramBackfillService', () => {
             storeUserMapping: jest.fn(),
             getCursor: jest.fn(),
             saveCursor: jest.fn(),
-            storeEnvelopes: jest.fn().mockResolvedValue({ inserted: 1, ids: ['env-1'] }),
+            storeEnvelopes: jest
+                .fn()
+                .mockResolvedValue({ inserted: 1, ids: ['env-1'] }),
             resolveOrgId: jest.fn().mockReturnValue('org-1'),
             resolveOrgIdAsync: jest.fn().mockResolvedValue('org-1'),
         };
@@ -81,7 +84,12 @@ describe('TelegramBackfillService', () => {
             expect.objectContaining({ minId: 500, limit: 50 }),
         );
         expect(mockContext.storeEnvelopes).toHaveBeenCalledTimes(1);
-        expect(mockContext.saveCursor).toHaveBeenCalledWith('telegram', 'u1', '-10012345', 502);
+        expect(mockContext.saveCursor).toHaveBeenCalledWith(
+            'telegram',
+            'u1',
+            '-10012345',
+            502,
+        );
     });
 
     it('should complete with 0 stored envelopes when no new messages exist after cursor', async () => {

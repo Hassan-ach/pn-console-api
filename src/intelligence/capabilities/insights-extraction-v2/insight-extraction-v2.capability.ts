@@ -381,7 +381,9 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                         const matchedPerson = kgEntities[0];
                         // Try matching Person entity name to app users
                         const userMatch = allOrgUsers.find((u) =>
-                            `${u.firstName} ${u.lastName ?? ''}`.toLowerCase().includes(matchedPerson.name.toLowerCase()),
+                            `${u.firstName} ${u.lastName ?? ''}`
+                                .toLowerCase()
+                                .includes(matchedPerson.name.toLowerCase()),
                         );
                         if (userMatch) {
                             appUserId = userMatch.id;

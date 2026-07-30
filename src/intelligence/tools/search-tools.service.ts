@@ -31,22 +31,31 @@ export class SearchToolsService {
                 limit: z
                     .number()
                     .optional()
-                    .describe('Maximum number of message results to return (default: 15)'),
+                    .describe(
+                        'Maximum number of message results to return (default: 15)',
+                    ),
             }),
             func: async ({ query, limit }) => {
                 const start = Date.now();
                 const maxResults = limit ?? 15;
-                this.logger.debug(`[Tool Exec: search_raw_messages] query="${query}", limit=${maxResults}`);
+                this.logger.debug(
+                    `[Tool Exec: search_raw_messages] query="${query}", limit=${maxResults}`,
+                );
 
                 try {
                     const results = await this.envelopeRepo.searchMessages(
                         query,
                         maxResults,
                     );
-                    this.logger.debug(`[Tool Result: search_raw_messages] Found ${results.length} raw messages (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: search_raw_messages] Found ${results.length} raw messages (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify(results);
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: search_raw_messages] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: search_raw_messages] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -65,12 +74,16 @@ export class SearchToolsService {
                 limit: z
                     .number()
                     .optional()
-                    .describe('Maximum number of insights to return (default: 15)'),
+                    .describe(
+                        'Maximum number of insights to return (default: 15)',
+                    ),
             }),
             func: async ({ query, limit }) => {
                 const start = Date.now();
                 const maxResults = limit ?? 15;
-                this.logger.debug(`[Tool Exec: search_insights] query="${query}", limit=${maxResults}, orgId="${organizationId ?? 'none'}"`);
+                this.logger.debug(
+                    `[Tool Exec: search_insights] query="${query}", limit=${maxResults}, orgId="${organizationId ?? 'none'}"`,
+                );
 
                 try {
                     const results = await this.insightRepo.searchInsights(
@@ -78,10 +91,15 @@ export class SearchToolsService {
                         organizationId,
                         maxResults,
                     );
-                    this.logger.debug(`[Tool Result: search_insights] Found ${results.length} insights (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: search_insights] Found ${results.length} insights (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify(results);
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: search_insights] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: search_insights] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -100,12 +118,16 @@ export class SearchToolsService {
                 limit: z
                     .number()
                     .optional()
-                    .describe('Number of top semantically matching insights to return (default: 10)'),
+                    .describe(
+                        'Number of top semantically matching insights to return (default: 10)',
+                    ),
             }),
             func: async ({ query, limit }) => {
                 const start = Date.now();
                 const maxResults = limit ?? 10;
-                this.logger.debug(`[Tool Exec: retrieve_relevant_insights] query="${query}", limit=${maxResults}, userId="${userId ?? 'none'}"`);
+                this.logger.debug(
+                    `[Tool Exec: retrieve_relevant_insights] query="${query}", limit=${maxResults}, userId="${userId ?? 'none'}"`,
+                );
 
                 try {
                     const embedding = await this.embeddingService.embed(query);
@@ -115,10 +137,15 @@ export class SearchToolsService {
                         userId,
                         0.45,
                     );
-                    this.logger.debug(`[Tool Result: retrieve_relevant_insights] Retrieved ${results.length} similar insights via vector search (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: retrieve_relevant_insights] Retrieved ${results.length} similar insights via vector search (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify(results);
                 } catch (err) {
-                    this.logger.error(`[Tool Failure: retrieve_relevant_insights] ${(err as Error).message}`, (err as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: retrieve_relevant_insights] ${(err as Error).message}`,
+                        (err as Error).stack,
+                    );
                     return JSON.stringify({ error: (err as Error).message });
                 }
             },

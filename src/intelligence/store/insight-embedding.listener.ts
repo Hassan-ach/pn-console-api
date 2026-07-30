@@ -29,7 +29,9 @@ export class InsightEmbeddingListener {
         await this.processEmbeddings(event);
     }
 
-    private async processEmbeddings(event: EmbeddingsBatchEvent): Promise<void> {
+    private async processEmbeddings(
+        event: EmbeddingsBatchEvent,
+    ): Promise<void> {
         const { items } = event;
         if (!items || items.length === 0) return;
 
@@ -39,7 +41,8 @@ export class InsightEmbeddingListener {
 
         const contents = items.map((i) => i.content);
         try {
-            const vectors = await this.embeddingService.embedDocuments(contents);
+            const vectors =
+                await this.embeddingService.embedDocuments(contents);
 
             let successCount = 0;
             await Promise.all(

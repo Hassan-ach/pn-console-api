@@ -24,7 +24,9 @@ describe('InsightEmbeddingListener', () => {
             ],
         }).compile();
 
-        listener = module.get<InsightEmbeddingListener>(InsightEmbeddingListener);
+        listener = module.get<InsightEmbeddingListener>(
+            InsightEmbeddingListener,
+        );
     });
 
     it('should be defined', () => {
@@ -39,8 +41,9 @@ describe('InsightEmbeddingListener', () => {
         expect(mockEmbeddingService.embedDocuments).toHaveBeenCalledWith([
             'Test insight content',
         ]);
-        expect(mockEmbeddingRepo.upsert).toHaveBeenCalledWith('ver-123', [
-            0.1, 0.2, 0.3,
-        ]);
+        expect(mockEmbeddingRepo.upsert).toHaveBeenCalledWith(
+            'ver-123',
+            [0.1, 0.2, 0.3],
+        );
     });
 });

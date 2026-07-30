@@ -102,22 +102,32 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
         ];
 
         const MAX_RETRIES = parseInt(process.env.LLM_MAX_RETRIES ?? '3', 10);
-        let extractedData: KnowledgeGraphData = { nodes: [], relationships: [] };
+        let extractedData: KnowledgeGraphData = {
+            nodes: [],
+            relationships: [],
+        };
 
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 // Try structured output first if supported by model, fallback to json parsing
                 try {
-                    const structuredLlm = (graphModel as any).withStructuredOutput(
-                        KnowledgeGraphSchema,
-                        { name: 'extract_knowledge_graph' },
-                    );
+                    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+                    const structuredLlm = (
+                        graphModel as any
+                    ).withStructuredOutput(KnowledgeGraphSchema, {
+                        name: 'extract_knowledge_graph',
+                    });
                     extractedData = await structuredLlm.invoke(inputMessages);
+                    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
                 } catch (structErr) {
-                    this.logger.debug(`Structured output fallback (attempt ${attempt}): ${(structErr as Error).message}`);
+                    this.logger.debug(
+                        `Structured output fallback (attempt ${attempt}): ${(structErr as Error).message}`,
+                    );
                     const response = await graphModel.invoke(inputMessages);
                     const rawJson = extractJsonString(response);
-                    extractedData = KnowledgeGraphSchema.parse(JSON.parse(rawJson));
+                    extractedData = KnowledgeGraphSchema.parse(
+                        JSON.parse(rawJson),
+                    );
                 }
 
                 this.logger.debug(
@@ -137,7 +147,10 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
             }
         }
 
-        if (extractedData.nodes.length === 0 && extractedData.relationships.length === 0) {
+        if (
+            extractedData.nodes.length === 0 &&
+            extractedData.relationships.length === 0
+        ) {
             this.logger.debug('No nodes or relationships extracted; returning');
             return { capabilityName: this.name, insights: [] };
         }
@@ -163,7 +176,8 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
                 // Neo4j direct MERGE query
                 if (this.neo4jService?.getDriver()) {
                     try {
-                        const label = node.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
+                        const label =
+                            node.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
                         const roleStr = node.role ? String(node.role) : '';
                         const cypher = `
                             MERGE (n:${label} { id: $id })
@@ -180,11 +194,17 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
                             role: roleStr,
                         });
                     } catch (neoErr) {
-                        this.logger.error(`Neo4j MERGE node error for ${node.name}: ${(neoErr as Error).message}`, (neoErr as Error).stack);
+                        this.logger.error(
+                            `Neo4j MERGE node error for ${node.name}: ${(neoErr as Error).message}`,
+                            (neoErr as Error).stack,
+                        );
                     }
                 }
             } catch (err) {
-                this.logger.error(`Failed to save entity ${node.name}: ${(err as Error).message}`, (err as Error).stack);
+                this.logger.error(
+                    `Failed to save entity ${node.name}: ${(err as Error).message}`,
+                    (err as Error).stack,
+                );
             }
         }
 
@@ -206,7 +226,9 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
                     // Neo4j direct MERGE relationship query
                     if (this.neo4jService?.getDriver()) {
                         try {
-                            const neoRelType = relType.replace(/[^a-zA-Z0-9_]/g, '') || 'RELATED_TO';
+                            const neoRelType =
+                                relType.replace(/[^a-zA-Z0-9_]/g, '') ||
+                                'RELATED_TO';
                             const cypher = `
                                 MATCH (a { id: $sourceId }), (b { id: $targetId })
                                 MERGE (a)-[r:${neoRelType}]->(b)
@@ -218,12 +240,18 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
                                 targetId,
                             });
                         } catch (neoErr) {
-                            this.logger.error(`Neo4j MERGE rel error (${rel.sourceName} -> ${rel.targetName}): ${(neoErr as Error).message}`, (neoErr as Error).stack);
+                            this.logger.error(
+                                `Neo4j MERGE rel error (${rel.sourceName} -> ${rel.targetName}): ${(neoErr as Error).message}`,
+                                (neoErr as Error).stack,
+                            );
                         }
                     }
                 }
             } catch (err) {
-                this.logger.error(`Failed to save relationship ${rel.sourceName} -> ${rel.targetName}: ${(err as Error).message}`, (err as Error).stack);
+                this.logger.error(
+                    `Failed to save relationship ${rel.sourceName} -> ${rel.targetName}: ${(err as Error).message}`,
+                    (err as Error).stack,
+                );
             }
         }
 

@@ -37,7 +37,9 @@ export class GraphToolsService {
             }),
             func: async ({ query, type }) => {
                 const start = Date.now();
-                this.logger.debug(`[Tool Exec: search_graph] query="${query}", type="${type ?? 'ALL'}", orgId="${organizationId ?? 'none'}"`);
+                this.logger.debug(
+                    `[Tool Exec: search_graph] query="${query}", type="${type ?? 'ALL'}", orgId="${organizationId ?? 'none'}"`,
+                );
 
                 try {
                     // Query Neo4j if available
@@ -50,13 +52,21 @@ export class GraphToolsService {
                                 RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata
                                 LIMIT 20
                             `;
-                            const neoResults = await this.neo4jService.executeRead(cypher, { query, type: type ?? '' });
+                            const neoResults =
+                                await this.neo4jService.executeRead(cypher, {
+                                    query,
+                                    type: type ?? '',
+                                });
                             if (neoResults.length > 0) {
-                                this.logger.debug(`[Tool Result: search_graph] Returned ${neoResults.length} entities from Neo4j (${Date.now() - start}ms)`);
+                                this.logger.debug(
+                                    `[Tool Result: search_graph] Returned ${neoResults.length} entities from Neo4j (${Date.now() - start}ms)`,
+                                );
                                 return JSON.stringify(neoResults);
                             }
                         } catch (neoErr) {
-                            this.logger.warn(`[Tool Exec: search_graph] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`);
+                            this.logger.warn(
+                                `[Tool Exec: search_graph] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
+                            );
                         }
                     }
 
@@ -65,10 +75,15 @@ export class GraphToolsService {
                         query,
                         type,
                     );
-                    this.logger.debug(`[Tool Result: search_graph] Returned ${entities.length} entities from Postgres (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: search_graph] Returned ${entities.length} entities from Postgres (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify(entities);
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: search_graph] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: search_graph] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -94,29 +109,46 @@ export class GraphToolsService {
                                 RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata,
                                        collect({ relationship: type(r), connectedId: other.id, connectedName: other.name }) AS relationships
                             `;
-                            const neoResults = await this.neo4jService.executeRead(cypher, { id });
-                            if (neoResults.length > 0 && neoResults[0].id) {
-                                this.logger.debug(`[Tool Result: get_entity] Retrieved entity ${id} from Neo4j (${Date.now() - start}ms)`);
+                            const neoResults =
+                                await this.neo4jService.executeRead(cypher, {
+                                    id,
+                                });
+                            if (
+                                neoResults.length > 0 &&
+                                (neoResults[0] as Record<string, unknown>).id
+                            ) {
+                                this.logger.debug(
+                                    `[Tool Result: get_entity] Retrieved entity ${id} from Neo4j (${Date.now() - start}ms)`,
+                                );
                                 return JSON.stringify(neoResults[0]);
                             }
                         } catch (neoErr) {
-                            this.logger.warn(`[Tool Exec: get_entity] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`);
+                            this.logger.warn(
+                                `[Tool Exec: get_entity] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
+                            );
                         }
                     }
 
                     const entity = await this.entityRepo.findById(id);
                     if (!entity) {
-                        this.logger.warn(`[Tool Result: get_entity] Entity with ID ${id} not found`);
+                        this.logger.warn(
+                            `[Tool Result: get_entity] Entity with ID ${id} not found`,
+                        );
                         return JSON.stringify({
                             error: `Entity with ID ${id} not found`,
                         });
                     }
                     const relationships =
                         await this.relationshipRepo.findBySourceOrTarget(id);
-                    this.logger.debug(`[Tool Result: get_entity] Retrieved entity ${id} with ${relationships.length} relationships from Postgres (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: get_entity] Retrieved entity ${id} with ${relationships.length} relationships from Postgres (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify({ entity, relationships });
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: get_entity] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: get_entity] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -140,7 +172,9 @@ export class GraphToolsService {
                     Math.max(1, requestedDepth),
                     this.defaultMaxDepth,
                 );
-                this.logger.debug(`[Tool Exec: get_neighbors] entityId="${entityId}", depth=${effectiveDepth}`);
+                this.logger.debug(
+                    `[Tool Exec: get_neighbors] entityId="${entityId}", depth=${effectiveDepth}`,
+                );
 
                 try {
                     if (this.neo4jService?.getDriver()) {
@@ -151,30 +185,45 @@ export class GraphToolsService {
                                        [node IN nodes(path) | { id: node.id, name: node.name, type: labels(node)[0], role: node.role }] AS nodes,
                                        [rel IN relationships(path) | { type: type(rel), source: startNode(rel).id, target: endNode(rel).id }] AS relationships
                             `;
-                            const neoResults = await this.neo4jService.executeRead(cypher, { entityId });
+                            const neoResults =
+                                await this.neo4jService.executeRead(cypher, {
+                                    entityId,
+                                });
                             if (neoResults.length > 0) {
-                                this.logger.debug(`[Tool Result: get_neighbors] Retrieved neighborhood from Neo4j (${Date.now() - start}ms)`);
+                                this.logger.debug(
+                                    `[Tool Result: get_neighbors] Retrieved neighborhood from Neo4j (${Date.now() - start}ms)`,
+                                );
                                 return JSON.stringify(neoResults);
                             }
                         } catch (neoErr) {
-                            this.logger.warn(`[Tool Exec: get_neighbors] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`);
+                            this.logger.warn(
+                                `[Tool Exec: get_neighbors] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
+                            );
                         }
                     }
 
-                    const neighborhood = await this.relationshipRepo.getNeighbors(
-                        entityId,
-                        effectiveDepth,
-                    );
+                    const neighborhood =
+                        await this.relationshipRepo.getNeighbors(
+                            entityId,
+                            effectiveDepth,
+                        );
                     if (!neighborhood) {
-                        this.logger.warn(`[Tool Result: get_neighbors] Root entity with ID ${entityId} not found`);
+                        this.logger.warn(
+                            `[Tool Result: get_neighbors] Root entity with ID ${entityId} not found`,
+                        );
                         return JSON.stringify({
                             error: `Root entity with ID ${entityId} not found`,
                         });
                     }
-                    this.logger.debug(`[Tool Result: get_neighbors] Retrieved neighborhood from Postgres (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: get_neighbors] Retrieved neighborhood from Postgres (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify(neighborhood);
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: get_neighbors] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: get_neighbors] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -204,7 +253,9 @@ export class GraphToolsService {
             }),
             func: async ({ entities }) => {
                 const start = Date.now();
-                this.logger.debug(`[Tool Exec: create_entities] count=${entities.length}`);
+                this.logger.debug(
+                    `[Tool Exec: create_entities] count=${entities.length}`,
+                );
 
                 try {
                     const results: any[] = [];
@@ -220,8 +271,12 @@ export class GraphToolsService {
                         // Sync to Neo4j if driver connected
                         if (this.neo4jService?.getDriver()) {
                             try {
-                                const label = e.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
-                                const roleStr = e.metadata?.role ? String(e.metadata.role) : '';
+                                const label =
+                                    e.type.replace(/[^a-zA-Z0-9]/g, '') ||
+                                    'Entity';
+                                const roleStr = e.metadata?.role
+                                    ? String(e.metadata.role)
+                                    : '';
                                 const cypher = `
                                     MERGE (e:${label} { id: $id })
                                     SET e.name = $name,
@@ -236,17 +291,24 @@ export class GraphToolsService {
                                     role: roleStr,
                                 });
                             } catch (neoErr) {
-                                this.logger.warn(`[Tool Exec: create_entities] Neo4j sync error for ${e.name}: ${(neoErr as Error).message}`);
+                                this.logger.warn(
+                                    `[Tool Exec: create_entities] Neo4j sync error for ${e.name}: ${(neoErr as Error).message}`,
+                                );
                             }
                         }
                     }
-                    this.logger.debug(`[Tool Result: create_entities] Successfully merged ${results.length} entities (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: create_entities] Successfully merged ${results.length} entities (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify({
                         createdOrMerged: results.length,
                         entities: results,
                     });
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: create_entities] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: create_entities] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -254,7 +316,8 @@ export class GraphToolsService {
 
         const updateEntitiesTool = new DynamicStructuredTool({
             name: 'update_entities',
-            description: 'Update existing entities in the knowledge graph, including updating their organizational role metadata.',
+            description:
+                'Update existing entities in the knowledge graph, including updating their organizational role metadata.',
             schema: z.object({
                 updates: z.array(
                     z.object({
@@ -264,13 +327,17 @@ export class GraphToolsService {
                         metadata: z
                             .record(z.string(), z.any())
                             .optional()
-                            .describe('Optional metadata update object (e.g. {"role": "Senior Frontend Engineer"})'),
+                            .describe(
+                                'Optional metadata update object (e.g. {"role": "Senior Frontend Engineer"})',
+                            ),
                     }),
                 ),
             }),
             func: async ({ updates }) => {
                 const start = Date.now();
-                this.logger.debug(`[Tool Exec: update_entities] count=${updates.length}`);
+                this.logger.debug(
+                    `[Tool Exec: update_entities] count=${updates.length}`,
+                );
 
                 try {
                     const updated: any[] = [];
@@ -284,7 +351,9 @@ export class GraphToolsService {
 
                         if (this.neo4jService?.getDriver() && res) {
                             try {
-                                const roleStr = u.metadata?.role ? String(u.metadata.role) : '';
+                                const roleStr = u.metadata?.role
+                                    ? String(u.metadata.role)
+                                    : '';
                                 const cypher = `
                                     MATCH (e { id: $id })
                                     SET e.name = coalesce($name, e.name),
@@ -297,17 +366,24 @@ export class GraphToolsService {
                                     role: roleStr || null,
                                 });
                             } catch (neoErr) {
-                                this.logger.warn(`[Tool Exec: update_entities] Neo4j update error for ${u.id}: ${(neoErr as Error).message}`);
+                                this.logger.warn(
+                                    `[Tool Exec: update_entities] Neo4j update error for ${u.id}: ${(neoErr as Error).message}`,
+                                );
                             }
                         }
                     }
-                    this.logger.debug(`[Tool Result: update_entities] Updated ${updated.length} entities (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: update_entities] Updated ${updated.length} entities (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify({
                         updatedCount: updated.length,
                         updated,
                     });
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: update_entities] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: update_entities] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },
@@ -337,7 +413,9 @@ export class GraphToolsService {
             }),
             func: async ({ relationships }) => {
                 const start = Date.now();
-                this.logger.debug(`[Tool Exec: create_relationships] count=${relationships.length}`);
+                this.logger.debug(
+                    `[Tool Exec: create_relationships] count=${relationships.length}`,
+                );
 
                 try {
                     const results: any[] = [];
@@ -353,7 +431,9 @@ export class GraphToolsService {
 
                         if (this.neo4jService?.getDriver()) {
                             try {
-                                const relType = r.type.replace(/[^a-zA-Z0-9_]/g, '') || 'RELATED_TO';
+                                const relType =
+                                    r.type.replace(/[^a-zA-Z0-9_]/g, '') ||
+                                    'RELATED_TO';
                                 const cypher = `
                                     MATCH (a { id: $sourceId }), (b { id: $targetId })
                                     MERGE (a)-[r:${relType}]->(b)
@@ -364,17 +444,24 @@ export class GraphToolsService {
                                     targetId: r.targetEntityId,
                                 });
                             } catch (neoErr) {
-                                this.logger.warn(`[Tool Exec: create_relationships] Neo4j rel error: ${(neoErr as Error).message}`);
+                                this.logger.warn(
+                                    `[Tool Exec: create_relationships] Neo4j rel error: ${(neoErr as Error).message}`,
+                                );
                             }
                         }
                     }
-                    this.logger.debug(`[Tool Result: create_relationships] Created/merged ${results.length} relationships (${Date.now() - start}ms)`);
+                    this.logger.debug(
+                        `[Tool Result: create_relationships] Created/merged ${results.length} relationships (${Date.now() - start}ms)`,
+                    );
                     return JSON.stringify({
                         createdOrMerged: results.length,
                         relationships: results,
                     });
                 } catch (error) {
-                    this.logger.error(`[Tool Failure: create_relationships] ${(error as Error).message}`, (error as Error).stack);
+                    this.logger.error(
+                        `[Tool Failure: create_relationships] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     return JSON.stringify({ error: (error as Error).message });
                 }
             },

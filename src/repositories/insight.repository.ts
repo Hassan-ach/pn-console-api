@@ -734,7 +734,7 @@ export class InsightRepository {
         return versions.map((v) => ({
             id: v.insightId,
             latestVersionId: v.id,
-            type: v.type as Insight['type'],
+            type: v.type,
             content: v.content,
             owners: v.owners.map((o) => o.userId),
             unresolvedOwnerRefs: v.unresolvedOwners.map((u) => ({

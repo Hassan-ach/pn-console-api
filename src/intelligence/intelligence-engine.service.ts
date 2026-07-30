@@ -40,8 +40,6 @@ export class IntelligenceEngineService {
         );
     }
 
-
-
     async run(
         organizationId: string,
         opts?: {

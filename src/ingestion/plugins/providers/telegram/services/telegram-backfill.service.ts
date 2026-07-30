@@ -180,12 +180,7 @@ export class TelegramBackfillService {
             }
 
             if (maxMsgId > (storedCursor ?? 0)) {
-                await context.saveCursor(
-                    'telegram',
-                    userId,
-                    chatId,
-                    maxMsgId,
-                );
+                await context.saveCursor('telegram', userId, chatId, maxMsgId);
             }
             /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 

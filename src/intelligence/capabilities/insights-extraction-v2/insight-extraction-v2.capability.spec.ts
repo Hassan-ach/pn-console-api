@@ -63,7 +63,10 @@ describe('InsightExtractionCapabilityV2', () => {
                 InsightExtractionCapabilityV2,
                 { provide: LlmService, useValue: mockLlmService },
                 { provide: GraphToolsService, useValue: mockGraphToolsService },
-                { provide: SearchToolsService, useValue: mockSearchToolsService },
+                {
+                    provide: SearchToolsService,
+                    useValue: mockSearchToolsService,
+                },
                 {
                     provide: PlatformUserMappingRepository,
                     useValue: mockPlatformUserMappingRepo,
