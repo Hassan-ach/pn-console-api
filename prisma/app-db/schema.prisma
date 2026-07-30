@@ -9,10 +9,11 @@ datasource db {
 }
 
 model Insight {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String?          @map("organization_id")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String?             @map("organization_id")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
   versions       InsightVersion[]
+  suggestions    InsightSuggestion[]
 
   @@index([organizationId])
   @@map("insights")
@@ -244,3 +245,77 @@ model ChatMessage {
   @@index([userId, createdAt])
   @@map("chat_messages")
 }
+
+enum SuggestionActionType {
+  RECOMMENDATION
+  RISK_MITIGATION
+  NEXT_STEP
+}
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+  COMPLETED
+}
+
+model Entity {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id")
+  name           String
+  type           String
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  sourceRelationships Relationship[] @relation("SourceEntity")
+  targetRelationships Relationship[] @relation("TargetEntity")
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([name])
+  @@index([organizationId, type, name])
+  @@map("entities")
+}
+
+model Relationship {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id")
+  sourceEntityId String   @map("source_entity_id") @db.Uuid
+  targetEntityId String   @map("target_entity_id") @db.Uuid
+  type           String
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  sourceEntity Entity @relation("SourceEntity", fields: [sourceEntityId], references: [id], onDelete: Cascade)
+  targetEntity Entity @relation("TargetEntity", fields: [targetEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceEntityId, targetEntityId, type])
+  @@index([sourceEntityId])
+  @@index([targetEntityId])
+  @@index([organizationId])
+  @@map("relationships")
+}
+
+model InsightSuggestion {
+  id             String               @id @default(uuid()) @db.Uuid
+  insightId      String               @map("insight_id") @db.Uuid
+  organizationId String?              @map("organization_id")
+  title          String
+  description    String
+  actionType     SuggestionActionType @default(RECOMMENDATION) @map("action_type")
+  reasoning      String?
+  status         SuggestionStatus     @default(PENDING)
+  metadata       Json?                @default("{}")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  insight Insight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@index([insightId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("insight_suggestions")
+}
+
