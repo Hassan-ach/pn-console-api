@@ -77,6 +77,7 @@ describe('InsightExtractionCapabilityV2', () => {
                     sourcePlugin: 'slack',
                     authorId: 'p-123',
                     organizationId: 'org-1',
+                    occurredAt: new Date('2026-07-28'),
                 },
                 payload: {
                     content: 'Refactor user-db service by Friday.',

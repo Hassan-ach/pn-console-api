@@ -96,6 +96,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             replyTo: env.payload.replyTo,
             reactions: env.payload.reactions,
             pinned: env.payload.pinned,
+            occurredAt: env.envelope.occurredAt.toISOString(),
             editedDate: env.payload.editedDate?.toISOString() ?? null,
             entities: env.payload.entities,
         }));
