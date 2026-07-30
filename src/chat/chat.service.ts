@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+    Injectable,
+    Logger,
+    NotFoundException,
+    BadRequestException,
+} from '@nestjs/common';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { ChatRole } from 'generated/app-db-client';
 import {
@@ -53,11 +58,24 @@ Priority runs from 1 (low) to 10 (critical). Anything 7 or above is high priorit
 6. **Be concise** — avoid repeating the full insight text verbatim when a summary is clearer.
 7. You are a **read-only** assistant. Never suggest modifying, deleting, or creating data.`;
 
+const CONVERSATION_TIMEOUT_MS = 30 * 60 * 1000;
+const TITLE_MAX_LENGTH = 80;
+
 export interface ChatMessageRecord {
     id: string;
     role: ChatRole;
     content: string;
     createdAt: Date;
+}
+
+export interface ConversationRecord {
+    id: string;
+    title: string;
+    createdAt: Date;
+    updatedAt: Date;
+    messageCount: number;
+    lastMessage: string | null;
+    lastMessageAt: Date | null;
 }
 
 @Injectable()
@@ -70,13 +88,107 @@ export class ChatService {
         private readonly chatContextService: ChatContextService,
     ) {}
 
+    async getConversations(
+        userId: string,
+        page = 1,
+        limit = 50,
+    ): Promise<ConversationRecord[]> {
+        const conversations = await this.appDb.conversation.findMany({
+            where: { userId },
+            orderBy: { updatedAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+            include: {
+                messages: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: {
+                        content: true,
+                        createdAt: true,
+                    },
+                },
+                _count: {
+                    select: { messages: true },
+                },
+            },
+        });
+
+        return conversations.map((c) => ({
+            id: c.id,
+            title: c.title,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            messageCount: c._count.messages,
+            lastMessage: c.messages[0]?.content?.slice(0, 120) ?? null,
+            lastMessageAt: c.messages[0]?.createdAt ?? null,
+        }));
+    }
+
+    async createConversation(userId: string): Promise<ConversationRecord> {
+        const conversation = await this.appDb.conversation.create({
+            data: { userId },
+        });
+        return {
+            id: conversation.id,
+            title: conversation.title,
+            createdAt: conversation.createdAt,
+            updatedAt: conversation.updatedAt,
+            messageCount: 0,
+            lastMessage: null,
+            lastMessageAt: null,
+        };
+    }
+
+    async resolveConversation(
+        userId: string,
+        conversationId?: string | null,
+    ): Promise<string> {
+        if (conversationId) {
+            const existing = await this.appDb.conversation.findUnique({
+                where: { id: conversationId },
+            });
+            if (existing && existing.userId === userId) return existing.id;
+        }
+
+        const latest = await this.appDb.conversation.findFirst({
+            where: { userId },
+            orderBy: { updatedAt: 'desc' },
+            include: {
+                messages: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: { id: true, createdAt: true },
+                },
+            },
+        });
+
+        if (latest) {
+            if (
+                latest.messages[0] &&
+                Date.now() - latest.messages[0].createdAt.getTime() <
+                    CONVERSATION_TIMEOUT_MS
+            ) {
+                return latest.id;
+            }
+            if (latest.messages.length === 0) {
+                return latest.id;
+            }
+        }
+
+        const created = await this.appDb.conversation.create({
+            data: { userId },
+        });
+        return created.id;
+    }
+
     async getHistory(
         userId: string,
+        conversationId: string,
         page = 1,
         limit = 50,
     ): Promise<ChatMessageRecord[]> {
         return this.appDb.chatMessage.findMany({
-            where: { userId },
+            where: { userId, conversationId },
             orderBy: { createdAt: 'asc' },
             skip: (page - 1) * limit,
             take: limit,
@@ -91,10 +203,11 @@ export class ChatService {
 
     private async getRecentHistory(
         userId: string,
+        conversationId: string,
         count: number,
     ): Promise<ChatMessageRecord[]> {
         const messages = await this.appDb.chatMessage.findMany({
-            where: { userId },
+            where: { userId, conversationId },
             orderBy: { createdAt: 'desc' },
             take: count,
             select: {
@@ -107,41 +220,40 @@ export class ChatService {
         return messages.reverse();
     }
 
-    async saveMessage(
+    async deleteConversation(
         userId: string,
-        role: ChatRole,
-        content: string,
-    ): Promise<ChatMessageRecord> {
-        return this.appDb.chatMessage.create({
-            data: {
-                userId,
-                role,
-                content,
-            },
-            select: {
-                id: true,
-                role: true,
-                content: true,
-                createdAt: true,
-            },
+        conversationId: string,
+    ): Promise<void> {
+        const conversation = await this.appDb.conversation.findUnique({
+            where: { id: conversationId },
+        });
+        if (!conversation || conversation.userId !== userId) {
+            throw new NotFoundException('Conversation not found');
+        }
+        await this.appDb.conversation.delete({
+            where: { id: conversationId },
         });
     }
 
-    async retractLastMessages(userId: string): Promise<void> {
+    async retractLastMessages(
+        userId: string,
+        conversationId: string,
+    ): Promise<void> {
         const lastTwo = await this.appDb.chatMessage.findMany({
-            where: { userId },
+            where: { userId, conversationId },
             orderBy: { createdAt: 'desc' },
             take: 2,
             select: { id: true, role: true },
         });
 
         if (lastTwo.length < 2) {
-            throw new Error('Not enough messages to retract');
+            throw new BadRequestException('Not enough messages to retract');
         }
 
-        const roles = lastTwo.map((m) => m.role);
-        if (!roles.includes('USER') || !roles.includes('ASSISTANT')) {
-            throw new Error(
+        // Newest must be ASSISTANT, second-newest must be USER
+        const [newest, secondNewest] = lastTwo;
+        if (newest.role !== 'ASSISTANT' || secondNewest.role !== 'USER') {
+            throw new BadRequestException(
                 'Last two messages are not a valid USER+ASSISTANT pair',
             );
         }
@@ -156,10 +268,11 @@ export class ChatService {
 
     async *streamResponse(
         userId: string,
+        conversationId: string,
         userMessage: string,
         signal?: AbortSignal,
     ): AsyncGenerator<string> {
-        const history = await this.getRecentHistory(userId, 20);
+        const history = await this.getRecentHistory(userId, conversationId, 20);
 
         const context = await this.chatContextService.buildContext(
             userId,
@@ -199,9 +312,49 @@ export class ChatService {
             yield errorMsg;
         }
 
-        // Save both messages only after streaming completes
-        // This prevents orphaned user messages when streaming fails
-        await this.saveMessage(userId, 'USER', userMessage);
-        await this.saveMessage(userId, 'ASSISTANT', fullResponse);
+        await this.appDb.$transaction(async (tx) => {
+            await tx.chatMessage.create({
+                data: {
+                    userId,
+                    conversationId,
+                    role: 'USER',
+                    content: userMessage,
+                },
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
+            });
+            await tx.chatMessage.create({
+                data: {
+                    userId,
+                    conversationId,
+                    role: 'ASSISTANT',
+                    content: fullResponse,
+                },
+                select: {
+                    id: true,
+                    role: true,
+                    content: true,
+                    createdAt: true,
+                },
+            });
+
+            const count = await tx.chatMessage.count({
+                where: { userId, conversationId },
+            });
+            if (count === 2) {
+                const title =
+                    userMessage.length > TITLE_MAX_LENGTH
+                        ? userMessage.slice(0, TITLE_MAX_LENGTH) + '\u2026'
+                        : userMessage;
+                await tx.conversation.update({
+                    where: { id: conversationId },
+                    data: { title },
+                });
+            }
+        });
     }
 }
