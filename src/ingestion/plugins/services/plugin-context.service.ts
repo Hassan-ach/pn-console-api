@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PluginConfigRepository } from 'src/repositories/plugin-config.repository';
 import { EnvelopeRepository } from 'src/repositories/envelope.repository';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { UserRepository } from 'src/repositories/user.repository';
 import { RawDbService } from 'src/prisma/raw-db/raw-db.service';
 import type { EnvelopeWithPayload } from 'src/types/envelope.types';
 import type {
@@ -25,6 +26,7 @@ export class PluginContextService implements PluginContext {
         private readonly configRepo: PluginConfigRepository,
         private readonly envelopeRepo: EnvelopeRepository,
         private readonly mappingRepo: PlatformUserMappingRepository,
+        private readonly userRepo: UserRepository,
         private readonly rawDb: RawDbService,
     ) {}
 
@@ -42,7 +44,7 @@ export class PluginContextService implements PluginContext {
         pluginName: string,
         config: Record<string, unknown>,
     ): Promise<void> {
-        const orgId = this.resolveOrgId(userId);
+        const orgId = await this.resolveOrgIdAsync(userId);
         await this.configRepo.upsert(userId, pluginName, {
             organizationId: orgId,
             config: config,
@@ -102,7 +104,7 @@ export class PluginContextService implements PluginContext {
         items: EnvelopeWithPayload[],
         userId: string,
     ): Promise<StoreResult> {
-        const orgId = this.resolveOrgId(userId);
+        const orgId = await this.resolveOrgIdAsync(userId);
         const inputs = items.map((item) => ({
             envelope: {
                 sourcePlugin: item.envelope.sourcePlugin,
@@ -125,6 +127,11 @@ export class PluginContextService implements PluginContext {
             `storeEnvelopes result: ${result.inserted} inserted`,
         );
         return result;
+    }
+
+    async resolveOrgIdAsync(userId: string): Promise<string> {
+        const user = await this.userRepo.findById(userId);
+        return user?.organizationId ?? 'org-1';
     }
 
     resolveOrgId(_userId: string): string {

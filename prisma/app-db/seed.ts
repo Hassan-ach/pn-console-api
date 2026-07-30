@@ -1,8 +1,8 @@
 import { PrismaClient } from '../../generated/app-db-client';
 import * as bcrypt from 'bcrypt';
 
-const SUPER_USER_EMAIL = 'superuser@pipenile.com';
-const SUPER_USER_PASSWORD = 'SuperUser123!';
+const SUPER_USER_EMAIL = 'hassan@pipenile.com';
+const SUPER_USER_PASSWORD = 'hassan123!';
 
 const prisma = new PrismaClient();
 
@@ -27,11 +27,12 @@ async function main() {
 
     const user = await prisma.user.create({
         data: {
-            firstName: 'Super',
-            lastName: 'User',
+            firstName: 'hassan',
+            lastName: 'hassan',
             email: SUPER_USER_EMAIL,
             passwordHash,
             providerType: 'EMAIL',
+            organizationId: 'org-1',
         },
     });
 
