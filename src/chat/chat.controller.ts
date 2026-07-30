@@ -30,25 +30,58 @@ import { SendMessageDto } from './dto/send-message.dto';
 export class ChatController {
     constructor(private readonly chatService: ChatService) {}
 
+    @Get('conversations')
+    @ApiOperation({ summary: 'List conversations for the authenticated user' })
+    @ApiOkResponse({
+        description: 'Returns paginated conversations ordered by updatedAt desc',
+    })
+    async getConversations(
+        @Req() req: Request & { user: { id: string } },
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    ) {
+        return this.chatService.getConversations(req.user.id, page, limit);
+    }
+
+    @Post('conversations')
+    @ApiOperation({ summary: 'Create a new empty conversation' })
+    async createConversation(
+        @Req() req: Request & { user: { id: string } },
+    ) {
+        return this.chatService.createConversation(req.user.id);
+    }
+
     @Get('messages')
-    @ApiOperation({ summary: 'Get chat history for the authenticated user' })
+    @ApiOperation({ summary: 'Get chat history for a conversation' })
     @ApiOkResponse({
         description: 'Returns paginated chat messages ordered by createdAt asc',
     })
     async getHistory(
         @Req() req: Request & { user: { id: string } },
+        @Query('conversationId') conversationId: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     ) {
-        return this.chatService.getHistory(req.user.id, page, limit);
+        return this.chatService.getHistory(
+            req.user.id,
+            conversationId,
+            page,
+            limit,
+        );
     }
 
     @Delete('messages/retract-last')
     @ApiOperation({
         summary: 'Delete the last USER+ASSISTANT message pair (for retry)',
     })
-    async retractLast(@Req() req: Request & { user: { id: string } }) {
-        return this.chatService.retractLastMessages(req.user.id);
+    async retractLast(
+        @Req() req: Request & { user: { id: string } },
+        @Query('conversationId') conversationId: string,
+    ) {
+        return this.chatService.retractLastMessages(
+            req.user.id,
+            conversationId,
+        );
     }
 
     @Post('messages')
@@ -63,6 +96,15 @@ export class ChatController {
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
+        const conversationId = await this.chatService.resolveConversation(
+            req.user.id,
+            dto.conversationId,
+        );
+
+        res.write(
+            `data: ${JSON.stringify({ type: 'metadata', conversationId })}\n\n`,
+        );
+
         const abortController = new AbortController();
         let isConnectionClosed = false;
 
@@ -74,6 +116,7 @@ export class ChatController {
         try {
             for await (const token of this.chatService.streamResponse(
                 req.user.id,
+                conversationId,
                 dto.message,
                 abortController.signal,
             )) {
