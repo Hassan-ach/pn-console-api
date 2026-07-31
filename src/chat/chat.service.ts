@@ -304,26 +304,61 @@ export class ChatService {
                 const stream = await llm.stream(messages, { signal });
                 let fullChunk: AIMessageChunk | null = null;
                 let turnContent = '';
-                let toolCalls: Array<{
-                    id?: string;
+                const detectedToolCalls: Array<{
+                    id: string;
                     name: string;
-                    args?: Record<string, unknown>;
+                    args: Record<string, unknown>;
                 }> = [];
                 const bufferedTokens: string[] = [];
                 const additionalKwargs: Record<string, unknown> = {};
 
                 for await (const chunk of stream) {
-                    if (chunk.content) {
-                        const token =
-                            typeof chunk.content === 'string'
-                                ? chunk.content
-                                : JSON.stringify(chunk.content);
-                        turnContent += token;
-                        bufferedTokens.push(token);
+                    let textToken = '';
+                    if (typeof chunk.content === 'string') {
+                        const trimmed = chunk.content.trim();
+                        if (
+                            !trimmed.startsWith('[{"type":"functionCall"') &&
+                            !trimmed.startsWith('{"type":"functionCall"')
+                        ) {
+                            textToken = chunk.content;
+                        }
+                    } else if (Array.isArray(chunk.content)) {
+                        for (const item of chunk.content) {
+                            if (typeof item === 'string') {
+                                textToken += item;
+                            } else if (
+                                typeof item === 'object' &&
+                                item !== null
+                            ) {
+                                const itemObj = item as Record<string, unknown>;
+                                if (
+                                    itemObj.type === 'text' &&
+                                    typeof itemObj.text === 'string'
+                                ) {
+                                    textToken += itemObj.text;
+                                }
+                            }
+                        }
                     }
 
-                    if (chunk.tool_calls && chunk.tool_calls.length > 0) {
-                        toolCalls = chunk.tool_calls;
+                    if (textToken) {
+                        turnContent += textToken;
+                        bufferedTokens.push(textToken);
+                    }
+
+                    const chunkCalls = this.extractToolCalls(chunk);
+                    for (const tc of chunkCalls) {
+                        if (
+                            !detectedToolCalls.some(
+                                (d) =>
+                                    d.id === tc.id ||
+                                    (d.name === tc.name &&
+                                        JSON.stringify(d.args) ===
+                                            JSON.stringify(tc.args)),
+                            )
+                        ) {
+                            detectedToolCalls.push(tc);
+                        }
                     }
 
                     if (chunk.additional_kwargs) {
@@ -370,27 +405,35 @@ export class ChatService {
                     }
                 }
 
-                interface ToolCallItem {
-                    name: string;
-                    args?: Record<string, unknown>;
-                    id?: string;
+                if (fullChunk) {
+                    const fullCalls = this.extractToolCalls(fullChunk);
+                    for (const tc of fullCalls) {
+                        if (
+                            !detectedToolCalls.some(
+                                (d) =>
+                                    d.id === tc.id ||
+                                    (d.name === tc.name &&
+                                        JSON.stringify(d.args) ===
+                                            JSON.stringify(tc.args)),
+                            )
+                        ) {
+                            detectedToolCalls.push(tc);
+                        }
+                    }
                 }
 
-                const rawToolCalls: ToolCallItem[] =
-                    (fullChunk?.tool_calls as ToolCallItem[] | undefined) ??
-                    toolCalls ??
-                    [];
-
-                if (rawToolCalls.length > 0) {
-                    const normalizedToolCalls = rawToolCalls.map((tc, idx) => ({
-                        name: String(tc.name),
-                        args: tc.args ?? {},
-                        id:
-                            typeof tc.id === 'string' && tc.id.trim() !== ''
-                                ? tc.id
-                                : `call_${idx}_${Date.now()}`,
-                        type: 'tool_call' as const,
-                    }));
+                if (detectedToolCalls.length > 0) {
+                    const normalizedToolCalls = detectedToolCalls.map(
+                        (tc, idx) => ({
+                            name: String(tc.name),
+                            args: tc.args ?? {},
+                            id:
+                                typeof tc.id === 'string' && tc.id.trim() !== ''
+                                    ? tc.id
+                                    : `call_${idx}_${Date.now()}`,
+                            type: 'tool_call' as const,
+                        }),
+                    );
 
                     const aiMessageToPush =
                         fullChunk ??
@@ -509,5 +552,132 @@ export class ChatService {
                 });
             }
         });
+    }
+
+    private extractToolCalls(chunk: AIMessageChunk): Array<{
+        id: string;
+        name: string;
+        args: Record<string, unknown>;
+    }> {
+        const extracted: Array<{
+            id: string;
+            name: string;
+            args: Record<string, unknown>;
+        }> = [];
+
+        if (chunk.tool_calls && chunk.tool_calls.length > 0) {
+            for (const tc of chunk.tool_calls) {
+                if (tc.name) {
+                    extracted.push({
+                        id:
+                            typeof tc.id === 'string' && tc.id.trim() !== ''
+                                ? tc.id
+                                : `call_${tc.name}_${Date.now()}`,
+                        name: String(tc.name),
+                        args: (tc.args as Record<string, unknown>) ?? {},
+                    });
+                }
+            }
+        }
+
+        if (chunk.invalid_tool_calls && chunk.invalid_tool_calls.length > 0) {
+            for (const tc of chunk.invalid_tool_calls) {
+                if (tc.name) {
+                    let parsedArgs: Record<string, unknown> = {};
+                    if (typeof tc.args === 'string') {
+                        try {
+                            parsedArgs = JSON.parse(tc.args) as Record<
+                                string,
+                                unknown
+                            >;
+                        } catch {}
+                    } else if (
+                        typeof tc.args === 'object' &&
+                        tc.args !== null
+                    ) {
+                        parsedArgs = tc.args as Record<string, unknown>;
+                    }
+                    extracted.push({
+                        id:
+                            typeof tc.id === 'string' && tc.id.trim() !== ''
+                                ? tc.id
+                                : `call_${tc.name}_${Date.now()}`,
+                        name: String(tc.name),
+                        args: parsedArgs,
+                    });
+                }
+            }
+        }
+
+        if (Array.isArray(chunk.content)) {
+            for (const item of chunk.content) {
+                if (typeof item === 'object' && item !== null) {
+                    const itemObj = item as Record<string, unknown>;
+                    if (
+                        itemObj.type === 'functionCall' &&
+                        itemObj.functionCall
+                    ) {
+                        const fc = itemObj.functionCall as Record<
+                            string,
+                            unknown
+                        >;
+                        const fcName = String(fc.name ?? '');
+                        if (fcName) {
+                            extracted.push({
+                                id: String(
+                                    fc.id ??
+                                        itemObj.id ??
+                                        `call_${fcName}_${Date.now()}`,
+                                ),
+                                name: fcName,
+                                args:
+                                    (fc.args as Record<string, unknown>) ?? {},
+                            });
+                        }
+                    } else if (itemObj.type === 'tool_use' && itemObj.name) {
+                        const toolName = String(itemObj.name);
+                        extracted.push({
+                            id: String(
+                                itemObj.id ?? `call_${toolName}_${Date.now()}`,
+                            ),
+                            name: toolName,
+                            args: (itemObj.input ??
+                                itemObj.args ??
+                                {}) as Record<string, unknown>,
+                        });
+                    }
+                }
+            }
+        }
+
+        const kwargs = chunk.additional_kwargs as
+            Record<string, unknown> | undefined;
+        if (kwargs?.function_call && typeof kwargs.function_call === 'object') {
+            const fc = kwargs.function_call as Record<string, unknown>;
+            const fcName = String(fc.name ?? '');
+            if (fcName) {
+                let parsedArgs: Record<string, unknown> = {};
+                if (typeof fc.arguments === 'string') {
+                    try {
+                        parsedArgs = JSON.parse(fc.arguments) as Record<
+                            string,
+                            unknown
+                        >;
+                    } catch {}
+                } else if (
+                    typeof fc.arguments === 'object' &&
+                    fc.arguments !== null
+                ) {
+                    parsedArgs = fc.arguments as Record<string, unknown>;
+                }
+                extracted.push({
+                    id: `call_${fcName}_${Date.now()}`,
+                    name: fcName,
+                    args: parsedArgs,
+                });
+            }
+        }
+
+        return extracted;
     }
 }
