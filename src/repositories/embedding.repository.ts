@@ -56,6 +56,7 @@ export class EmbeddingRepository {
 
         params.push(vector);
         const vectorIdx = params.length;
+        whereClause += ` AND vector_dims(iv."embedding") = vector_dims($${vectorIdx}::vector)`;
 
         const similarityExpr = `1 - (iv."embedding" <=> $${vectorIdx}::vector)`;
 

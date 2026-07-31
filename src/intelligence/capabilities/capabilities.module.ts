@@ -7,7 +7,6 @@ import { InsightsExtractionV2Module } from './insights-extraction-v2/insights-ex
 import { InsightExtractionCapabilityV2 } from './insights-extraction-v2/insight-extraction-v2.capability';
 import { SuggestionsCapabilityModule } from './suggestions/suggestions.capability.module';
 import { SuggestionsCapability } from './suggestions/suggestions.capability';
-import { MergeModule } from '../merge/merge.module';
 import { CapabilityManager } from './capability-manager.service';
 import { CAPABILITY } from './capability.token';
 
@@ -17,7 +16,6 @@ import { CAPABILITY } from './capability.token';
         KnowledgeGraphExtractionModule,
         InsightsExtractionV2Module,
         SuggestionsCapabilityModule,
-        MergeModule,
     ],
     providers: [
         CapabilityManager,
@@ -44,7 +42,6 @@ import { CAPABILITY } from './capability.token';
     ],
     exports: [
         CapabilityManager,
-        MergeModule,
         KnowledgeGraphExtractionModule,
         InsightsExtractionV2Module,
         SuggestionsCapabilityModule,

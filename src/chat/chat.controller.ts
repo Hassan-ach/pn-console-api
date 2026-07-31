@@ -68,9 +68,10 @@ export class ChatController {
     })
     async getHistory(
         @Req() req: Request & { user: { id: string } },
-        @Query('conversationId', ParseUUIDPipe) conversationId: string,
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+        @Query('conversationId', new ParseUUIDPipe({ optional: true }))
+        conversationId?: string,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+        @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
     ) {
         return this.chatService.getHistory(
             req.user.id,
@@ -86,7 +87,8 @@ export class ChatController {
     })
     async retractLast(
         @Req() req: Request & { user: { id: string } },
-        @Query('conversationId', ParseUUIDPipe) conversationId: string,
+        @Query('conversationId', new ParseUUIDPipe({ optional: true }))
+        conversationId?: string,
     ) {
         return this.chatService.retractLastMessages(
             req.user.id,

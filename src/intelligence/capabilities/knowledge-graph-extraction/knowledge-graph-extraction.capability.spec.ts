@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import { KnowledgeGraphExtractionCapability } from './knowledge-graph-extraction.capability';
 import { LlmService } from '../../llm/llm.service';
-import { EntityRepository } from 'src/repositories/entity.repository';
-import { RelationshipRepository } from 'src/repositories/relationship.repository';
+import { Neo4jService } from 'src/graph/neo4j.service';
 
 describe('KnowledgeGraphExtractionCapability', () => {
     let capability: KnowledgeGraphExtractionCapability;
@@ -11,8 +10,10 @@ describe('KnowledgeGraphExtractionCapability', () => {
         createGraphLLM: jest.Mock;
     };
     let mockGraphModel: { invoke: jest.Mock; withStructuredOutput?: jest.Mock };
-    let mockEntityRepo: { upsert: jest.Mock };
-    let mockRelationshipRepo: { upsert: jest.Mock };
+    let mockNeo4jService: {
+        getDriver: jest.Mock;
+        executeWrite: jest.Mock;
+    };
 
     beforeEach(async () => {
         mockGraphModel = {
@@ -38,27 +39,21 @@ describe('KnowledgeGraphExtractionCapability', () => {
             createGraphLLM: jest.fn().mockResolvedValue(mockGraphModel),
         };
 
-        mockEntityRepo = {
-            upsert: jest
-                .fn()
-                .mockImplementation((dto) =>
-                    Promise.resolve({ id: `id-${dto.name}`, name: dto.name }),
-                ),
-        };
-
-        mockRelationshipRepo = {
-            upsert: jest.fn().mockResolvedValue({ id: 'rel-1' }),
+        mockNeo4jService = {
+            getDriver: jest.fn().mockReturnValue({}),
+            executeWrite: jest.fn().mockImplementation((_cypher, params) => {
+                if (params?.name) {
+                    return Promise.resolve([{ id: `id-${params.name}` }]);
+                }
+                return Promise.resolve([{ id: 'rel-1' }]);
+            }),
         };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 KnowledgeGraphExtractionCapability,
                 { provide: LlmService, useValue: mockLlmService },
-                { provide: EntityRepository, useValue: mockEntityRepo },
-                {
-                    provide: RelationshipRepository,
-                    useValue: mockRelationshipRepo,
-                },
+                { provide: Neo4jService, useValue: mockNeo4jService },
             ],
         }).compile();
 
@@ -82,7 +77,7 @@ describe('KnowledgeGraphExtractionCapability', () => {
         expect(mockLlmService.createGraphLLM).not.toHaveBeenCalled();
     });
 
-    it('should perform single-pass direct structured extraction and merge nodes & relationships', async () => {
+    it('should perform single-pass direct structured extraction and merge nodes & relationships to Neo4j', async () => {
         const sampleEnvelopes: any[] = [
             {
                 envelope: {
@@ -106,7 +101,6 @@ describe('KnowledgeGraphExtractionCapability', () => {
 
         expect(result.capabilityName).toBe('knowledge-graph-extractor');
         expect(result.insights).toEqual([]); // Must never return insights
-        expect(mockEntityRepo.upsert).toHaveBeenCalledTimes(2);
-        expect(mockRelationshipRepo.upsert).toHaveBeenCalledTimes(1);
+        expect(mockNeo4jService.executeWrite).toHaveBeenCalledTimes(3); // 2 nodes + 1 rel
     });
 });

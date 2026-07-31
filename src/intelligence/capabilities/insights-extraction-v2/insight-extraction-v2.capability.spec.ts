@@ -5,7 +5,7 @@ import { GraphToolsService } from '../../tools/graph-tools.service';
 import { SearchToolsService } from '../../tools/search-tools.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository } from 'src/repositories/user.repository';
-import { EntityRepository } from 'src/repositories/entity.repository';
+import { Neo4jService } from 'src/graph/neo4j.service';
 import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
@@ -54,8 +54,9 @@ describe('InsightExtractionCapabilityV2', () => {
             ]),
         };
 
-        const mockEntityRepo = {
-            search: jest.fn().mockResolvedValue([]),
+        const mockNeo4jService = {
+            getDriver: jest.fn().mockReturnValue({}),
+            executeRead: jest.fn().mockResolvedValue([]),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -72,7 +73,7 @@ describe('InsightExtractionCapabilityV2', () => {
                     useValue: mockPlatformUserMappingRepo,
                 },
                 { provide: UserRepository, useValue: mockUserRepo },
-                { provide: EntityRepository, useValue: mockEntityRepo },
+                { provide: Neo4jService, useValue: mockNeo4jService },
             ],
         }).compile();
 

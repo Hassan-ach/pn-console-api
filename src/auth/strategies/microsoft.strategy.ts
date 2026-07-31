@@ -15,13 +15,15 @@ interface MicrosoftProfile {
 export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     constructor(configService: ConfigService) {
         super({
-            clientID: configService.getOrThrow<string>('MICROSOFT_CLIENT_ID'),
-            clientSecret: configService.getOrThrow<string>(
-                'MICROSOFT_CLIENT_SECRET',
-            ),
-            callbackURL: configService.getOrThrow<string>(
-                'MICROSOFT_CALLBACK_URL',
-            ),
+            clientID:
+                configService.get<string>('oauth.microsoft.clientId') ||
+                configService.getOrThrow<string>('MICROSOFT_CLIENT_ID'),
+            clientSecret:
+                configService.get<string>('oauth.microsoft.clientSecret') ||
+                configService.getOrThrow<string>('MICROSOFT_CLIENT_SECRET'),
+            callbackURL:
+                configService.get<string>('oauth.microsoft.callbackUrl') ||
+                configService.getOrThrow<string>('MICROSOFT_CALLBACK_URL'),
             scope: ['user.read'],
             tenant: 'common',
         });
