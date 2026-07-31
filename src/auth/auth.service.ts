@@ -297,8 +297,6 @@ export class AuthService {
         return { token: resetToken.token };
     }
 
-
-
     private async loginOrCreateOAuthUser(
         profile: { email: string; firstName: string; lastName: string },
         provider: 'GOOGLE' | 'MICROSOFT' | 'SSO',

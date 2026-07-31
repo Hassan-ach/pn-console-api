@@ -322,6 +322,14 @@ describe('ChatService', () => {
     });
 
     describe('streamResponse', () => {
+        async function consumeStream(
+            gen: AsyncGenerator<unknown>,
+        ): Promise<void> {
+            for await (const token of gen) {
+                expect(token).toBeDefined();
+            }
+        }
+
         beforeEach(() => {
             mockAppDb.chatMessage.findMany.mockResolvedValue([
                 {
@@ -361,10 +369,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(callOrder[0]).toBe('findMany');
             expect(callOrder[1]).toBe('create');
@@ -376,10 +381,7 @@ describe('ChatService', () => {
                 'conv-1',
                 'What are my tasks?',
             );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(1, {
                 data: {
@@ -413,10 +415,7 @@ describe('ChatService', () => {
 
         it('builds context via ChatContextService', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockChatContext.buildContext).toHaveBeenCalledWith(
                 'user-1',
@@ -426,10 +425,7 @@ describe('ChatService', () => {
 
         it('loads last 20 messages with desc ordering for history', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -450,10 +446,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalled();
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -476,10 +469,7 @@ describe('ChatService', () => {
             mockAppDb.chatMessage.findMany.mockResolvedValue([]);
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalled();
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -503,10 +493,7 @@ describe('ChatService', () => {
 
         it('saves full assistant response after streaming', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
                 data: {
@@ -550,10 +537,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
                 data: {
@@ -585,10 +569,7 @@ describe('ChatService', () => {
                 'hello',
                 abortController.signal,
             );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalledWith(
                 expect.any(Array),

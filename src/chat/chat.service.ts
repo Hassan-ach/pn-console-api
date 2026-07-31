@@ -307,7 +307,7 @@ export class ChatService {
                 let toolCalls: Array<{
                     id?: string;
                     name: string;
-                    args: Record<string, unknown>;
+                    args?: Record<string, unknown>;
                 }> = [];
                 const bufferedTokens: string[] = [];
                 const additionalKwargs: Record<string, unknown> = {};
@@ -322,9 +322,7 @@ export class ChatService {
                         bufferedTokens.push(token);
                     }
 
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                     if (chunk.tool_calls && chunk.tool_calls.length > 0) {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                         toolCalls = chunk.tool_calls;
                     }
 
@@ -364,21 +362,31 @@ export class ChatService {
                         }
                     }
 
-                    if (typeof (chunk as any).concat === 'function') {
-                        fullChunk = fullChunk
-                            ? fullChunk.concat(chunk as AIMessageChunk)
-                            : (chunk as AIMessageChunk);
+                    const chunkObj = chunk as unknown as {
+                        concat?: (other: AIMessageChunk) => AIMessageChunk;
+                    };
+                    if (typeof chunkObj.concat === 'function') {
+                        fullChunk = fullChunk ? chunkObj.concat(chunk) : chunk;
                     }
                 }
 
-                const rawToolCalls = fullChunk?.tool_calls ?? toolCalls ?? [];
+                interface ToolCallItem {
+                    name: string;
+                    args?: Record<string, unknown>;
+                    id?: string;
+                }
+
+                const rawToolCalls: ToolCallItem[] =
+                    (fullChunk?.tool_calls as ToolCallItem[] | undefined) ??
+                    toolCalls ??
+                    [];
 
                 if (rawToolCalls.length > 0) {
                     const normalizedToolCalls = rawToolCalls.map((tc, idx) => ({
-                        name: tc.name,
-                        args: (tc.args ?? {}) as Record<string, unknown>,
+                        name: String(tc.name),
+                        args: tc.args ?? {},
                         id:
-                            tc.id && tc.id.trim() !== ''
+                            typeof tc.id === 'string' && tc.id.trim() !== ''
                                 ? tc.id
                                 : `call_${idx}_${Date.now()}`,
                         type: 'tool_call' as const,
@@ -399,8 +407,12 @@ export class ChatService {
                             additionalKwargs.reasoning_content;
                     }
 
+                    const callSummaries = normalizedToolCalls
+                        .map((t) => `${t.name}:${t.id}`)
+                        .join(', ');
+
                     this.logger.debug(
-                        `[Chat Tool Call] Iteration ${iter + 1}: Executing ${normalizedToolCalls.length} tool calls (${normalizedToolCalls.map((t) => `${t.name}:${t.id}`).join(', ')})`,
+                        `[Chat Tool Call] Iteration ${iter + 1}: Executing ${normalizedToolCalls.length} tool calls (${callSummaries})`,
                     );
 
                     messages.push(aiMessageToPush);
@@ -410,8 +422,9 @@ export class ChatService {
                         let toolOutput = '';
                         if (tool) {
                             try {
-                                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                                const res = await tool.invoke(call.args);
+                                const res: unknown = await tool.invoke(
+                                    call.args,
+                                );
                                 toolOutput =
                                     typeof res === 'string'
                                         ? res
