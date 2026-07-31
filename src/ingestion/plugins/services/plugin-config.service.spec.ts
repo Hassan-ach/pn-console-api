@@ -3,6 +3,7 @@ import { PluginConfigService } from './plugin-config.service';
 import { PluginConfigRepository } from '../../../repositories/plugin-config.repository';
 import { ActiveChatListenerRepository } from '../../../repositories/active-chat-listener.repository';
 import { EVENT_BUS_TOKEN } from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { PluginStatus } from 'generated/app-db-client';
 
 const mockConfigRepo = {
@@ -109,7 +110,7 @@ describe('PluginConfigService', () => {
                 'u1',
             );
             expect(mockEventBus.publish).toHaveBeenCalledWith(
-                'plugin.config.updated',
+                Events.PLUGIN_CONFIG_UPDATED,
                 expect.objectContaining({ pluginName: 'telegram' }),
             );
         });

@@ -4,7 +4,6 @@ import { LlmModule } from './llm/llm.module';
 import { ChunkingModule } from './chunking/chunking.module';
 import { CapabilitiesModule } from './capabilities/capabilities.module';
 import { StoreModule } from './store/store.module';
-import { MergeModule } from './merge/merge.module';
 import { ToolsModule } from './tools/tools.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
 import { JobsModule } from '../jobs/jobs.module';
@@ -20,7 +19,6 @@ import { EnvelopesIngestedListener } from './triggers/envelopes-ingested.listene
         ChunkingModule,
         CapabilitiesModule,
         StoreModule,
-        MergeModule,
         ToolsModule,
         RepositoriesModule,
         JobsModule,

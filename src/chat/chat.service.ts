@@ -183,12 +183,24 @@ export class ChatService {
 
     async getHistory(
         userId: string,
-        conversationId: string,
+        conversationId?: string,
         page = 1,
         limit = 50,
     ): Promise<ChatMessageRecord[]> {
+        const targetId =
+            conversationId ??
+            (
+                await this.appDb.conversation.findFirst({
+                    where: { userId },
+                    orderBy: { updatedAt: 'desc' },
+                    select: { id: true },
+                })
+            )?.id;
+
+        if (!targetId) return [];
+
         return this.appDb.chatMessage.findMany({
-            where: { userId, conversationId },
+            where: { userId, conversationId: targetId },
             orderBy: { createdAt: 'asc' },
             skip: (page - 1) * limit,
             take: limit,
@@ -237,10 +249,24 @@ export class ChatService {
 
     async retractLastMessages(
         userId: string,
-        conversationId: string,
+        conversationId?: string,
     ): Promise<void> {
+        const targetId =
+            conversationId ??
+            (
+                await this.appDb.conversation.findFirst({
+                    where: { userId },
+                    orderBy: { updatedAt: 'desc' },
+                    select: { id: true },
+                })
+            )?.id;
+
+        if (!targetId) {
+            throw new BadRequestException('Not enough messages to retract');
+        }
+
         const lastTwo = await this.appDb.chatMessage.findMany({
-            where: { userId, conversationId },
+            where: { userId, conversationId: targetId },
             orderBy: { createdAt: 'desc' },
             take: 2,
             select: { id: true, role: true },

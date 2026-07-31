@@ -23,9 +23,11 @@ import { SsoStrategy } from './strategies/sso.strategy';
         JwtModule.registerAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService): JwtModuleOptions => ({
-                secret: config.getOrThrow<string>('JWT_SECRET'),
+                secret:
+                    config.get<string>('jwt.secret') ||
+                    config.getOrThrow<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: (config.get<string>('JWT_EXPIRATION') ??
+                    expiresIn: (config.get<string>('jwt.expiration') ??
                         '7d') as JwtModuleOptions['signOptions'] extends {
                         expiresIn?: infer T;
                     }

@@ -8,20 +8,30 @@ export class MailService {
     private readonly transporter: nodemailer.Transporter;
 
     constructor(private readonly config: ConfigService) {
-        const smtpUser = config.get<string>('SMTP_USER');
-        const smtpPass = config.get<string>('SMTP_PASS');
+        const smtpUser =
+            config.get<string>('smtp.user') ?? config.get<string>('SMTP_USER');
+        const smtpPass =
+            config.get<string>('smtp.pass') ?? config.get<string>('SMTP_PASS');
 
         this.transporter = nodemailer.createTransport({
-            host: config.get<string>('SMTP_HOST'),
-            port: config.get<number>('SMTP_PORT'),
+            host:
+                config.get<string>('smtp.host') ??
+                config.get<string>('SMTP_HOST'),
+            port:
+                config.get<number>('smtp.port') ??
+                config.get<number>('SMTP_PORT'),
             secure: false,
             ...(smtpUser ? { auth: { user: smtpUser, pass: smtpPass } } : {}),
         });
     }
 
     async sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+        const from =
+            this.config.get<string>('smtp.from') ??
+            this.config.get<string>('SMTP_FROM') ??
+            'noreply@pnconsole.com';
         await this.transporter.sendMail({
-            from: `"mosaid" <${this.config.get<string>('SMTP_FROM')}>`,
+            from: `"mosaid" <${from}>`,
             to,
             subject: 'Reset your password',
             html: `
