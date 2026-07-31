@@ -7,15 +7,27 @@ import { Strategy } from 'passport-openidconnect';
 export class SsoStrategy extends PassportStrategy(Strategy, 'sso') {
     constructor(configService: ConfigService) {
         super({
-            issuer: configService.getOrThrow<string>('SSO_ISSUER'),
-            authorizationURL: configService.getOrThrow<string>(
-                'SSO_AUTHORIZATION_URL',
-            ),
-            tokenURL: configService.getOrThrow<string>('SSO_TOKEN_URL'),
-            userInfoURL: configService.getOrThrow<string>('SSO_USERINFO_URL'),
-            clientID: configService.getOrThrow<string>('SSO_CLIENT_ID'),
-            clientSecret: configService.getOrThrow<string>('SSO_CLIENT_SECRET'),
-            callbackURL: configService.getOrThrow<string>('SSO_CALLBACK_URL'),
+            issuer:
+                configService.get<string>('oauth.sso.issuer') ||
+                configService.getOrThrow<string>('SSO_ISSUER'),
+            authorizationURL:
+                configService.get<string>('oauth.sso.authorizationUrl') ||
+                configService.getOrThrow<string>('SSO_AUTHORIZATION_URL'),
+            tokenURL:
+                configService.get<string>('oauth.sso.tokenUrl') ||
+                configService.getOrThrow<string>('SSO_TOKEN_URL'),
+            userInfoURL:
+                configService.get<string>('oauth.sso.userInfoUrl') ||
+                configService.getOrThrow<string>('SSO_USERINFO_URL'),
+            clientID:
+                configService.get<string>('oauth.sso.clientId') ||
+                configService.getOrThrow<string>('SSO_CLIENT_ID'),
+            clientSecret:
+                configService.get<string>('oauth.sso.clientSecret') ||
+                configService.getOrThrow<string>('SSO_CLIENT_SECRET'),
+            callbackURL:
+                configService.get<string>('oauth.sso.callbackUrl') ||
+                configService.getOrThrow<string>('SSO_CALLBACK_URL'),
             scope: 'openid profile email',
             prompt: 'login',
         });

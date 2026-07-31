@@ -7,13 +7,15 @@ import { Profile, Strategy } from 'passport-google-oauth20';
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     constructor(configService: ConfigService) {
         super({
-            clientID: configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
-            clientSecret: configService.getOrThrow<string>(
-                'GOOGLE_CLIENT_SECRET',
-            ),
-            callbackURL: configService.getOrThrow<string>(
-                'GOOGLE_CALLBACK_URL',
-            ),
+            clientID:
+                configService.get<string>('oauth.google.clientId') ||
+                configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+            clientSecret:
+                configService.get<string>('oauth.google.clientSecret') ||
+                configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
+            callbackURL:
+                configService.get<string>('oauth.google.callbackUrl') ||
+                configService.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
             scope: ['email', 'profile'],
         });
     }

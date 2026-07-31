@@ -21,17 +21,4 @@ export interface TelegramMessageRaw {
     raw: Record<string, unknown>;
 }
 
-export interface TelegramSession {
-    id: string;
-    phone: string;
-    sessionString: string;
-    createdAt: string;
-    updatedAt: string;
-}
 
-export interface PendingAuth {
-    id: string;
-    phone: string;
-    phoneCodeHash: string;
-    expiresAt: string;
-}
