@@ -17,6 +17,7 @@ import {
     EVENT_BUS_TOKEN,
     type IEventBus,
 } from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import {
     PluginActivatedEvent,
     PluginDeactivatedEvent,
@@ -89,7 +90,7 @@ export class PluginActivationService {
             await this.syncChatSubscriptions(userId, orgId, pluginName, chats);
 
         this.eventBus.publish(
-            'plugin.activated',
+            Events.PLUGIN_ACTIVATED,
             new PluginActivatedEvent(userId, pluginName, config),
         );
 
@@ -116,7 +117,7 @@ export class PluginActivationService {
         }
 
         this.eventBus.publish(
-            'plugin.deactivated',
+            Events.PLUGIN_DEACTIVATED,
             new PluginDeactivatedEvent(userId, pluginName, config),
         );
 

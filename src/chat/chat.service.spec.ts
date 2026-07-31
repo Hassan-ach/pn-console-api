@@ -155,6 +155,34 @@ describe('ChatService', () => {
             expect(result).toEqual([]);
         });
 
+        it('resolves latest conversation when conversationId is omitted', async () => {
+            mockAppDb.conversation.findFirst.mockResolvedValue({
+                id: 'conv-latest',
+            });
+
+            await service.getHistory('user-1');
+
+            expect(mockAppDb.conversation.findFirst).toHaveBeenCalledWith({
+                where: { userId: 'user-1' },
+                orderBy: { updatedAt: 'desc' },
+                select: { id: true },
+            });
+            expect(mockAppDb.chatMessage.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { userId: 'user-1', conversationId: 'conv-latest' },
+                }),
+            );
+        });
+
+        it('returns empty array when conversationId is omitted and no conversations exist', async () => {
+            mockAppDb.conversation.findFirst.mockResolvedValue(null);
+
+            const result = await service.getHistory('user-1');
+
+            expect(result).toEqual([]);
+            expect(mockAppDb.chatMessage.findMany).not.toHaveBeenCalled();
+        });
+
         it('returns messages from the database', async () => {
             const messages = [
                 {

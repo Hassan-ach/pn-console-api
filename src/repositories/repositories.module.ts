@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppDbModule } from 'src/prisma/app-db/app-db.module';
 import { RawDbModule } from 'src/prisma/raw-db/raw-db.module';
+
 import { InsightRepository } from './insight.repository';
 import { InsightActionRepository } from './insight-action.repository';
 import { PlatformUserMappingRepository } from './platform-user-mapping.repository';
@@ -12,8 +13,6 @@ import { ActiveChatListenerRepository } from './active-chat-listener.repository'
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
 import { EmbeddingRepository } from './embedding.repository';
-import { EntityRepository } from './entity.repository';
-import { RelationshipRepository } from './relationship.repository';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
 import { OrgStructureRepository } from './org-structure.repository';
 
@@ -31,8 +30,6 @@ import { OrgStructureRepository } from './org-structure.repository';
         JobRepository,
         UserRepository,
         EmbeddingRepository,
-        EntityRepository,
-        RelationshipRepository,
         InsightSuggestionRepository,
         OrgStructureRepository,
     ],
@@ -48,8 +45,6 @@ import { OrgStructureRepository } from './org-structure.repository';
         JobRepository,
         UserRepository,
         EmbeddingRepository,
-        EntityRepository,
-        RelationshipRepository,
         InsightSuggestionRepository,
         OrgStructureRepository,
     ],

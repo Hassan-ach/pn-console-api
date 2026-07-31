@@ -1,15 +1,20 @@
 import {
     BadRequestException,
     ConflictException,
+    Inject,
     Injectable,
     Logger,
     UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import {
+    EVENT_BUS_TOKEN,
+    type IEventBus,
+} from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { MailService } from '../mail/mail.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -26,7 +31,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly mailService: MailService,
         private readonly configService: ConfigService,
-        private readonly eventEmitter: EventEmitter2,
+        @Inject(EVENT_BUS_TOKEN) private readonly eventBus: IEventBus,
     ) {}
 
     async loginOrCreateGoogleUser(profile: {
@@ -93,8 +98,8 @@ export class AuthService {
             organizationId: user.organizationId ?? 'org-1',
         });
 
-        this.eventEmitter.emit(
-            'user.signed.up',
+        this.eventBus.publish(
+            Events.USER_SIGNED_UP,
             new UserSignedUpEvent(
                 user.id,
                 user.firstName,
@@ -402,8 +407,8 @@ export class AuthService {
             organizationId: user.organizationId ?? 'org-1',
         });
 
-        this.eventEmitter.emit(
-            'user.signed.up',
+        this.eventBus.publish(
+            Events.USER_SIGNED_UP,
             new UserSignedUpEvent(
                 user.id,
                 user.firstName,

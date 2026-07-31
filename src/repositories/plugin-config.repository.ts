@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+    Injectable,
+    Inject,
+    Optional,
+    NotFoundException,
+} from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma, PluginStatus } from 'generated/app-db-client';
+import { CACHE_STORE_TOKEN } from 'src/common/providers/cache-store/cache-store.interface';
+import type { ICacheStore } from 'src/common/providers/cache-store/cache-store.interface';
 
 export interface PluginConfigData {
     id: string;
@@ -19,26 +26,78 @@ export interface PluginConfigData {
 
 @Injectable()
 export class PluginConfigRepository {
-    constructor(private readonly prisma: AppDbService) {}
+    private readonly DEFAULT_TTL_MS = 60000; // 60s TTL
+
+    constructor(
+        private readonly prisma: AppDbService,
+        @Optional()
+        @Inject(CACHE_STORE_TOKEN)
+        private readonly cacheStore?: ICacheStore,
+    ) {}
+
+    private getCacheKey(userId: string, pluginName: string): string {
+        return `plugin_config:${userId}:${pluginName}`;
+    }
+
+    private async invalidateCache(
+        userId: string,
+        pluginName: string,
+    ): Promise<void> {
+        if (this.cacheStore) {
+            try {
+                await this.cacheStore.delete(
+                    this.getCacheKey(userId, pluginName),
+                );
+            } catch {
+                // Non-fatal cache deletion error
+            }
+        }
+    }
 
     async findUnique(
         userId: string,
         pluginName: string,
     ): Promise<PluginConfigData | null> {
+        const cacheKey = this.getCacheKey(userId, pluginName);
+        if (this.cacheStore) {
+            try {
+                const cached =
+                    await this.cacheStore.get<PluginConfigData>(cacheKey);
+                if (cached) {
+                    return this.rehydrateDates(cached);
+                }
+            } catch {
+                // Non-fatal cache read error; fall back to DB
+            }
+        }
+
         const row = await this.prisma.pluginConfig.findUnique({
             where: { userId_pluginName: { userId, pluginName } },
         });
-        return row ? this.toData(row) : null;
+        const data = row ? this.toData(row) : null;
+
+        if (data && this.cacheStore) {
+            try {
+                await this.cacheStore.set(cacheKey, data, this.DEFAULT_TTL_MS);
+            } catch {
+                // Non-fatal cache write error
+            }
+        }
+
+        return data;
     }
 
     async findUniqueOrThrow(
         userId: string,
         pluginName: string,
     ): Promise<PluginConfigData> {
-        const row = await this.prisma.pluginConfig.findUniqueOrThrow({
-            where: { userId_pluginName: { userId, pluginName } },
-        });
-        return this.toData(row);
+        const result = await this.findUnique(userId, pluginName);
+        if (!result) {
+            throw new NotFoundException(
+                `Configuration not found for plugin ${pluginName}`,
+            );
+        }
+        return result;
     }
 
     async findMany(filter?: {
@@ -85,6 +144,7 @@ export class PluginConfigRepository {
                 }),
             },
         });
+        await this.invalidateCache(userId, pluginName);
         return this.toData(row);
     }
 
@@ -101,7 +161,7 @@ export class PluginConfigRepository {
             errorMessage?: string | null;
         },
     ): Promise<PluginConfigData> {
-        return this.prisma.$transaction(async (tx) => {
+        const result = await this.prisma.$transaction(async (tx) => {
             const current = await tx.pluginConfig.findUnique({
                 where: {
                     userId_pluginName: { userId, pluginName },
@@ -156,6 +216,9 @@ export class PluginConfigRepository {
 
             return this.toData(row);
         });
+
+        await this.invalidateCache(userId, pluginName);
+        return result;
     }
 
     async updateSessionString(
@@ -167,6 +230,7 @@ export class PluginConfigRepository {
             where: { userId_pluginName: { userId, pluginName } },
             data: { sessionString },
         });
+        await this.invalidateCache(userId, pluginName);
         return this.toData(row);
     }
 
@@ -178,6 +242,7 @@ export class PluginConfigRepository {
             where: { userId_pluginName: { userId, pluginName } },
             data: { sessionString: null },
         });
+        await this.invalidateCache(userId, pluginName);
         return this.toData(row);
     }
 
@@ -188,6 +253,7 @@ export class PluginConfigRepository {
         const row = await this.prisma.pluginConfig.delete({
             where: { userId_pluginName: { userId, pluginName } },
         });
+        await this.invalidateCache(userId, pluginName);
         return this.toData(row);
     }
 
@@ -222,6 +288,15 @@ export class PluginConfigRepository {
             errorMessage: row.errorMessage,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
+        };
+    }
+
+    private rehydrateDates(data: PluginConfigData): PluginConfigData {
+        return {
+            ...data,
+            activatedAt: data.activatedAt ? new Date(data.activatedAt) : null,
+            createdAt: new Date(data.createdAt),
+            updatedAt: new Date(data.updatedAt),
         };
     }
 }

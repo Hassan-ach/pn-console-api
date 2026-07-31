@@ -2,7 +2,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+    EVENT_BUS_TOKEN,
+    type IEventBus,
+} from 'src/common/providers/event-bus/event-bus.interface';
 import { IntelligenceEngineService } from './intelligence-engine.service';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
@@ -91,7 +94,7 @@ describe('IntelligenceEngineService', () => {
     let mockFailureRepository: jest.Mocked<CapabilityFailureRepository>;
     let mockEnvelopeRepo: jest.Mocked<EnvelopeRepository>;
     let mockConfig: jest.Mocked<ConfigService>;
-    let mockEventEmitter: jest.Mocked<EventEmitter2>;
+    let mockEventBus: jest.Mocked<IEventBus>;
 
     beforeEach(async () => {
         jest.clearAllMocks();
@@ -145,10 +148,11 @@ describe('IntelligenceEngineService', () => {
             }),
         } as unknown as jest.Mocked<ConfigService>;
 
-        mockEventEmitter = {
-            emit: jest.fn(),
-            emitAsync: jest.fn().mockResolvedValue([{ jobId: 'job-1' }]),
-        } as unknown as jest.Mocked<EventEmitter2>;
+        mockEventBus = {
+            publish: jest.fn(),
+            publishAsync: jest.fn().mockResolvedValue([{ jobId: 'job-1' }]),
+            subscribe: jest.fn(),
+        };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -169,7 +173,7 @@ describe('IntelligenceEngineService', () => {
                 },
                 { provide: EnvelopeRepository, useValue: mockEnvelopeRepo },
                 { provide: ConfigService, useValue: mockConfig },
-                { provide: EventEmitter2, useValue: mockEventEmitter },
+                { provide: EVENT_BUS_TOKEN, useValue: mockEventBus },
             ],
         }).compile();
 

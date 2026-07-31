@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InsightRepository } from 'src/repositories/insight.repository';
 import { EmbeddingRepository } from 'src/repositories/embedding.repository';
 import { Insight } from 'src/types/insight.types';
@@ -7,6 +6,7 @@ import {
     EVENT_BUS_TOKEN,
     type IEventBus,
 } from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 
 @Injectable()
 export class InsightPersistenceService implements OnModuleInit {
@@ -15,7 +15,6 @@ export class InsightPersistenceService implements OnModuleInit {
     constructor(
         private readonly repo: InsightRepository,
         private readonly embeddingRepository: EmbeddingRepository,
-        private readonly eventEmitter: EventEmitter2,
         @Inject(EVENT_BUS_TOKEN) private readonly eventBus: IEventBus,
     ) {}
 
@@ -38,7 +37,7 @@ export class InsightPersistenceService implements OnModuleInit {
                 content: v.content,
             }));
 
-            this.eventBus.publish('embeddings.generate', { items });
+            this.eventBus.publish(Events.EMBEDDINGS_GENERATE, { items });
         } catch (error) {
             this.logger.warn(
                 `Failed to query missing embeddings for backfill event: ${(error as Error).message}`,
@@ -114,7 +113,7 @@ export class InsightPersistenceService implements OnModuleInit {
             this.logger.debug(
                 `Publishing 'insight.versions.created' event for ${itemsToEmbed.length} items to process in background`,
             );
-            this.eventBus.publish('insight.versions.created', {
+            this.eventBus.publish(Events.INSIGHT_VERSIONS_CREATED, {
                 items: itemsToEmbed,
             });
         }

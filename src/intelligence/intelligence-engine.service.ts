@@ -1,6 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+    EVENT_BUS_TOKEN,
+    type IEventBus,
+} from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { EnterpriseContextBuilder } from './context/builders/enterprise-context-builder.abstract';
 import { PreviousIntelligenceQuery } from './context/types/enterprise-context.types';
 import { ChunkingPipeline } from './chunking/services/chunking-pipeline.service';
@@ -32,7 +36,7 @@ export class IntelligenceEngineService {
         private readonly failureRepository: CapabilityFailureRepository,
         private readonly envelopeRepo: EnvelopeRepository,
         private readonly config: ConfigService,
-        private readonly eventEmitter: EventEmitter2,
+        @Inject(EVENT_BUS_TOKEN) private readonly eventBus: IEventBus,
     ) {
         this.previousInsightLimit = this.config.get<number>(
             'engine.previousInsightLimit',
@@ -61,8 +65,8 @@ export class IntelligenceEngineService {
         let jobId: string | undefined;
 
         if (opts?.userId) {
-            const results = (await this.eventEmitter.emitAsync(
-                'job.intelligence.started',
+            const results = (await this.eventBus.publishAsync?.(
+                Events.JOB_INTELLIGENCE_STARTED,
                 new IntelligenceJobStartedEvent(
                     organizationId,
                     opts.userId,
@@ -80,8 +84,8 @@ export class IntelligenceEngineService {
         try {
             const result = await this.executeRun(organizationId, opts, jobId);
             if (jobId) {
-                this.eventEmitter.emit(
-                    'job.intelligence.completed',
+                this.eventBus.publish(
+                    Events.JOB_INTELLIGENCE_COMPLETED,
                     new IntelligenceJobCompletedEvent(
                         jobId,
                         `${result.insightsPersisted} insights persisted`,
@@ -91,8 +95,8 @@ export class IntelligenceEngineService {
             return result;
         } catch (error) {
             if (jobId) {
-                this.eventEmitter.emit(
-                    'job.intelligence.failed',
+                this.eventBus.publish(
+                    Events.JOB_INTELLIGENCE_FAILED,
                     new IntelligenceJobFailedEvent(
                         jobId,
                         error instanceof Error
@@ -136,8 +140,8 @@ export class IntelligenceEngineService {
             );
 
             if (jobId) {
-                this.eventEmitter.emit(
-                    'job.intelligence.message',
+                this.eventBus.publish(
+                    Events.JOB_INTELLIGENCE_MESSAGE,
                     new IntelligenceJobMessageEvent(
                         jobId,
                         `Processing window ${windowCount}`,

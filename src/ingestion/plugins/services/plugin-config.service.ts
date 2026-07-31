@@ -8,7 +8,11 @@ import {
     EVENT_BUS_TOKEN,
     type IEventBus,
 } from 'src/common/providers/event-bus/event-bus.interface';
-import { PluginConfigUpdatedEvent } from '../../events/ingestion.events';
+import { Events } from 'src/common/providers/event-bus/events.registry';
+import {
+    PluginConfigUpdatedEvent,
+    PluginDeactivatedEvent,
+} from '../../events/ingestion.events';
 import { extractProviderChats } from '../interfaces/provider-config.interface';
 
 @Injectable()
@@ -77,7 +81,7 @@ export class PluginConfigService {
                 );
             }
             this.eventBus.publish(
-                'plugin.config.updated',
+                Events.PLUGIN_CONFIG_UPDATED,
                 new PluginConfigUpdatedEvent(userId, name, updated),
             );
         }
@@ -88,10 +92,22 @@ export class PluginConfigService {
     }
 
     async disconnect(name: string, userId: string): Promise<void> {
+        const config = await this.configRepo.findUnique(userId, name);
         await this.configRepo.clearSessionString(userId, name);
-        await this.configRepo.update(userId, name, {
+        const updated = await this.configRepo.update(userId, name, {
             status: PluginStatus.CONNECTED,
         });
+
+        if (config) {
+            const chats = extractProviderChats(config.config);
+            for (const chat of chats) {
+                await this.activeChatRepo.unsubscribe(name, chat.id, userId);
+            }
+            this.eventBus.publish(
+                Events.PLUGIN_DEACTIVATED,
+                new PluginDeactivatedEvent(userId, name, updated),
+            );
+        }
     }
 
     async login(

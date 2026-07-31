@@ -2,8 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DynamicStructuredTool, StructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { EntityRepository } from 'src/repositories/entity.repository';
-import { RelationshipRepository } from 'src/repositories/relationship.repository';
+import { randomUUID } from 'node:crypto';
 import { Neo4jService } from 'src/graph/neo4j.service';
 
 @Injectable()
@@ -12,8 +11,6 @@ export class GraphToolsService {
     private readonly defaultMaxDepth: number;
 
     constructor(
-        private readonly entityRepo: EntityRepository,
-        private readonly relationshipRepo: RelationshipRepository,
         private readonly config: ConfigService,
         @Optional() private readonly neo4jService?: Neo4jService,
     ) {
@@ -42,43 +39,31 @@ export class GraphToolsService {
                 );
 
                 try {
-                    // Query Neo4j if available
                     if (this.neo4jService?.getDriver()) {
-                        try {
-                            const cypher = `
-                                MATCH (e)
-                                WHERE (toLower(e.name) CONTAINS toLower($query) OR toLower(coalesce(e.role, '')) CONTAINS toLower($query))
-                                ${type ? 'AND labels(e)[0] = $type' : ''}
-                                RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata
-                                LIMIT 20
-                            `;
-                            const neoResults =
-                                await this.neo4jService.executeRead(cypher, {
-                                    query,
-                                    type: type ?? '',
-                                });
-                            if (neoResults.length > 0) {
-                                this.logger.debug(
-                                    `[Tool Result: search_graph] Returned ${neoResults.length} entities from Neo4j (${Date.now() - start}ms)`,
-                                );
-                                return JSON.stringify(neoResults);
-                            }
-                        } catch (neoErr) {
-                            this.logger.warn(
-                                `[Tool Exec: search_graph] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
-                            );
-                        }
+                        const cypher = `
+                            MATCH (e)
+                            WHERE (toLower(e.name) CONTAINS toLower($query) OR toLower(coalesce(e.role, '')) CONTAINS toLower($query))
+                            ${type ? 'AND labels(e)[0] = $type' : ''}
+                            RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata
+                            LIMIT 20
+                        `;
+                        const neoResults = await this.neo4jService.executeRead(
+                            cypher,
+                            {
+                                query,
+                                type: type ?? '',
+                            },
+                        );
+                        this.logger.debug(
+                            `[Tool Result: search_graph] Returned ${neoResults.length} entities from Neo4j (${Date.now() - start}ms)`,
+                        );
+                        return JSON.stringify(neoResults);
                     }
 
-                    const entities = await this.entityRepo.search(
-                        organizationId,
-                        query,
-                        type,
+                    this.logger.warn(
+                        '[Tool Exec: search_graph] Neo4j driver not connected',
                     );
-                    this.logger.debug(
-                        `[Tool Result: search_graph] Returned ${entities.length} entities from Postgres (${Date.now() - start}ms)`,
-                    );
-                    return JSON.stringify(entities);
+                    return JSON.stringify([]);
                 } catch (error) {
                     this.logger.error(
                         `[Tool Failure: search_graph] ${(error as Error).message}`,
@@ -102,35 +87,26 @@ export class GraphToolsService {
 
                 try {
                     if (this.neo4jService?.getDriver()) {
-                        try {
-                            const cypher = `
-                                MATCH (e { id: $id })
-                                OPTIONAL MATCH (e)-[r]-(other)
-                                RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata,
-                                       collect({ relationship: type(r), connectedId: other.id, connectedName: other.name }) AS relationships
-                            `;
-                            const neoResults =
-                                await this.neo4jService.executeRead(cypher, {
-                                    id,
-                                });
-                            if (
-                                neoResults.length > 0 &&
-                                (neoResults[0] as Record<string, unknown>).id
-                            ) {
-                                this.logger.debug(
-                                    `[Tool Result: get_entity] Retrieved entity ${id} from Neo4j (${Date.now() - start}ms)`,
-                                );
-                                return JSON.stringify(neoResults[0]);
-                            }
-                        } catch (neoErr) {
-                            this.logger.warn(
-                                `[Tool Exec: get_entity] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
+                        const cypher = `
+                            MATCH (e { id: $id })
+                            OPTIONAL MATCH (e)-[r]-(other)
+                            RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role, properties(e) AS metadata,
+                                   collect({ relationship: type(r), connectedId: other.id, connectedName: other.name }) AS relationships
+                        `;
+                        const neoResults = await this.neo4jService.executeRead(
+                            cypher,
+                            { id },
+                        );
+                        if (
+                            neoResults.length > 0 &&
+                            (neoResults[0] as Record<string, unknown>).id
+                        ) {
+                            this.logger.debug(
+                                `[Tool Result: get_entity] Retrieved entity ${id} from Neo4j (${Date.now() - start}ms)`,
                             );
+                            return JSON.stringify(neoResults[0]);
                         }
-                    }
 
-                    const entity = await this.entityRepo.findById(id);
-                    if (!entity) {
                         this.logger.warn(
                             `[Tool Result: get_entity] Entity with ID ${id} not found`,
                         );
@@ -138,12 +114,13 @@ export class GraphToolsService {
                             error: `Entity with ID ${id} not found`,
                         });
                     }
-                    const relationships =
-                        await this.relationshipRepo.findBySourceOrTarget(id);
-                    this.logger.debug(
-                        `[Tool Result: get_entity] Retrieved entity ${id} with ${relationships.length} relationships from Postgres (${Date.now() - start}ms)`,
+
+                    this.logger.warn(
+                        '[Tool Exec: get_entity] Neo4j driver not connected',
                     );
-                    return JSON.stringify({ entity, relationships });
+                    return JSON.stringify({
+                        error: 'Neo4j driver not connected',
+                    });
                 } catch (error) {
                     this.logger.error(
                         `[Tool Failure: get_entity] ${(error as Error).message}`,
@@ -178,47 +155,28 @@ export class GraphToolsService {
 
                 try {
                     if (this.neo4jService?.getDriver()) {
-                        try {
-                            const cypher = `
-                                MATCH path = (root { id: $entityId })-[*1..${effectiveDepth}]-(neighbor)
-                                RETURN root.id AS rootId,
-                                       [node IN nodes(path) | { id: node.id, name: node.name, type: labels(node)[0], role: node.role }] AS nodes,
-                                       [rel IN relationships(path) | { type: type(rel), source: startNode(rel).id, target: endNode(rel).id }] AS relationships
-                            `;
-                            const neoResults =
-                                await this.neo4jService.executeRead(cypher, {
-                                    entityId,
-                                });
-                            if (neoResults.length > 0) {
-                                this.logger.debug(
-                                    `[Tool Result: get_neighbors] Retrieved neighborhood from Neo4j (${Date.now() - start}ms)`,
-                                );
-                                return JSON.stringify(neoResults);
-                            }
-                        } catch (neoErr) {
-                            this.logger.warn(
-                                `[Tool Exec: get_neighbors] Neo4j query failed, falling back to Postgres: ${(neoErr as Error).message}`,
-                            );
-                        }
+                        const cypher = `
+                            MATCH path = (root { id: $entityId })-[*1..${effectiveDepth}]-(neighbor)
+                            RETURN root.id AS rootId,
+                                   [node IN nodes(path) | { id: node.id, name: node.name, type: labels(node)[0], role: node.role }] AS nodes,
+                                   [rel IN relationships(path) | { type: type(rel), source: startNode(rel).id, target: endNode(rel).id }] AS relationships
+                        `;
+                        const neoResults = await this.neo4jService.executeRead(
+                            cypher,
+                            { entityId },
+                        );
+                        this.logger.debug(
+                            `[Tool Result: get_neighbors] Retrieved neighborhood from Neo4j (${Date.now() - start}ms)`,
+                        );
+                        return JSON.stringify(neoResults);
                     }
 
-                    const neighborhood =
-                        await this.relationshipRepo.getNeighbors(
-                            entityId,
-                            effectiveDepth,
-                        );
-                    if (!neighborhood) {
-                        this.logger.warn(
-                            `[Tool Result: get_neighbors] Root entity with ID ${entityId} not found`,
-                        );
-                        return JSON.stringify({
-                            error: `Root entity with ID ${entityId} not found`,
-                        });
-                    }
-                    this.logger.debug(
-                        `[Tool Result: get_neighbors] Retrieved neighborhood from Postgres (${Date.now() - start}ms)`,
+                    this.logger.warn(
+                        '[Tool Exec: get_neighbors] Neo4j driver not connected',
                     );
-                    return JSON.stringify(neighborhood);
+                    return JSON.stringify({
+                        error: 'Neo4j driver not connected',
+                    });
                 } catch (error) {
                     this.logger.error(
                         `[Tool Failure: get_neighbors] ${(error as Error).message}`,
@@ -260,41 +218,44 @@ export class GraphToolsService {
                 try {
                     const results: any[] = [];
                     for (const e of entities) {
-                        const saved = await this.entityRepo.upsert({
-                            organizationId,
-                            name: e.name,
-                            type: e.type,
-                            metadata: e.metadata,
-                        });
-                        results.push(saved);
+                        const entityId = randomUUID();
+                        const label =
+                            e.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
+                        const roleStr = e.metadata?.role
+                            ? String(e.metadata.role)
+                            : '';
 
-                        // Sync to Neo4j if driver connected
                         if (this.neo4jService?.getDriver()) {
-                            try {
-                                const label =
-                                    e.type.replace(/[^a-zA-Z0-9]/g, '') ||
-                                    'Entity';
-                                const roleStr = e.metadata?.role
-                                    ? String(e.metadata.role)
-                                    : '';
-                                const cypher = `
-                                    MERGE (e:${label} { id: $id })
-                                    SET e.name = $name,
-                                        e.orgId = $orgId,
-                                        e.role = $role,
-                                        e.updatedAt = datetime()
-                                `;
-                                await this.neo4jService.executeWrite(cypher, {
-                                    id: saved.id,
-                                    name: saved.name,
+                            const cypher = `
+                                MERGE (e:${label} { name: $name, orgId: $orgId })
+                                ON CREATE SET e.id = $id, e.role = $role, e.createdAt = datetime(), e.updatedAt = datetime()
+                                ON MATCH SET e.role = case when $role <> '' then $role else e.role end, e.updatedAt = datetime()
+                                RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role
+                            `;
+                            const res = await this.neo4jService.executeWrite(
+                                cypher,
+                                {
+                                    id: entityId,
+                                    name: e.name,
                                     orgId: organizationId ?? 'org-1',
                                     role: roleStr,
+                                },
+                            );
+                            if (res?.[0]) {
+                                results.push(res[0]);
+                            } else {
+                                results.push({
+                                    id: entityId,
+                                    name: e.name,
+                                    type: e.type,
                                 });
-                            } catch (neoErr) {
-                                this.logger.warn(
-                                    `[Tool Exec: create_entities] Neo4j sync error for ${e.name}: ${(neoErr as Error).message}`,
-                                );
                             }
+                        } else {
+                            results.push({
+                                id: entityId,
+                                name: e.name,
+                                type: e.type,
+                            });
                         }
                     }
                     this.logger.debug(
@@ -342,34 +303,26 @@ export class GraphToolsService {
                 try {
                     const updated: any[] = [];
                     for (const u of updates) {
-                        const res = await this.entityRepo.update(u.id, {
-                            name: u.name,
-                            type: u.type,
-                            metadata: u.metadata,
-                        });
-                        updated.push(res);
-
-                        if (this.neo4jService?.getDriver() && res) {
-                            try {
-                                const roleStr = u.metadata?.role
-                                    ? String(u.metadata.role)
-                                    : '';
-                                const cypher = `
-                                    MATCH (e { id: $id })
-                                    SET e.name = coalesce($name, e.name),
-                                        e.role = coalesce($role, e.role),
-                                        e.updatedAt = datetime()
-                                `;
-                                await this.neo4jService.executeWrite(cypher, {
+                        const roleStr = u.metadata?.role
+                            ? String(u.metadata.role)
+                            : '';
+                        if (this.neo4jService?.getDriver()) {
+                            const cypher = `
+                                MATCH (e { id: $id })
+                                SET e.name = coalesce($name, e.name),
+                                    e.role = case when $role <> '' then $role else e.role end,
+                                    e.updatedAt = datetime()
+                                RETURN e.id AS id, e.name AS name, labels(e)[0] AS type, e.role AS role
+                            `;
+                            const res = await this.neo4jService.executeWrite(
+                                cypher,
+                                {
                                     id: u.id,
                                     name: u.name ?? null,
-                                    role: roleStr || null,
-                                });
-                            } catch (neoErr) {
-                                this.logger.warn(
-                                    `[Tool Exec: update_entities] Neo4j update error for ${u.id}: ${(neoErr as Error).message}`,
-                                );
-                            }
+                                    role: roleStr,
+                                },
+                            );
+                            if (res?.[0]) updated.push(res[0]);
                         }
                     }
                     this.logger.debug(
@@ -420,34 +373,24 @@ export class GraphToolsService {
                 try {
                     const results: any[] = [];
                     for (const r of relationships) {
-                        const saved = await this.relationshipRepo.upsert({
-                            organizationId,
-                            sourceEntityId: r.sourceEntityId,
-                            targetEntityId: r.targetEntityId,
-                            type: r.type,
-                            metadata: r.metadata,
-                        });
-                        results.push(saved);
-
                         if (this.neo4jService?.getDriver()) {
-                            try {
-                                const relType =
-                                    r.type.replace(/[^a-zA-Z0-9_]/g, '') ||
-                                    'RELATED_TO';
-                                const cypher = `
-                                    MATCH (a { id: $sourceId }), (b { id: $targetId })
-                                    MERGE (a)-[r:${relType}]->(b)
-                                    SET r.updatedAt = datetime()
-                                `;
-                                await this.neo4jService.executeWrite(cypher, {
+                            const relType =
+                                r.type.replace(/[^a-zA-Z0-9_]/g, '') ||
+                                'RELATED_TO';
+                            const cypher = `
+                                MATCH (a { id: $sourceId }), (b { id: $targetId })
+                                MERGE (a)-[r:${relType}]->(b)
+                                SET r.updatedAt = datetime()
+                                RETURN type(r) AS type, a.id AS sourceId, b.id AS targetId
+                            `;
+                            const res = await this.neo4jService.executeWrite(
+                                cypher,
+                                {
                                     sourceId: r.sourceEntityId,
                                     targetId: r.targetEntityId,
-                                });
-                            } catch (neoErr) {
-                                this.logger.warn(
-                                    `[Tool Exec: create_relationships] Neo4j rel error: ${(neoErr as Error).message}`,
-                                );
-                            }
+                                },
+                            );
+                            if (res?.[0]) results.push(res[0]);
                         }
                     }
                     this.logger.debug(

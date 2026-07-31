@@ -30,6 +30,4 @@ export const SuggestionsResultSchema = z.object({
     suggestions: z.array(SuggestionItemSchema),
 });
 
-export type OptionItem = z.infer<typeof OptionSchema>;
-export type SuggestionItem = z.infer<typeof SuggestionItemSchema>;
 export type SuggestionsResult = z.infer<typeof SuggestionsResultSchema>;
