@@ -4,6 +4,8 @@ import { ChatService } from './chat.service';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
+import { SearchToolsService } from '../intelligence/tools/search-tools.service';
+import { GraphToolsService } from '../intelligence/tools/graph-tools.service';
 
 type MockTx = {
     chatMessage: Record<string, jest.Mock>;
@@ -91,6 +93,42 @@ function createMockChatContextService() {
     };
 }
 
+function createMockSearchToolsService() {
+    return {
+        getTools: jest.fn().mockReturnValue([
+            {
+                name: 'search_raw_messages',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'search_insights',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'retrieve_relevant_insights',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'resolve_user_by_platform_id',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+        ]),
+    };
+}
+
+function createMockGraphToolsService() {
+    return {
+        getTools: jest.fn().mockReturnValue([
+            { name: 'search_graph', invoke: jest.fn().mockResolvedValue('[]') },
+            { name: 'get_entity', invoke: jest.fn().mockResolvedValue('{}') },
+            {
+                name: 'get_neighbors',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+        ]),
+    };
+}
+
 async function* mockStream(tokens: string[]) {
     for (const token of tokens) {
         yield { content: token };
@@ -102,11 +140,15 @@ describe('ChatService', () => {
     let mockAppDb: ReturnType<typeof createMockAppDb>;
     let mockLlmService: ReturnType<typeof createMockLlmService>;
     let mockChatContext: ReturnType<typeof createMockChatContextService>;
+    let mockSearchTools: ReturnType<typeof createMockSearchToolsService>;
+    let mockGraphTools: ReturnType<typeof createMockGraphToolsService>;
 
     beforeEach(async () => {
         mockAppDb = createMockAppDb();
         mockLlmService = createMockLlmService();
         mockChatContext = createMockChatContextService();
+        mockSearchTools = createMockSearchToolsService();
+        mockGraphTools = createMockGraphToolsService();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -114,6 +156,8 @@ describe('ChatService', () => {
                 { provide: AppDbService, useValue: mockAppDb },
                 { provide: LlmService, useValue: mockLlmService },
                 { provide: ChatContextService, useValue: mockChatContext },
+                { provide: SearchToolsService, useValue: mockSearchTools },
+                { provide: GraphToolsService, useValue: mockGraphTools },
             ],
         }).compile();
 
@@ -552,6 +596,59 @@ describe('ChatService', () => {
                     signal: abortController.signal,
                 }),
             );
+        });
+
+        it('executes tool call when requested by LLM stream', async () => {
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue(
+                    '[{"id":"msg-99","content":"found message"}]',
+                );
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_raw_messages', invoke: searchToolInvoke },
+            ]);
+
+            const mockToolCallStream = (async function* () {
+                yield {
+                    content: '',
+                    tool_calls: [
+                        {
+                            id: 'call-1',
+                            name: 'search_raw_messages',
+                            args: { query: 'urgent' },
+                        },
+                    ],
+                };
+            })();
+
+            const mockFinalStream = (async function* () {
+                yield { content: 'Found the raw message details.' };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockToolCallStream)
+                .mockResolvedValueOnce(mockFinalStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'Search urgent messages',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(searchToolInvoke).toHaveBeenCalledWith({ query: 'urgent' });
+            expect(tokens.join('')).toBe('Found the raw message details.');
         });
     });
 
