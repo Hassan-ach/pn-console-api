@@ -18,6 +18,7 @@ describe('SuggestionsService', () => {
             findByInsightId: jest.fn(),
             findById: jest.fn(),
             updateStatus: jest.fn(),
+            deleteByInsightId: jest.fn(),
         } as unknown as jest.Mocked<InsightSuggestionRepository>;
 
         mockInsightRepo = {
@@ -85,5 +86,30 @@ describe('SuggestionsService', () => {
             SuggestionStatus.ACCEPTED,
         );
         expect(result.status).toBe(SuggestionStatus.ACCEPTED);
+    });
+
+    it('generateForInsight should delete existing suggestions before generating new ones', async () => {
+        mockInsightRepo.findById.mockResolvedValue({
+            id: 'ins-1',
+            content: 'test insight',
+            organizationId: 'org-1',
+        } as never);
+        mockSuggestionRepo.deleteByInsightId.mockResolvedValue(2);
+        mockSuggestionRepo.findByInsightId.mockResolvedValue([
+            { id: 'sug-new', title: 'New Suggestion' },
+        ] as never);
+
+        const result = await service.generateForInsight('ins-1', 'user-1');
+
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        expect(mockSuggestionRepo.deleteByInsightId).toHaveBeenCalledWith(
+            'ins-1',
+        );
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        expect(mockCapabilityManager.executeByName).toHaveBeenCalledWith(
+            'suggestions-extractor',
+            expect.anything(),
+        );
+        expect(result).toEqual([{ id: 'sug-new', title: 'New Suggestion' }]);
     });
 });

@@ -10,53 +10,16 @@ import {
     SystemMessage,
     HumanMessage,
     AIMessage,
+    AIMessageChunk,
+    ToolMessage,
+    BaseMessage,
 } from '@langchain/core/messages';
+import { StructuredTool } from '@langchain/core/tools';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
-
-const SYSTEM_PROMPT = `You are a knowledgeable assistant that helps users understand and act on their insights.
-Insights are extracted from real conversations across platforms (Telegram, Discord, Slack, etc.) and represent structured intelligence about tasks, decisions, urgent matters, and general information.
-
-## Your Context
-
-The ## Current Date section tells you today's date — use it to compute relative deadlines (e.g. "3 days left" or "overdue").
-The ## Relevant Insights section contains the most semantically relevant insights for the user's question.
-
-Each insight line follows this format:
-  - **TYPE** [STATUS] (priority: N/10) from PLUGIN/SCOPE [created: YYYY-MM-DD] [deadline: DATE — STATUS] (relevance: XX%): CONTENT
-
-## Insight Types
-
-- **TASK**: An action item assigned to or relevant for the user. It has a status and possibly a priority and deadline.
-- **URGENCY**: A time-sensitive or critical matter that requires immediate attention.
-- **DECISION**: A decision that was made or needs to be made. May be DECIDED or still PENDING.
-- **INFO**: General informational content — background context, updates, or announcements.
-
-## Insight Statuses
-
-- PENDING: Not yet acted upon.
-- NOTED: Acknowledged but no action taken.
-- IN_REVIEW: Currently being reviewed.
-- DONE: Completed.
-- BLOCKED: Cannot proceed — something is blocking it.
-- DECIDED: A decision has been reached.
-- DELEGATED: Assigned to someone else.
-- DELAYED: Postponed intentionally.
-- HIDDEN: Deliberately hidden from view.
-
-## Priority Scale
-
-Priority runs from 1 (low) to 10 (critical). Anything 7 or above is high priority.
-
-## Guidelines
-
-1. **Only use insights from the context.** Do not invent, assume, or extrapolate information not present in the ## Relevant Insights section.
-2. **If the context is insufficient**, say so clearly and suggest the user look at specific platforms or check recent messages.
-3. **Reference the source** (plugin/scope) when answering so the user knows where to find the original conversation.
-4. **Use the deadline label** to communicate urgency — flag overdue items prominently.
-5. **Group and prioritize** your answer by priority and urgency rather than by retrieval order.
-6. **Be concise** — avoid repeating the full insight text verbatim when a summary is clearer.
-7. You are a **read-only** assistant. Never suggest modifying, deleting, or creating data.`;
+import { SearchToolsService } from '../intelligence/tools/search-tools.service';
+import { GraphToolsService } from '../intelligence/tools/graph-tools.service';
+import { SYSTEM_PROMPT } from './chat.prompt';
 
 const CONVERSATION_TIMEOUT_MS = 30 * 60 * 1000;
 const TITLE_MAX_LENGTH = 80;
@@ -86,6 +49,8 @@ export class ChatService {
         private readonly appDb: AppDbService,
         private readonly llmService: LlmService,
         private readonly chatContextService: ChatContextService,
+        private readonly searchToolsService: SearchToolsService,
+        private readonly graphToolsService: GraphToolsService,
     ) {}
 
     async getConversations(
@@ -309,7 +274,7 @@ export class ChatService {
             ? `\n\n${context}`
             : '\n\n## Relevant Insights\n\nNo relevant insights found for this query.';
 
-        const messages = [
+        const messages: BaseMessage[] = [
             new SystemMessage(`${SYSTEM_PROMPT}${contextSection}`),
             ...history.map((m) =>
                 m.role === 'USER'
@@ -319,15 +284,177 @@ export class ChatService {
             new HumanMessage(userMessage),
         ];
 
-        const llm = await this.llmService.createStreamingLLM();
+        const orgId = 'org-1';
+        const searchTools = this.searchToolsService.getTools(orgId, userId);
+        const graphTools = this.graphToolsService.getTools(orgId);
+        const readOnlyGraphTools = graphTools.filter((t) =>
+            ['search_graph', 'get_entity', 'get_neighbors'].includes(t.name),
+        );
+        const tools: StructuredTool[] = [...searchTools, ...readOnlyGraphTools];
+        const toolMap = new Map(tools.map((t) => [t.name, t]));
+
+        const rawLlm = await this.llmService.createStreamingLLM();
+        const llm = rawLlm.bindTools ? rawLlm.bindTools(tools) : rawLlm;
+
         let fullResponse = '';
+        const maxIterations = 5;
 
         try {
-            const stream = await llm.stream(messages, { signal });
-            for await (const chunk of stream) {
-                const token = chunk.content as string;
-                fullResponse += token;
-                yield token;
+            for (let iter = 0; iter < maxIterations; iter++) {
+                const stream = await llm.stream(messages, { signal });
+                let fullChunk: AIMessageChunk | null = null;
+                let turnContent = '';
+                let toolCalls: Array<{
+                    id?: string;
+                    name: string;
+                    args?: Record<string, unknown>;
+                }> = [];
+                const bufferedTokens: string[] = [];
+                const additionalKwargs: Record<string, unknown> = {};
+
+                for await (const chunk of stream) {
+                    if (chunk.content) {
+                        const token =
+                            typeof chunk.content === 'string'
+                                ? chunk.content
+                                : JSON.stringify(chunk.content);
+                        turnContent += token;
+                        bufferedTokens.push(token);
+                    }
+
+                    if (chunk.tool_calls && chunk.tool_calls.length > 0) {
+                        toolCalls = chunk.tool_calls;
+                    }
+
+                    if (chunk.additional_kwargs) {
+                        for (const [k, v] of Object.entries(
+                            chunk.additional_kwargs,
+                        )) {
+                            if (typeof v === 'string') {
+                                additionalKwargs[k] =
+                                    ((additionalKwargs[k] as string) ?? '') + v;
+                            } else {
+                                additionalKwargs[k] = v;
+                            }
+                        }
+                    }
+
+                    if (chunk.response_metadata) {
+                        const meta = chunk.response_metadata as Record<
+                            string,
+                            unknown
+                        >;
+                        if (
+                            meta.reasoning_content &&
+                            typeof meta.reasoning_content === 'string'
+                        ) {
+                            additionalKwargs.reasoning_content =
+                                ((additionalKwargs.reasoning_content as string) ??
+                                    '') + meta.reasoning_content;
+                        }
+                        if (
+                            meta.reasoning &&
+                            typeof meta.reasoning === 'string'
+                        ) {
+                            additionalKwargs.reasoning_content =
+                                ((additionalKwargs.reasoning_content as string) ??
+                                    '') + meta.reasoning;
+                        }
+                    }
+
+                    const chunkObj = chunk as unknown as {
+                        concat?: (other: AIMessageChunk) => AIMessageChunk;
+                    };
+                    if (typeof chunkObj.concat === 'function') {
+                        fullChunk = fullChunk ? chunkObj.concat(chunk) : chunk;
+                    }
+                }
+
+                interface ToolCallItem {
+                    name: string;
+                    args?: Record<string, unknown>;
+                    id?: string;
+                }
+
+                const rawToolCalls: ToolCallItem[] =
+                    (fullChunk?.tool_calls as ToolCallItem[] | undefined) ??
+                    toolCalls ??
+                    [];
+
+                if (rawToolCalls.length > 0) {
+                    const normalizedToolCalls = rawToolCalls.map((tc, idx) => ({
+                        name: String(tc.name),
+                        args: tc.args ?? {},
+                        id:
+                            typeof tc.id === 'string' && tc.id.trim() !== ''
+                                ? tc.id
+                                : `call_${idx}_${Date.now()}`,
+                        type: 'tool_call' as const,
+                    }));
+
+                    const aiMessageToPush =
+                        fullChunk ??
+                        new AIMessage({
+                            content: turnContent,
+                            tool_calls: normalizedToolCalls,
+                            additional_kwargs: additionalKwargs,
+                        });
+
+                    aiMessageToPush.tool_calls = normalizedToolCalls;
+
+                    if (additionalKwargs.reasoning_content) {
+                        aiMessageToPush.additional_kwargs.reasoning_content =
+                            additionalKwargs.reasoning_content;
+                    }
+
+                    const callSummaries = normalizedToolCalls
+                        .map((t) => `${t.name}:${t.id}`)
+                        .join(', ');
+
+                    this.logger.debug(
+                        `[Chat Tool Call] Iteration ${iter + 1}: Executing ${normalizedToolCalls.length} tool calls (${callSummaries})`,
+                    );
+
+                    messages.push(aiMessageToPush);
+
+                    for (const call of normalizedToolCalls) {
+                        const tool = toolMap.get(call.name);
+                        let toolOutput = '';
+                        if (tool) {
+                            try {
+                                const res: unknown = await tool.invoke(
+                                    call.args,
+                                );
+                                toolOutput =
+                                    typeof res === 'string'
+                                        ? res
+                                        : JSON.stringify(res);
+                            } catch (err) {
+                                toolOutput = JSON.stringify({
+                                    error: (err as Error).message,
+                                });
+                            }
+                        } else {
+                            toolOutput = JSON.stringify({
+                                error: `Unknown tool: ${call.name}`,
+                            });
+                        }
+
+                        messages.push(
+                            new ToolMessage({
+                                content: toolOutput,
+                                tool_call_id: call.id,
+                            }),
+                        );
+                    }
+                    continue;
+                }
+
+                for (const token of bufferedTokens) {
+                    fullResponse += token;
+                    yield token;
+                }
+                break;
             }
         } catch (error) {
             if ((error as Error).name === 'AbortError') return;

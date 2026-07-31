@@ -108,9 +108,7 @@ export class AuthController {
     @Get('google')
     @UseGuards(AuthGuard('google'))
     @ApiOperation({ summary: 'Initiate Google OAuth login' })
-    async googleAuth() {
-        // Passport handles the redirect — no implementation needed
-    }
+    async googleAuth() {}
 
     @Public()
     @Get('google/callback')
@@ -138,9 +136,7 @@ export class AuthController {
     @Get('microsoft')
     @UseGuards(AuthGuard('microsoft'))
     @ApiOperation({ summary: 'Initiate Microsoft OAuth login' })
-    async microsoftAuth() {
-        // Passport handles the redirect — no implementation needed
-    }
+    async microsoftAuth() {}
 
     @Public()
     @Get('microsoft/callback')
@@ -168,9 +164,7 @@ export class AuthController {
     @Get('sso')
     @UseGuards(AuthGuard('sso'))
     @ApiOperation({ summary: 'Initiate SSO (OIDC) login' })
-    async ssoAuth() {
-        // Passport handles the redirect — no implementation needed
-    }
+    async ssoAuth() {}
 
     @Public()
     @Get('sso/callback')

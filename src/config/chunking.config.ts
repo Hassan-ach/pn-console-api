@@ -17,7 +17,6 @@ export default registerAs('chunking', () => ({
         PartitionerType.Source,
         PartitionerType.GroupId,
         PartitionerType.ChannelId,
-        // PartitionerType.TopicId,
         PartitionerType.Daily,
     ],
 }));

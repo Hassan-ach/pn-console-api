@@ -218,7 +218,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     (id) => !excludedUserIds.includes(id),
                 );
 
-                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
                 const isBroadcasted =
                     u.broadcasted ||
                     (u.owners.length === 0 && unresolved.length === 0);
@@ -252,7 +251,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     (id) => !excludedUserIds.includes(id),
                 );
 
-                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
                 const isBroadcasted =
                     n.broadcasted ||
                     (n.owners.length === 0 && unresolved.length === 0);
@@ -305,7 +303,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
             let appUserId: string | null = null;
 
-            // Tier 1: Check PlatformUserMapping by ID
             if (ref.id) {
                 const mapping = allMappings.find(
                     (m) => m.platformUserId === ref.id,
@@ -315,7 +312,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 2: Check PlatformUserMapping by username
             if (!appUserId && ref.username) {
                 const match = allMappings.find(
                     (m) =>
@@ -327,7 +323,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 3: Knowledge Graph Entity Lookup (Person/Team entity with role metadata)
             if (
                 !appUserId &&
                 (ref.username || ref.id) &&
@@ -346,7 +341,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     }>(cypher, { searchTerm });
                     if (kgEntities.length > 0) {
                         const matchedPerson = kgEntities[0];
-                        // Try matching Person entity name to app users
                         const userMatch = allOrgUsers.find((u) =>
                             `${u.firstName} ${u.lastName ?? ''}`
                                 .toLowerCase()
@@ -361,7 +355,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 4: Fuzzy match against PlatformUserMapping user names
             if (!appUserId && ref.username) {
                 const query = ref.username.toLowerCase();
                 let bestDistance = Infinity;
@@ -391,11 +384,9 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 5: Direct/fuzzy match against Organization Users
             if (!appUserId && (ref.id || ref.username)) {
                 const query = (ref.username || ref.id || '').toLowerCase();
 
-                // Exact match by user.id, email, or email username
                 const exactUser = allOrgUsers.find(
                     (u) =>
                         u.id === ref.id ||
