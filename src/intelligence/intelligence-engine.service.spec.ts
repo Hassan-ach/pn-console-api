@@ -152,7 +152,7 @@ describe('IntelligenceEngineService', () => {
             publish: jest.fn(),
             publishAsync: jest.fn().mockResolvedValue([{ jobId: 'job-1' }]),
             subscribe: jest.fn(),
-        } as unknown as jest.Mocked<IEventBus>;
+        };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [

@@ -156,7 +156,9 @@ describe('ChatService', () => {
         });
 
         it('resolves latest conversation when conversationId is omitted', async () => {
-            mockAppDb.conversation.findFirst.mockResolvedValue({ id: 'conv-latest' });
+            mockAppDb.conversation.findFirst.mockResolvedValue({
+                id: 'conv-latest',
+            });
 
             await service.getHistory('user-1');
 

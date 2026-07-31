@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { IEventBus, SubscribeOptions, UnsubscribeFn } from './event-bus.interface';
+import {
+    IEventBus,
+    SubscribeOptions,
+    UnsubscribeFn,
+} from './event-bus.interface';
 import { EventMap } from './events.registry';
 
 @Injectable()
@@ -10,14 +14,14 @@ export class InMemoryEventBus implements IEventBus {
     constructor(private readonly eventEmitter: EventEmitter2) {}
 
     publish<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {
-        this.eventEmitter.emit(event as string, payload);
+        this.eventEmitter.emit(event, payload);
     }
 
     async publishAsync<K extends keyof EventMap>(
         event: K,
         payload: EventMap[K],
     ): Promise<any[]> {
-        return this.eventEmitter.emitAsync(event as string, payload);
+        return this.eventEmitter.emitAsync(event, payload);
     }
 
     subscribe<K extends keyof EventMap>(
@@ -29,9 +33,9 @@ export class InMemoryEventBus implements IEventBus {
             void this.executeHandlerWithRetry(event, handler, payload, options);
         };
 
-        this.eventEmitter.on(event as string, listener);
+        this.eventEmitter.on(event, listener);
         return () => {
-            this.eventEmitter.off(event as string, listener);
+            this.eventEmitter.off(event, listener);
         };
     }
 

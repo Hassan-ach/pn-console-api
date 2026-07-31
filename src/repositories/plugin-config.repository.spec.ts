@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { PluginConfigRepository } from './plugin-config.repository';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
@@ -45,7 +46,11 @@ describe('PluginConfigRepository', () => {
                 update: jest.fn(),
                 delete: jest.fn(),
             },
-            $transaction: jest.fn().mockImplementation((cb) => cb(mockAppDb)),
+            $transaction: jest
+                .fn()
+                .mockImplementation((cb: (db: unknown) => unknown) =>
+                    cb(mockAppDb),
+                ),
         };
 
         mockCacheStore = {

@@ -23,11 +23,7 @@ import {
     type UnsubscribeFn,
 } from 'src/common/providers/event-bus/event-bus.interface';
 import { Events } from 'src/common/providers/event-bus/events.registry';
-import {
-    PluginActivatedEvent,
-    PluginConfigUpdatedEvent,
-    PluginDeactivatedEvent,
-} from '../events/ingestion.events';
+
 import { extractProviderChats } from '../plugins/interfaces/provider-config.interface';
 import {
     WorkerRecoveryService,
@@ -95,27 +91,18 @@ export class WorkerManager
         }
 
         this.unsubs.push(
-            this.eventBus.subscribe(
-                Events.PLUGIN_ACTIVATED,
-                (event) => {
-                    this.start(event.config);
-                },
-            ),
-            this.eventBus.subscribe(
-                Events.PLUGIN_DEACTIVATED,
-                (event) => {
-                    const chats = extractProviderChats(event.config.config);
-                    for (const chat of chats) {
-                        this.stop(event.pluginName, chat.id);
-                    }
-                },
-            ),
-            this.eventBus.subscribe(
-                Events.PLUGIN_CONFIG_UPDATED,
-                (event) => {
-                    this.syncWorkersForConfig(event.config);
-                },
-            ),
+            this.eventBus.subscribe(Events.PLUGIN_ACTIVATED, (event) => {
+                this.start(event.config);
+            }),
+            this.eventBus.subscribe(Events.PLUGIN_DEACTIVATED, (event) => {
+                const chats = extractProviderChats(event.config.config);
+                for (const chat of chats) {
+                    this.stop(event.pluginName, chat.id);
+                }
+            }),
+            this.eventBus.subscribe(Events.PLUGIN_CONFIG_UPDATED, (event) => {
+                this.syncWorkersForConfig(event.config);
+            }),
         );
     }
 

@@ -290,7 +290,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         allOwnerRefs: OwnerRef[],
         allMappings: PlatformUserMappingWithUser[],
         allOrgUsers: UserRecord[],
-        organizationId: string,
+        _organizationId: string,
     ): Promise<Map<string, string | null>> {
         const maxDistance = parseInt(
             process.env.OWNER_RESOLVER_MAX_DISTANCE ?? '1',
