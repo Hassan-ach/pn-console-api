@@ -35,7 +35,7 @@ model InsightVersion {
     channelId    String?   @map("channel_id")
     topicId      String?   @map("topic_id")
     deadline     DateTime? @map("deadline")
-    embedding    Unsupported("vector(1536)")?
+    embedding    Unsupported("vector")?
 
     createdAt DateTime @default(now()) @map("created_at")
     insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)

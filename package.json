@@ -20,8 +20,9 @@
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
         "prisma:generate": "prisma generate --schema=prisma/raw-db/schema.prisma && prisma generate --schema=prisma/app-db/schema.prisma",
-        "prisma:push": "prisma db push --schema=prisma/raw-db/schema.prisma && prisma db push --schema=prisma/app-db/schema.prisma",
-        "prisma:seed": "tsx prisma/app-db/seed.ts"
+        "prisma:push": "prisma db push --schema=prisma/raw-db/schema.prisma && prisma db push --schema=prisma/app-db/schema.prisma && tsx prisma/app-db/init-vector.ts",
+        "prisma:seed": "tsx prisma/app-db/seed.ts",
+        "db:setup": "pnpm prisma:push && pnpm prisma:generate && pnpm prisma:seed"
     },
     "dependencies": {
         "@langchain/anthropic": "^1.5.1",
