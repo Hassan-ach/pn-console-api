@@ -631,6 +631,68 @@ describe('ChatService', () => {
             expect(searchToolInvoke).toHaveBeenCalledWith({ query: 'urgent' });
             expect(tokens.join('')).toBe('Found the raw message details.');
         });
+
+        it('handles Gemini functionCall content array blocks without leaking JSON to chat', async () => {
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue(
+                    '[{"id":"msg-100","content":"afternoon meeting"}]',
+                );
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_raw_messages', invoke: searchToolInvoke },
+            ]);
+
+            const mockGeminiToolCallStream = (async function* () {
+                yield {
+                    content: [
+                        {
+                            type: 'functionCall',
+                            functionCall: {
+                                name: 'search_raw_messages',
+                                args: { query: 'afternoon' },
+                                id: 'AkCrAEFa',
+                            },
+                        },
+                    ],
+                };
+            })();
+
+            const mockFinalAnswerStream = (async function* () {
+                yield {
+                    content: 'You have a meeting scheduled this afternoon.',
+                };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockGeminiToolCallStream)
+                .mockResolvedValueOnce(mockFinalAnswerStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'what are my task for this afternoon?',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(searchToolInvoke).toHaveBeenCalledWith({
+                query: 'afternoon',
+            });
+            expect(tokens.join('')).toBe(
+                'You have a meeting scheduled this afternoon.',
+            );
+            expect(tokens.join('')).not.toContain('functionCall');
+        });
     });
 
     describe('retractLastMessages', () => {
