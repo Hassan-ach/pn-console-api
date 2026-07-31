@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import adminConfig from './config/admin.config';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
@@ -26,6 +27,8 @@ import { InsightsModule } from './insights/insights.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ProfileModule } from './profile/profile.module';
 import { ChatModule } from './chat/chat.module';
+import { TeamsModule } from './teams/teams.module';
+import { RolesModule } from './roles/roles.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -33,6 +36,7 @@ import { AppController } from './app.controller';
         ConfigModule.forRoot({
             isGlobal: true,
             load: [
+                adminConfig,
                 appConfig,
                 databaseConfig,
                 jwtConfig,
@@ -59,6 +63,8 @@ import { AppController } from './app.controller';
         JobsModule,
         ProfileModule,
         ChatModule,
+        TeamsModule,
+        RolesModule,
     ],
     controllers: [AppController],
     providers: [

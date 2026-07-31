@@ -20,25 +20,25 @@ model Insight {
 }
 
 model InsightVersion {
-    id               String                @id @default(uuid()) @db.Uuid
-    insightId        String                @db.Uuid
-    version          Int
-    type             InsightType
-    content          String
-    owners           InsightVersionOwner[]
-    unresolvedOwners UnresolvedOwner[]
-    broadcasted      Boolean               @default(false)
-    envolopsRef      String[]              @default([])
+  id               String                @id @default(uuid()) @db.Uuid
+  insightId        String                @db.Uuid
+  version          Int
+  type             InsightType
+  content          String
+  owners           InsightVersionOwner[]
+  unresolvedOwners UnresolvedOwner[]
+  broadcasted      Boolean               @default(false)
+  envolopsRef      String[]              @default([])
 
-    sourcePlugin String?   @map("source_plugin")
-    groupId      String?   @map("group_id")
-    channelId    String?   @map("channel_id")
-    topicId      String?   @map("topic_id")
-    deadline     DateTime? @map("deadline")
-    embedding    Unsupported("vector(1536)")?
+  sourcePlugin String?                      @map("source_plugin")
+  groupId      String?                      @map("group_id")
+  channelId    String?                      @map("channel_id")
+  topicId      String?                      @map("topic_id")
+  deadline     DateTime?                    @map("deadline")
+  embedding    Unsupported("vector(1536)")?
 
-    createdAt DateTime @default(now()) @map("created_at")
-    insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  insight   Insight  @relation(fields: [insightId], references: [id], onDelete: Cascade)
 
   @@unique([insightId, version])
   @@index([insightId])
@@ -65,6 +65,11 @@ model InsightVersionOwner {
   @@map("insight_version_owners")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 enum ProviderType {
   EMAIL
   GOOGLE
@@ -80,12 +85,14 @@ model User {
   passwordHash        String?               @map("password_hash")
   providerType        ProviderType          @default(EMAIL) @map("provider_type")
   tokenVersion        Int                   @default(0) @map("token_version")
+  role                UserRole              @default(USER)
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @updatedAt @map("updated_at")
   platformMappings    PlatformUserMapping[]
   insightOwnerships   InsightVersionOwner[]
   passwordResetTokens PasswordResetToken[]
   chatMessages        ChatMessage[]
+  teamMemberships     TeamMember[]
 
   @@unique([email, providerType])
   @@map("users")
@@ -174,20 +181,20 @@ model UnresolvedOwner {
 }
 
 model PluginConfig {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String?      @map("organization_id")
-  userId         String       @map("user_id")
-  pluginName     String       @map("plugin_name")
-  sessionString  String?      @map("session_string")
-  config         Json         @map("config")
-  metadata       Json?        @map("metadata")
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String? @map("organization_id")
+  userId         String  @map("user_id")
+  pluginName     String  @map("plugin_name")
+  sessionString  String? @map("session_string")
+  config         Json    @map("config")
+  metadata       Json?   @map("metadata")
 
-  status         PluginStatus @default(NOT_CONNECTED)
-  activatedAt    DateTime?    @map("activated_at")
-  errorMessage   String?      @map("error_message")
+  status       PluginStatus @default(NOT_CONNECTED)
+  activatedAt  DateTime?    @map("activated_at")
+  errorMessage String?      @map("error_message")
 
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([userId, pluginName])
   @@index([organizationId])
@@ -244,6 +251,60 @@ model ChatMessage {
 
   @@index([userId, createdAt])
   @@map("chat_messages")
+}
+
+model Team {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  organizationId String?      @map("organization_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  members        TeamMember[]
+
+  @@map("teams")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  members     TeamMemberRole[]
+
+  @@map("roles")
+}
+
+model TeamMember {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  teamId    String           @map("team_id") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  roles     TeamMemberRole[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+model TeamMemberRole {
+  id           String @id @default(uuid()) @db.Uuid
+  teamMemberId String @map("team_member_id") @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, roleId])
+  @@index([teamMemberId])
+  @@index([roleId])
+  @@map("team_member_roles")
 }
 
 enum SuggestionActionType {
@@ -318,4 +379,3 @@ model InsightSuggestion {
   @@index([status])
   @@map("insight_suggestions")
 }
-

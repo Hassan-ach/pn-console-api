@@ -15,6 +15,8 @@ describe('ProfileController', () => {
         passwordHash: 'hashed-password',
         providerType: 'EMAIL' as const,
         tokenVersion: 0,
+        role: 'USER',
+        teams: [],
         createdAt: new Date('2026-01-01'),
         updatedAt: new Date('2026-01-01'),
     };
@@ -53,6 +55,8 @@ describe('ProfileController', () => {
                 firstName: 'John',
                 lastName: 'Doe',
                 email: 'john@example.com',
+                role: 'USER',
+                teams: [],
             });
         });
 

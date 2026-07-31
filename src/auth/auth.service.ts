@@ -88,6 +88,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
         });
 
         this.eventEmitter.emit(
@@ -109,6 +110,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }
@@ -145,6 +147,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
         });
 
         return {
@@ -156,6 +159,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }
@@ -246,6 +250,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
         });
 
         return {
@@ -316,6 +321,7 @@ export class AuthService {
                 sub: existing.id,
                 email: existing.email,
                 tokenVersion: existing.tokenVersion,
+                role: existing.role,
             });
             return {
                 access_token: token,
@@ -326,6 +332,7 @@ export class AuthService {
                     lastName: existing.lastName,
                     email: existing.email,
                     providerType: existing.providerType,
+                    role: existing.role,
                 },
             };
         }
@@ -357,6 +364,7 @@ export class AuthService {
                         sub: raceCreated.id,
                         email: raceCreated.email,
                         tokenVersion: raceCreated.tokenVersion,
+                        role: raceCreated.role,
                     });
                     return {
                         access_token: token,
@@ -367,6 +375,7 @@ export class AuthService {
                             lastName: raceCreated.lastName,
                             email: raceCreated.email,
                             providerType: raceCreated.providerType,
+                            role: raceCreated.role,
                         },
                     };
                 }
@@ -378,6 +387,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
         });
 
         this.eventEmitter.emit(
@@ -399,6 +409,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }
