@@ -4,6 +4,8 @@ import { ChatService } from './chat.service';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
+import { SearchToolsService } from '../intelligence/tools/search-tools.service';
+import { GraphToolsService } from '../intelligence/tools/graph-tools.service';
 
 type MockTx = {
     chatMessage: Record<string, jest.Mock>;
@@ -91,6 +93,42 @@ function createMockChatContextService() {
     };
 }
 
+function createMockSearchToolsService() {
+    return {
+        getTools: jest.fn().mockReturnValue([
+            {
+                name: 'search_raw_messages',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'search_insights',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'retrieve_relevant_insights',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+            {
+                name: 'resolve_user_by_platform_id',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+        ]),
+    };
+}
+
+function createMockGraphToolsService() {
+    return {
+        getTools: jest.fn().mockReturnValue([
+            { name: 'search_graph', invoke: jest.fn().mockResolvedValue('[]') },
+            { name: 'get_entity', invoke: jest.fn().mockResolvedValue('{}') },
+            {
+                name: 'get_neighbors',
+                invoke: jest.fn().mockResolvedValue('[]'),
+            },
+        ]),
+    };
+}
+
 async function* mockStream(tokens: string[]) {
     for (const token of tokens) {
         yield { content: token };
@@ -102,11 +140,15 @@ describe('ChatService', () => {
     let mockAppDb: ReturnType<typeof createMockAppDb>;
     let mockLlmService: ReturnType<typeof createMockLlmService>;
     let mockChatContext: ReturnType<typeof createMockChatContextService>;
+    let mockSearchTools: ReturnType<typeof createMockSearchToolsService>;
+    let mockGraphTools: ReturnType<typeof createMockGraphToolsService>;
 
     beforeEach(async () => {
         mockAppDb = createMockAppDb();
         mockLlmService = createMockLlmService();
         mockChatContext = createMockChatContextService();
+        mockSearchTools = createMockSearchToolsService();
+        mockGraphTools = createMockGraphToolsService();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -114,6 +156,8 @@ describe('ChatService', () => {
                 { provide: AppDbService, useValue: mockAppDb },
                 { provide: LlmService, useValue: mockLlmService },
                 { provide: ChatContextService, useValue: mockChatContext },
+                { provide: SearchToolsService, useValue: mockSearchTools },
+                { provide: GraphToolsService, useValue: mockGraphTools },
             ],
         }).compile();
 
@@ -278,6 +322,14 @@ describe('ChatService', () => {
     });
 
     describe('streamResponse', () => {
+        async function consumeStream(
+            gen: AsyncGenerator<unknown>,
+        ): Promise<void> {
+            for await (const token of gen) {
+                expect(token).toBeDefined();
+            }
+        }
+
         beforeEach(() => {
             mockAppDb.chatMessage.findMany.mockResolvedValue([
                 {
@@ -317,10 +369,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(callOrder[0]).toBe('findMany');
             expect(callOrder[1]).toBe('create');
@@ -332,10 +381,7 @@ describe('ChatService', () => {
                 'conv-1',
                 'What are my tasks?',
             );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(1, {
                 data: {
@@ -369,10 +415,7 @@ describe('ChatService', () => {
 
         it('builds context via ChatContextService', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockChatContext.buildContext).toHaveBeenCalledWith(
                 'user-1',
@@ -382,10 +425,7 @@ describe('ChatService', () => {
 
         it('loads last 20 messages with desc ordering for history', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -406,10 +446,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalled();
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -432,10 +469,7 @@ describe('ChatService', () => {
             mockAppDb.chatMessage.findMany.mockResolvedValue([]);
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalled();
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -459,10 +493,7 @@ describe('ChatService', () => {
 
         it('saves full assistant response after streaming', async () => {
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
                 data: {
@@ -506,10 +537,7 @@ describe('ChatService', () => {
             });
 
             const gen = service.streamResponse('user-1', 'conv-1', 'hello');
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
                 data: {
@@ -541,10 +569,7 @@ describe('ChatService', () => {
                 'hello',
                 abortController.signal,
             );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _token of gen) {
-                // consume the stream
-            }
+            await consumeStream(gen);
 
             expect(llmStream).toHaveBeenCalledWith(
                 expect.any(Array),
@@ -552,6 +577,121 @@ describe('ChatService', () => {
                     signal: abortController.signal,
                 }),
             );
+        });
+
+        it('executes tool call when requested by LLM stream', async () => {
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue(
+                    '[{"id":"msg-99","content":"found message"}]',
+                );
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_raw_messages', invoke: searchToolInvoke },
+            ]);
+
+            const mockToolCallStream = (async function* () {
+                yield {
+                    content: '',
+                    tool_calls: [
+                        {
+                            id: 'call-1',
+                            name: 'search_raw_messages',
+                            args: { query: 'urgent' },
+                        },
+                    ],
+                };
+            })();
+
+            const mockFinalStream = (async function* () {
+                yield { content: 'Found the raw message details.' };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockToolCallStream)
+                .mockResolvedValueOnce(mockFinalStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'Search urgent messages',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(searchToolInvoke).toHaveBeenCalledWith({ query: 'urgent' });
+            expect(tokens.join('')).toBe('Found the raw message details.');
+        });
+
+        it('handles Gemini functionCall content array blocks without leaking JSON to chat', async () => {
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue(
+                    '[{"id":"msg-100","content":"afternoon meeting"}]',
+                );
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_raw_messages', invoke: searchToolInvoke },
+            ]);
+
+            const mockGeminiToolCallStream = (async function* () {
+                yield {
+                    content: [
+                        {
+                            type: 'functionCall',
+                            functionCall: {
+                                name: 'search_raw_messages',
+                                args: { query: 'afternoon' },
+                                id: 'AkCrAEFa',
+                            },
+                        },
+                    ],
+                };
+            })();
+
+            const mockFinalAnswerStream = (async function* () {
+                yield {
+                    content: 'You have a meeting scheduled this afternoon.',
+                };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockGeminiToolCallStream)
+                .mockResolvedValueOnce(mockFinalAnswerStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'what are my task for this afternoon?',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(searchToolInvoke).toHaveBeenCalledWith({
+                query: 'afternoon',
+            });
+            expect(tokens.join('')).toBe(
+                'You have a meeting scheduled this afternoon.',
+            );
+            expect(tokens.join('')).not.toContain('functionCall');
         });
     });
 

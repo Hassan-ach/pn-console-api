@@ -100,6 +100,44 @@ export class PlatformUserMappingRepository {
         }));
     }
 
+    async resolvePlatformUser(
+        platformUserId: string,
+        pluginName?: string,
+    ): Promise<
+        Array<
+            PlatformUserMapping & {
+                user: {
+                    id: string;
+                    firstName: string;
+                    lastName: string | null;
+                    email: string;
+                } | null;
+            }
+        >
+    > {
+        const mappings = await this.prisma.platformUserMapping.findMany({
+            where: {
+                platformUserId,
+                ...(pluginName ? { pluginName } : {}),
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        return mappings.map((m) => ({
+            ...this.toMapping(m),
+            user: m.user,
+        }));
+    }
+
     async upsert(data: {
         platformUserId: string;
         appUserId: string;

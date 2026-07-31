@@ -113,6 +113,9 @@ export class SuggestionsService {
             `Generating on-demand suggestions for insight ${insightId} (orgId: ${orgId})`,
         );
 
+        // Clear existing suggestions for this insight so new ones replace old ones
+        await this.suggestionRepo.deleteByInsightId(insightId);
+
         const syntheticChunk = {
             id: `chunk-on-demand-${insightId}`,
             envelopes: [

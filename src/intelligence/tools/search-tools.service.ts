@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { EnvelopeRepository } from 'src/repositories/envelope.repository';
 import { InsightRepository } from 'src/repositories/insight.repository';
 import { EmbeddingRepository } from 'src/repositories/embedding.repository';
+import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { UserRepository } from 'src/repositories/user.repository';
 import { EmbeddingService } from '../embeddings/embedding.service';
 
 @Injectable()
@@ -15,6 +17,8 @@ export class SearchToolsService {
         private readonly insightRepo: InsightRepository,
         private readonly embeddingRepo: EmbeddingRepository,
         private readonly embeddingService: EmbeddingService,
+        private readonly platformUserMappingRepo: PlatformUserMappingRepository,
+        private readonly userRepo: UserRepository,
     ) {}
 
     getTools(organizationId?: string, userId?: string): StructuredTool[] {
@@ -151,10 +155,118 @@ export class SearchToolsService {
             },
         });
 
-        return [
+        const resolveUserByPlatformIdTool = new DynamicStructuredTool({
+            name: 'resolve_user_by_platform_id',
+            description:
+                'Lookup and resolve a user name and app account details from their source platform user ID (e.g. Telegram account ID, Slack user ID) using the platform user mapping database table.',
+            schema: z.object({
+                platformUserId: z
+                    .string()
+                    .describe(
+                        'The source platform user/account ID to resolve (e.g. "123456789" or "U12345")',
+                    ),
+                pluginName: z
+                    .string()
+                    .optional()
+                    .describe(
+                        'Optional source plugin/platform name (e.g. "telegram", "slack", "discord")',
+                    ),
+            }),
+            func: async ({ platformUserId, pluginName }) => {
+                const start = Date.now();
+                this.logger.debug(
+                    `[Tool Exec: resolve_user_by_platform_id] platformUserId="${platformUserId}", pluginName="${pluginName ?? 'ALL'}"`,
+                );
+
+                try {
+                    const results =
+                        await this.platformUserMappingRepo.resolvePlatformUser(
+                            platformUserId,
+                            pluginName,
+                        );
+                    this.logger.debug(
+                        `[Tool Result: resolve_user_by_platform_id] Resolved ${results.length} user mapping(s) (${Date.now() - start}ms)`,
+                    );
+                    return JSON.stringify(results);
+                } catch (error) {
+                    this.logger.error(
+                        `[Tool Failure: resolve_user_by_platform_id] ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
+                    return JSON.stringify({ error: (error as Error).message });
+                }
+            },
+        });
+
+        const getCurrentUserTool = userId
+            ? new DynamicStructuredTool({
+                  name: 'get_current_user',
+                  description:
+                      'Get the profile details (name, email) and connected platform usernames/accounts (Telegram, Slack, Discord, etc.) of the currently logged-in user.',
+                  schema: z.object({}),
+                  func: async () => {
+                      const start = Date.now();
+                      this.logger.debug(
+                          `[Tool Exec: get_current_user] userId="${userId}"`,
+                      );
+
+                      try {
+                          const [user, mappings] = await Promise.all([
+                              this.userRepo.findById(userId),
+                              this.platformUserMappingRepo.findByAppUser(
+                                  userId,
+                              ),
+                          ]);
+
+                          if (!user) {
+                              return JSON.stringify({
+                                  error: `User with ID ${userId} not found`,
+                              });
+                          }
+
+                          const result = {
+                              id: user.id,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              email: user.email,
+                              organizationId: user.organizationId,
+                              providerType: user.providerType,
+                              createdAt: user.createdAt,
+                              platformMappings: mappings.map((m) => ({
+                                  pluginName: m.pluginName,
+                                  platformUserId: m.platformUserId,
+                                  platformUsername: m.platformUsername,
+                              })),
+                          };
+
+                          this.logger.debug(
+                              `[Tool Result: get_current_user] Retrieved profile for ${user.email} (${Date.now() - start}ms)`,
+                          );
+                          return JSON.stringify(result);
+                      } catch (error) {
+                          this.logger.error(
+                              `[Tool Failure: get_current_user] ${(error as Error).message}`,
+                              (error as Error).stack,
+                          );
+                          return JSON.stringify({
+                              error: (error as Error).message,
+                          });
+                      }
+                  },
+              })
+            : null;
+
+        const tools: StructuredTool[] = [
             searchRawMessagesTool,
             searchInsightsTool,
             retrieveRelevantInsightsTool,
+            resolveUserByPlatformIdTool,
         ];
+
+        if (getCurrentUserTool) {
+            tools.push(getCurrentUserTool);
+        }
+
+        return tools;
     }
 }
