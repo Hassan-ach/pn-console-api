@@ -43,13 +43,16 @@ export class IngestionWorker {
                     batch,
                     this.config.userId,
                 );
-                const lastId = batch[batch.length - 1]?.envelope?.sourceId;
-                if (lastId) {
+                const maxId = Math.max(
+                    0,
+                    ...batch.map((item) => Number(item.envelope.sourceId) || 0),
+                );
+                if (maxId > 0) {
                     await context.saveCursor(
                         this.pluginName,
                         this.config.userId,
                         this.chatId,
-                        Number(lastId),
+                        maxId,
                     );
                 }
                 this.state.flushes++;
@@ -82,43 +85,44 @@ export class IngestionWorker {
         if (!plugin) throw new Error(`Plugin "${this.pluginName}" not found`);
         const context = this.pluginManager.getContext();
 
-        const backfillPromise = this.runBackfill(plugin, context);
-        const streamPromise = this.runStream(plugin, context);
-
-        await backfillPromise;
+        const backfillIds = await this.runBackfill(plugin, context);
         this.state.backfill = 'COMPLETED';
 
-        const orgId = context.resolveOrgId(this.config.userId);
-        if (this.eventBus) {
-            this.eventBus.publish(
-                'envelopes.ingested',
-                new EnvelopesIngestedEvent(
-                    orgId,
-                    this.config.userId,
-                    this.pluginName,
-                    this.chatId,
-                    [],
-                    true,
-                ),
-            );
-        } else if (this.intelligenceEngine) {
-            await this.intelligenceEngine.run(orgId, {
-                userId: this.config.userId,
-                progressable: true,
-            });
+        if (backfillIds.length > 0) {
+            const orgId = context.resolveOrgId(this.config.userId);
+            if (this.eventBus) {
+                this.eventBus.publish(
+                    'envelopes.ingested',
+                    new EnvelopesIngestedEvent(
+                        orgId,
+                        this.config.userId,
+                        this.pluginName,
+                        this.chatId,
+                        backfillIds,
+                        true,
+                    ),
+                );
+            } else if (this.intelligenceEngine) {
+                await this.intelligenceEngine.run(orgId, {
+                    userId: this.config.userId,
+                    envelopeIds: backfillIds,
+                    progressable: true,
+                });
+            }
         }
 
-        await streamPromise;
+        await this.runStream(plugin, context);
     }
 
     private async runBackfill(
         plugin: IPlugin,
         context: PluginContext,
-    ): Promise<void> {
+    ): Promise<string[]> {
         this.state.backfill = 'RUNNING';
         const chats = extractProviderChats(this.config.config);
         const chatCfg = chats.find((c) => c.id === this.chatId);
         const limit = chatCfg?.historyLimit ?? -1;
+        const insertedIds: string[] = [];
 
         try {
             for await (const result of plugin.backfill(
@@ -127,10 +131,15 @@ export class IngestionWorker {
                 this.backfillAbort.signal,
             )) {
                 this.state.backfillProgress = result;
+                if (result.ids?.length) {
+                    insertedIds.push(...result.ids);
+                }
             }
         } catch (err) {
             if (!this.backfillAbort.signal.aborted) throw err;
         }
+
+        return insertedIds;
     }
 
     private async runStream(

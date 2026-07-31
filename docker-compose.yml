@@ -52,5 +52,20 @@ services:
             - '8080:8080'
         command: start-dev
 
+    neo4j:
+        image: neo4j:5-community
+        container_name: pn_console_neo4j
+        restart: unless-stopped
+        ports:
+            - '7474:7474'
+            - '7687:7687'
+        environment:
+            NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/pn_console_password}
+            NEO4J_PLUGINS: '["apoc"]'
+        volumes:
+            - neo4j_data:/data
+
 volumes:
     postgres_data:
+    neo4j_data:
+

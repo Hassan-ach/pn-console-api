@@ -2,14 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InsightExtractionCapabilityV2 } from './insight-extraction-v2.capability';
 import { LlmService } from '../../llm/llm.service';
 import { GraphToolsService } from '../../tools/graph-tools.service';
+import { SearchToolsService } from '../../tools/search-tools.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository } from 'src/repositories/user.repository';
+import { EntityRepository } from 'src/repositories/entity.repository';
 import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
     let capability: InsightExtractionCapabilityV2;
     let mockLlmService: { createToolChain: jest.Mock };
     let mockGraphToolsService: { getTools: jest.Mock };
+    let mockSearchToolsService: { getTools: jest.Mock };
     let mockPlatformUserMappingRepo: { findWithUser: jest.Mock };
     let mockChain: { invoke: jest.Mock };
 
@@ -21,6 +24,10 @@ describe('InsightExtractionCapabilityV2', () => {
         };
 
         mockGraphToolsService = {
+            getTools: jest.fn().mockReturnValue([]),
+        };
+
+        mockSearchToolsService = {
             getTools: jest.fn().mockReturnValue([]),
         };
 
@@ -47,16 +54,25 @@ describe('InsightExtractionCapabilityV2', () => {
             ]),
         };
 
+        const mockEntityRepo = {
+            search: jest.fn().mockResolvedValue([]),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 InsightExtractionCapabilityV2,
                 { provide: LlmService, useValue: mockLlmService },
                 { provide: GraphToolsService, useValue: mockGraphToolsService },
                 {
+                    provide: SearchToolsService,
+                    useValue: mockSearchToolsService,
+                },
+                {
                     provide: PlatformUserMappingRepository,
                     useValue: mockPlatformUserMappingRepo,
                 },
                 { provide: UserRepository, useValue: mockUserRepo },
+                { provide: EntityRepository, useValue: mockEntityRepo },
             ],
         }).compile();
 
