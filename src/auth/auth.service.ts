@@ -61,7 +61,6 @@ export class AuthService {
     async signup(dto: SignupDto) {
         const normalizedEmail = dto.email.toLowerCase().trim();
 
-        // Only conflict when the same email + EMAIL provider already exists.
         const existing = await this.db.user.findUnique({
             where: {
                 email_providerType: {
@@ -298,7 +297,7 @@ export class AuthService {
         return { token: resetToken.token };
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+
 
     private async loginOrCreateOAuthUser(
         profile: { email: string; firstName: string; lastName: string },
@@ -355,7 +354,6 @@ export class AuthService {
                 },
             });
         } catch (e) {
-            // P2002 = unique constraint violation (race: another request created the same user)
             if ((e as { code?: string })?.code === 'P2002') {
                 const raceCreated = await this.db.user.findUnique({
                     where: {

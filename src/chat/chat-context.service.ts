@@ -90,7 +90,6 @@ export class ChatContextService {
             const now = new Date();
             const filters = this.extractFilters(userMessage);
 
-            // --- Structured filter query (runs when type/status keywords detected) ---
             let filterResults: SimilarityResult[] = [];
             if (filters) {
                 this.logger.debug(
@@ -106,7 +105,6 @@ export class ChatContextService {
                 );
             }
 
-            // --- Semantic search (always runs for contextual understanding) ---
             const embedding = await this.embeddingService.embed(userMessage);
 
             let semanticResults = await this.embeddingRepository.searchSimilar(
@@ -116,7 +114,6 @@ export class ChatContextService {
                 0.65,
             );
 
-            // Fallback to a lower threshold when semantic returns nothing
             if (semanticResults.length === 0) {
                 this.logger.debug(
                     'No semantic results above 0.65 — retrying with fallback 0.45',
@@ -129,7 +126,6 @@ export class ChatContextService {
                 );
             }
 
-            // --- Merge: filter results first (exact matches), semantic adds context ---
             const seen = new Set<string>();
             const combined: SimilarityResult[] = [];
 
@@ -140,9 +136,6 @@ export class ChatContextService {
                 }
             }
 
-            // Fallback: when no insights matched semantically or by filter,
-            // return the most recent insights so the LLM has something to work with
-            // (e.g. for broad queries like "Summarize my day")
             if (combined.length === 0) {
                 this.logger.debug(
                     'No RAG results — fetching recent insights as fallback',
@@ -169,7 +162,6 @@ export class ChatContextService {
     }
 
     private formatInsightLine(r: SimilarityResult, now: Date): string {
-        // Source: plugin + most-specific scope (channel > topic > group)
         let source = '';
         if (r.sourcePlugin) {
             source = ` from ${r.sourcePlugin}`;
@@ -178,10 +170,8 @@ export class ChatContextService {
             else if (r.groupId) source += `/${r.groupId}`;
         }
 
-        // Creation date
         const createdLabel = ` [created: ${r.createdAt.toISOString().split('T')[0]}]`;
 
-        // Deadline with human-readable urgency label
         let deadlineLabel = '';
         if (r.deadline) {
             const deadlineIso = r.deadline.toISOString().split('T')[0];
