@@ -201,7 +201,8 @@ export class GraphToolsService {
                                 'Entity type (Person, Team, Project, Service, Repository, Document, Ticket, Channel)',
                             ),
                         metadata: z
-                            .record(z.string(), z.any())
+                            .object({ role: z.string().optional() })
+                            .catchall(z.any())
                             .optional()
                             .describe(
                                 'Optional metadata key-value object. For Person/Team, include "role" field specifying their position (e.g. {"role": "Lead Architect"})',
@@ -286,7 +287,8 @@ export class GraphToolsService {
                         name: z.string().optional(),
                         type: z.string().optional(),
                         metadata: z
-                            .record(z.string(), z.any())
+                            .object({ role: z.string().optional() })
+                            .catchall(z.any())
                             .optional()
                             .describe(
                                 'Optional metadata update object (e.g. {"role": "Senior Frontend Engineer"})',
@@ -360,7 +362,7 @@ export class GraphToolsService {
                             .describe(
                                 'Relationship type (WORKS_ON, OWNS, DEPENDS_ON, REFERENCES, BELONGS_TO, MENTIONS)',
                             ),
-                        metadata: z.record(z.string(), z.any()).optional(),
+                        metadata: z.object({}).catchall(z.any()).optional(),
                     }),
                 ),
             }),

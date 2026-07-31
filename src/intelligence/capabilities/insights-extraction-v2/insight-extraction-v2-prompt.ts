@@ -48,13 +48,19 @@ For each insight, determine:
 - \`type\`: One of "TASK", "URGENCY", "INFO", "DECISION".
 - \`content\`: A clear, concise rephrasing of the actionable insight. NEVER copy raw message text verbatim.
 - \`envolopsRef\`: Array of exact \`envolopId\` string UUIDs from the input messages on which this insight is based.
-- \`owners\`: Array of user identifier objects for people directly assigned or requested to act, formatted as \`[{ "id": "platform_user_id" }, { "username": "platform_username_or_display_name" }]\`. Use display names or usernames from context if exact IDs are unknown. Do NOT include people mentioned merely in passing.
+- \`owners\`: Array of user identifier objects for people directly assigned or requested to act, formatted as \`[{ "id": "platform_user_id" }, { "username": "platform_username_or_display_name" }]\`. Use display names or usernames from context if exact IDs are unknown. Do NOT include people mentioned merely in passing. EVERY insight MUST have at least one owners entry UNLESS it is broadcast (broadcastLevel is "ORG", "TEAM", or "ROLE"). For INFO insights, assign the person the update concerns or the author (unless excludeAuthor is true); if you only know a display name, still include it as { "username": "display_name" } so the system can fuzzy-match it. Never combine owners: [] with "DIRECT" (or a missing) broadcastLevel.
 - \`broadcasted\`: Set to \`true\` ONLY when the insight must reach everyone in the organization (ORG-wide broadcast). When \`broadcasted\` is true, \`owners\` MUST be an empty array \`[]\` and \`broadcastLevel\` should be \`"ORG"\`. When someone is assigned, \`broadcasted\` MUST be \`false\`.
-- \`broadcastLevel\`: Controls the audience of the insight. One of \`"DIRECT"\` (default, shown only to assigned owners), \`"ORG"\` (broadcast to everyone in the organization, \`owners\` must be empty), \`"TEAM"\` (broadcast to all members of a team — set \`broadcastTarget\` to the exact team name from the \`Organization teams\` list), or \`"ROLE"\` (broadcast to every user holding a role — set \`broadcastTarget\` to the exact role name from the \`Organization roles\` list). Only use team/role names present in the provided lists; if the target is not listed, fall back to \`"DIRECT"\` with owners or \`"ORG"\`.
+- \`broadcastLevel\`: Controls the audience of the insight. One of \`"DIRECT"\` (default, shown only to assigned owners), \`"ORG"\` (broadcast to everyone in the organization, \`owners\` must be empty), \`"TEAM"\` (broadcast to all members of a team — set \`broadcastTarget\` to the exact team name from the \`Organization teams\` list), or \`"ROLE"\` (broadcast to every user holding a role — set \`broadcastTarget\` to the exact role name from the \`Organization roles\` list). Only use team/role names present in the provided lists; if the target is not listed, fall back to \`"DIRECT"\` with owners or \`"ORG"\`. \`"DIRECT"\` requires at least one entry in owners.
 - \`broadcastTarget\`: The exact team name or role name from the provided lists. Required when \`broadcastLevel\` is \`"TEAM"\` or \`"ROLE"\`; ignore otherwise.
 - \`excludeAuthor\`: Set to \`true\` when the message author is delegating work to others (e.g. "Can someone check X?"). Set to \`false\` when author self-commits (e.g. "I will fix X") or for general info.
 - \`priority\`: Integer score from 1 to 10 (10 = highest priority). Guidelines: URGENCY (7-10), TASK/DECISION (4-9 based on deadline & impact), INFO (1-4).
 - \`deadline\`: ISO 8601 date string (YYYY-MM-DD) calculated using the message's \`occurredAt\` timestamp as the anchor date, or \`null\` if no deadline is specified.
+
+---
+
+### HARD RULES:
+- NEVER create an orphaned insight. Every insight MUST have at least one owners entry OR a broadcast broadcastLevel ("ORG", "TEAM", or "ROLE" with a broadcastTarget). owners: [] combined with "DIRECT" (or a missing) broadcastLevel is INVALID and will be rejected.
+- When owners: [] and broadcastLevel is "TEAM" or "ROLE", broadcastTarget must be an exact name from the provided lists.
 
 ---
 

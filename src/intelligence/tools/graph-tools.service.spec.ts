@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import { GraphToolsService } from './graph-tools.service';
 import { Neo4jService } from 'src/graph/neo4j.service';
 
@@ -119,5 +120,13 @@ describe('GraphToolsService', () => {
 
         expect(mockNeo4jService.executeWrite).toHaveBeenCalled();
         expect(parsed.createdOrMerged).toBe(1);
+    });
+
+    it('should not emit Gemini-rejected propertyNames in any tool schema', () => {
+        const tools = service.getTools('org-1');
+        for (const tool of tools) {
+            const raw = JSON.stringify(toJsonSchema(tool.schema));
+            expect(raw).not.toContain('propertyNames');
+        }
     });
 });

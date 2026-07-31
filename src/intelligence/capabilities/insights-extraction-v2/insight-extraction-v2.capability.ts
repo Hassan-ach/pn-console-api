@@ -306,11 +306,48 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             }),
         ];
 
+        const finalInsights = insights.map((insight) => {
+            if (
+                insight.broadcastLevel !== InsightBroadcastLevel.DIRECT ||
+                insight.owners.length > 0 ||
+                (insight.unresolvedOwnerRefs?.length ?? 0) > 0
+            ) {
+                return insight;
+            }
+
+            const authorAppId = (insight.envolopsRef ?? [])
+                .map((ref) => msgAuthors.get(ref))
+                .map((platformId) =>
+                    platformId ? platformToAppUser.get(platformId) : undefined,
+                )
+                .find(
+                    (id) =>
+                        id !== undefined &&
+                        !insight.excludedUserIds?.includes(id),
+                );
+
+            if (authorAppId) {
+                this.logger.debug(
+                    `[V2] Orphan insight assigned to author ${authorAppId}: "${insight.content.slice(0, 50)}"`,
+                );
+                return { ...insight, owners: [authorAppId] };
+            }
+
+            this.logger.debug(
+                `[V2] Orphan insight promoted to ORG broadcast: "${insight.content.slice(0, 50)}"`,
+            );
+            return {
+                ...insight,
+                broadcasted: true,
+                broadcastLevel: InsightBroadcastLevel.ORG,
+            };
+        });
+
         this.logger.log(
             `[V2] Extraction complete: ${insights.length} insights`,
         );
 
-        return { capabilityName: this.name, insights };
+        return { capabilityName: this.name, insights: finalInsights };
     }
 
     private async buildOrgContext(organizationId?: string): Promise<string> {

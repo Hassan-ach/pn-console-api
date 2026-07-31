@@ -22,10 +22,10 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
       
       For each insight, determine:
       - envolopsRef: an array of source envelope IDs (from the messages' envolopId) that the insight was based on. Always include at least one ID — every insight is based on one or more messages. CRITICAL: copy the exact envolopId values from the messages without any truncation or modification — these are UUIDs and must not be shortened or rewritten.
-      - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username_or_display_name" }. If you only know a person's name from the message context (not their platform username), use their display name in the "username" field — the system will attempt fuzzy matching. Do not include people merely mentioned in passing or as context.
+      - owners: an array of user identifiers of people directly assigned or asked to take action. Each entry must have at least one of: { "id": "platform_user_id" } or { "username": "platform_username_or_display_name" }. If you only know a person's name from the message context (not their platform username), use their display name in the "username" field — the system will attempt fuzzy matching. Do not include people merely mentioned in passing or as context. EVERY insight must have at least one owner unless it is a broadcast (broadcastLevel "ORG", "TEAM", or "ROLE"). For INFO insights, assign the person the update concerns or the author (unless excludeAuthor is true).
       - broadcasted: set to true when the insight must reach everyone in the organization. When broadcasted is true, owners must be empty and broadcastLevel must be "ORG" (or omitted). When someone is directly assigned, broadcasted must be false.
       - broadcastLevel: controls the audience of the insight. One of:
-          - "DIRECT" (default): shown only to the assigned owners. Use when owners are specified.
+          - "DIRECT" (default): shown only to the assigned owners. Use when owners are specified. owners must be non-empty when DIRECT.
           - "ORG": broadcast to everyone in the organization. Equivalent to broadcasted: true. owners must be empty.
           - "TEAM": broadcast to all members of a specific team. Must set broadcastTarget to the exact team name from the "Organization teams" list provided. owners must be empty.
           - "ROLE": broadcast to every user who holds a specific role. Must set broadcastTarget to the exact role name from the "Organization roles" list provided. owners must be empty.
@@ -43,10 +43,11 @@ export const SYSTEM_PROMPT = `You are an assistant that manages a structured lis
        5. Owners = people directly assigned or asked to take action. Do not include people merely mentioned in passing.
        6. broadcasted = true means ORG-wide broadcast; owners must be empty and broadcastLevel should be "ORG".
        7. TEAM and ROLE broadcasts must use an exact team/role name from the provided lists in broadcastTarget, with owners empty.
-       8. excludeAuthor: set to true when the message author is delegating or asking others to act, false when the author is self-committing or the insight is general information.
-       9. priority must be an integer between 1 and 10 inclusive.
-       10. deadline must be a valid ISO 8601 date string (YYYY-MM-DD) or null.
-       11. envolopsRef values must be the exact envelope UUIDs from the messages — never truncate, abbreviate, or fabricate them.
+        8. excludeAuthor: set to true when the message author is delegating or asking others to act, false when the author is self-committing or the insight is general information.
+        9. priority must be an integer between 1 and 10 inclusive.
+        10. deadline must be a valid ISO 8601 date string (YYYY-MM-DD) or null.
+        11. envolopsRef values must be the exact envelope UUIDs from the messages — never truncate, abbreviate, or fabricate them.
+        12. Never create an orphaned insight: every insight must have at least one owner in "owners" unless broadcastLevel is "ORG", "TEAM", or "ROLE". owners: [] combined with "DIRECT" (or missing) broadcastLevel is INVALID.
       
       CRITICAL: Return ONLY raw JSON — no markdown, no code fences, no backticks, no surrounding text of any kind. The response must be parseable by JSON.parse() directly:
       {{

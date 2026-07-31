@@ -4,6 +4,7 @@ import { LlmService } from '../../llm/llm.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
 import { CapabilityInput } from '../capability.interface';
+import { InsightBroadcastLevel } from 'src/types/insight.types';
 
 const sampleInput: CapabilityInput = {
     chunk: {
@@ -419,6 +420,151 @@ describe('InsightExtractionCapability', () => {
         const result = await service.execute(input);
 
         expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].owners).toEqual([]);
+    });
+
+    it('should assign the envelope author to an orphaned DIRECT insight', async () => {
+        const resultWithOwners = {
+            updatedInsights: [],
+            newInsights: [
+                {
+                    type: 'INFO',
+                    content: 'Backend implementation completed.',
+                    owners: [],
+                    envolopsRef: ['1'],
+                    broadcasted: false,
+                    priority: 2,
+                    deadline: null,
+                },
+            ],
+        };
+
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify(resultWithOwners),
+        });
+
+        platformRepoMock.findWithUser.mockResolvedValue([
+            {
+                platformUserId: 'tg-123',
+                appUserId: 'app-user-bob',
+                pluginName: 'telegram',
+                platformUsername: 'bob_ops',
+                user: { firstName: 'Bob', lastName: 'Ops' },
+            },
+        ]);
+
+        const input: CapabilityInput = {
+            chunk: {
+                id: 'c',
+                envelopes: [
+                    {
+                        envelope: {
+                            id: '1',
+                            sourcePlugin: 'telegram',
+                            sourceId: 'src-1',
+                            type: 'message',
+                            hasAttachment: false,
+                            authorId: 'tg-123',
+                            occurredAt: new Date(),
+                        },
+                        payload: {
+                            type: 'direct',
+                            content: 'test',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
+                    },
+                ],
+                metadata: {
+                    timeRange: { start: new Date(), end: new Date() },
+                    envelopeCount: 1,
+                },
+            },
+            previousIntelligence: [],
+        };
+
+        const result = await service.execute(input);
+
+        expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].broadcastLevel).toBe(
+            InsightBroadcastLevel.DIRECT,
+        );
+        expect(result.insights[0].owners).toEqual(['app-user-bob']);
+    });
+
+    it('should promote an orphaned DIRECT insight to ORG when author is unmapped', async () => {
+        const resultWithOwners = {
+            updatedInsights: [],
+            newInsights: [
+                {
+                    type: 'INFO',
+                    content: 'New feature shipped.',
+                    owners: [],
+                    envolopsRef: ['1'],
+                    broadcasted: false,
+                    priority: 2,
+                    deadline: null,
+                },
+            ],
+        };
+
+        llmInvoke.mockResolvedValue({
+            content: JSON.stringify(resultWithOwners),
+        });
+
+        platformRepoMock.findWithUser.mockResolvedValue([]);
+
+        const input: CapabilityInput = {
+            chunk: {
+                id: 'c',
+                envelopes: [
+                    {
+                        envelope: {
+                            id: '1',
+                            sourcePlugin: 'telegram',
+                            sourceId: 'src-1',
+                            type: 'message',
+                            hasAttachment: false,
+                            authorId: 'unknown-1',
+                            occurredAt: new Date(),
+                        },
+                        payload: {
+                            type: 'direct',
+                            content: 'test',
+                            groupId: null,
+                            channelId: null,
+                            replyTo: null,
+                            topicId: null,
+                            reactions: {},
+                            pinned: false,
+                            editedDate: null,
+                            entities: null,
+                            rawPayload: {},
+                        },
+                    },
+                ],
+                metadata: {
+                    timeRange: { start: new Date(), end: new Date() },
+                    envelopeCount: 1,
+                },
+            },
+            previousIntelligence: [],
+        };
+
+        const result = await service.execute(input);
+
+        expect(result.insights).toHaveLength(1);
+        expect(result.insights[0].broadcastLevel).toBe(
+            InsightBroadcastLevel.ORG,
+        );
+        expect(result.insights[0].broadcasted).toBe(true);
         expect(result.insights[0].owners).toEqual([]);
     });
 });
