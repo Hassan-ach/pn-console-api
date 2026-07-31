@@ -63,6 +63,16 @@ export class InsightRepository {
             ownerIds = data.owners;
         }
 
+        const uniqueOwnerIds = [...new Set(ownerIds)];
+        const uniqueUnresolvedOwners = [
+            ...new Map(
+                (data.unresolvedOwners ?? []).map((u) => [
+                    `${u.pluginName}:${u.platformUserId ?? ''}:${u.platformUsername ?? ''}`,
+                    u,
+                ]),
+            ).values(),
+        ];
+
         const insight = await this.prisma.insight.create({
             data: {
                 organizationId: data.organizationId ?? null,
@@ -72,14 +82,14 @@ export class InsightRepository {
                         type: data.type,
                         content: data.content,
                         owners: {
-                            create: ownerIds.map((userId) => ({
+                            create: uniqueOwnerIds.map((userId) => ({
                                 userId,
                                 status: 'PENDING' as const,
                                 priority: data.priority ?? null,
                             })),
                         },
                         unresolvedOwners: {
-                            create: (data.unresolvedOwners ?? []).map((u) => ({
+                            create: uniqueUnresolvedOwners.map((u) => ({
                                 platformUserId: u.platformUserId,
                                 platformUsername: u.platformUsername,
                                 pluginName: u.pluginName,
@@ -162,6 +172,16 @@ export class InsightRepository {
                 ownerIds = data.owners;
             }
 
+            const uniqueOwnerIds = [...new Set(ownerIds)];
+            const uniqueUnresolvedOwners = [
+                ...new Map(
+                    (data.unresolvedOwners ?? []).map((u) => [
+                        `${u.pluginName}:${u.platformUserId ?? ''}:${u.platformUsername ?? ''}`,
+                        u,
+                    ]),
+                ).values(),
+            ];
+
             await tx.insightVersion.create({
                 data: {
                     insightId: id,
@@ -169,15 +189,16 @@ export class InsightRepository {
                     type: data.type,
                     content: data.content,
                     owners: {
-                        create: ownerIds.map((userId) => ({
+                        create: uniqueOwnerIds.map((userId) => ({
                             userId,
                             status: 'PENDING' as const,
                             priority: data.priority ?? null,
                         })),
                     },
                     unresolvedOwners: {
-                        create: (data.unresolvedOwners ?? []).map((u) => ({
+                        create: uniqueUnresolvedOwners.map((u) => ({
                             platformUserId: u.platformUserId,
+
                             platformUsername: u.platformUsername,
                             pluginName: u.pluginName,
                         })),
@@ -439,7 +460,7 @@ export class InsightRepository {
         return results;
     }
 
-    async findById(id: string, ownerId: string): Promise<Insight | null> {
+    async findById(id: string, ownerId?: string): Promise<Insight | null> {
         const insight = await this.prisma.insight.findUnique({
             where: { id },
             include: {
@@ -454,11 +475,14 @@ export class InsightRepository {
         if (!insight || insight.versions.length === 0) return null;
 
         const latest = insight.versions[0];
-        const isOwner = latest.owners.some((o) => o.userId === ownerId);
+        if (ownerId) {
+            const isOwner = latest.owners.some((o) => o.userId === ownerId);
+            if (!isOwner && !latest.broadcasted) return null;
+        }
 
-        if (!isOwner && !latest.broadcasted) return null;
-
-        const ownerRow = latest.owners.find((o) => o.userId === ownerId);
+        const ownerRow = ownerId
+            ? latest.owners.find((o) => o.userId === ownerId)
+            : undefined;
 
         return {
             id: insight.id,
@@ -682,6 +706,52 @@ export class InsightRepository {
         });
 
         return version?.id ?? null;
+    }
+
+    async searchInsights(
+        query: string,
+        organizationId?: string,
+        limit = 20,
+    ): Promise<Insight[]> {
+        if (!query.trim()) return [];
+
+        const versions = await this.prisma.insightVersion.findMany({
+            where: {
+                content: {
+                    contains: query,
+                    mode: 'insensitive',
+                },
+                ...(organizationId ? { insight: { organizationId } } : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: {
+                owners: true,
+                unresolvedOwners: true,
+            },
+        });
+
+        return versions.map((v) => ({
+            id: v.insightId,
+            latestVersionId: v.id,
+            type: v.type,
+            content: v.content,
+            owners: v.owners.map((o) => o.userId),
+            unresolvedOwnerRefs: v.unresolvedOwners.map((u) => ({
+                platformUserId: u.platformUserId,
+                platformUsername: u.platformUsername,
+                pluginName: u.pluginName,
+            })),
+            envolopsRef: [...v.envolopsRef],
+            broadcasted: v.broadcasted,
+            version: v.version,
+            createdAt: v.createdAt,
+            sourcePlugin: v.sourcePlugin ?? undefined,
+            groupId: v.groupId ?? undefined,
+            channelId: v.channelId ?? undefined,
+            topicId: v.topicId ?? undefined,
+            deadline: v.deadline ?? undefined,
+        }));
     }
 
     private toInsight(row: {

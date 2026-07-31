@@ -11,15 +11,61 @@ import { InputMessage } from '../insights-extraction/types';
 import { Insight, UnresolvedOwnerRef } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
 import { GraphToolsService } from '../../tools/graph-tools.service';
+import { SearchToolsService } from '../../tools/search-tools.service';
 import {
     PlatformUserMappingRepository,
     PlatformUserMappingWithUser,
 } from 'src/repositories/platform-user-mapping.repository';
+import { UserRepository, UserRecord } from 'src/repositories/user.repository';
+import { EntityRepository } from 'src/repositories/entity.repository';
 import {
     ICapability,
     CapabilityInput,
     CapabilityResult,
 } from '../capability.interface';
+
+function extractJsonString(raw: unknown): string {
+    let str = '';
+    if (typeof raw === 'string') {
+        str = raw;
+    } else if (Array.isArray(raw)) {
+        str = raw
+            .map((item) =>
+                typeof item === 'string' ? item : JSON.stringify(item),
+            )
+            .join('\n');
+    } else if (raw && typeof raw === 'object') {
+        const obj = raw as Record<string, unknown>;
+        if (typeof obj.output === 'string') {
+            str = obj.output;
+        } else if (typeof obj.content === 'string') {
+            str = obj.content;
+        } else {
+            str = JSON.stringify(raw);
+        }
+    }
+
+    // Try extracting markdown ```json ... ``` codeblock
+    const codeBlockMatch = str.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch && codeBlockMatch[1].trim()) {
+        const blockContent = codeBlockMatch[1].trim();
+        const start = blockContent.indexOf('{');
+        const end = blockContent.lastIndexOf('}');
+        if (start !== -1 && end > start) {
+            return blockContent.substring(start, end + 1).trim();
+        }
+        return blockContent;
+    }
+
+    // Try extracting substring between first '{' and last '}'
+    const firstBrace = str.indexOf('{');
+    const lastBrace = str.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        return str.substring(firstBrace, lastBrace + 1).trim();
+    }
+
+    return str.trim();
+}
 
 @Injectable()
 export class InsightExtractionCapabilityV2 implements ICapability {
@@ -30,11 +76,19 @@ export class InsightExtractionCapabilityV2 implements ICapability {
     constructor(
         private readonly llmService: LlmService,
         private readonly graphToolsService: GraphToolsService,
+        private readonly searchToolsService: SearchToolsService,
         private readonly platformUserMappingRepo: PlatformUserMappingRepository,
+        private readonly userRepo: UserRepository,
+        private readonly entityRepo: EntityRepository,
     ) {}
 
     async execute(input: CapabilityInput): Promise<CapabilityResult> {
-        const messages: InputMessage[] = input.chunk.envelopes.map((env) => ({
+        const envelopes = input.chunk.envelopes;
+        if (!envelopes || envelopes.length === 0) {
+            return { capabilityName: this.name, insights: [] };
+        }
+
+        const messages: InputMessage[] = envelopes.map((env) => ({
             envolopId: env.envelope.id ?? '',
             sourcePlugin: env.envelope.sourcePlugin,
             type: env.payload.type,
@@ -53,14 +107,16 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
         const pluginName = messages[0]?.sourcePlugin ?? 'unknown';
         const orgId =
-            input.chunk.envelopes[0]?.envelope.organizationId ?? undefined;
+            input.chunk.envelopes[0]?.envelope.organizationId ?? 'org-1';
 
         this.logger.log(
-            `[V2] Extracting insights with Knowledge Graph tools: ${messages.length} envelopes, plugin=${pluginName}`,
+            `[V2] Extracting insights with Knowledge Graph & Search tools: ${messages.length} envelopes, plugin=${pluginName} (orgId=${orgId})`,
         );
 
-        const allMappings =
-            await this.platformUserMappingRepo.findWithUser(pluginName);
+        const [allMappings, allOrgUsers] = await Promise.all([
+            this.platformUserMappingRepo.findWithUser(pluginName),
+            this.userRepo.findByOrganization(orgId),
+        ]);
 
         const platformToAppUser = new Map<string, string>();
         for (const m of allMappings) {
@@ -73,12 +129,20 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         }
 
         const history = input.previousIntelligence;
-        const tools = this.graphToolsService.getTools(orgId);
+        const graphTools = this.graphToolsService.getTools(orgId);
+        const searchTools = this.searchToolsService.getTools(orgId);
+        const tools = [...graphTools, ...searchTools];
+
         const currentDate = new Date().toISOString().split('T')[0];
+
+        const maxIterations = parseInt(
+            process.env.LLM_MAX_TOOL_ITERATIONS ?? '15',
+            10,
+        );
 
         const chain = await this.llmService.createToolChain({
             tools,
-            maxIterations: 5,
+            maxIterations,
         });
 
         const chainInput = [
@@ -99,16 +163,9 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const responseContent = await chain.invoke({
                     messages: chainInput,
                 });
-                const rawString =
-                    typeof responseContent === 'string'
-                        ? responseContent
-                        : JSON.stringify(responseContent);
-                const cleaned = rawString
-                    .replace(/```json/g, '')
-                    .replace(/```/g, '')
-                    .trim();
+                const cleanedJson = extractJsonString(responseContent);
 
-                result = InsightResultSchema.parse(JSON.parse(cleaned));
+                result = InsightResultSchema.parse(JSON.parse(cleanedJson));
                 this.logger.debug(
                     `[V2] LLM returned ${result.updatedInsights.length} updated, ${result.newInsights.length} new insights`,
                 );
@@ -118,6 +175,10 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     `[V2] LLM invocation failed (attempt ${attempt}/${MAX_RETRIES}): ${(error as Error).message}`,
                 );
                 if (attempt === MAX_RETRIES) {
+                    this.logger.error(
+                        `[V2] Insights extraction V2 failed after ${MAX_RETRIES} attempts: ${(error as Error).message}`,
+                        (error as Error).stack,
+                    );
                     throw new Error(
                         `insights extraction V2 failed: ${(error as Error).message}`,
                     );
@@ -146,7 +207,12 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
         const resolvedMap =
             allOwnerRefs.length > 0
-                ? this.resolveOwnersBatch(allOwnerRefs, allMappings)
+                ? await this.resolveOwnersBatch(
+                      allOwnerRefs,
+                      allMappings,
+                      allOrgUsers,
+                      orgId,
+                  )
                 : new Map<string, string | null>();
 
         const resolveOwners = (
@@ -192,9 +258,12 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
+
+                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
                 const isBroadcasted =
                     u.broadcasted ||
-                    (excludedUserIds.length > 0 && filteredOwners.length === 0);
+                    (u.owners.length === 0 && unresolved.length === 0);
+
                 return {
                     id: u.id,
                     type: u.type,
@@ -223,9 +292,12 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
+
+                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
                 const isBroadcasted =
                     n.broadcasted ||
-                    (excludedUserIds.length > 0 && filteredOwners.length === 0);
+                    (n.owners.length === 0 && unresolved.length === 0);
+
                 return {
                     id: null,
                     type: n.type,
@@ -255,10 +327,12 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         return { capabilityName: this.name, insights };
     }
 
-    private resolveOwnersBatch(
+    private async resolveOwnersBatch(
         allOwnerRefs: OwnerRef[],
         allMappings: PlatformUserMappingWithUser[],
-    ): Map<string, string | null> {
+        allOrgUsers: UserRecord[],
+        organizationId: string,
+    ): Promise<Map<string, string | null>> {
         const maxDistance = parseInt(
             process.env.OWNER_RESOLVER_MAX_DISTANCE ?? '1',
             10,
@@ -272,6 +346,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
             let appUserId: string | null = null;
 
+            // Tier 1: Check PlatformUserMapping by ID
             if (ref.id) {
                 const mapping = allMappings.find(
                     (m) => m.platformUserId === ref.id,
@@ -281,6 +356,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
+            // Tier 2: Check PlatformUserMapping by username
             if (!appUserId && ref.username) {
                 const match = allMappings.find(
                     (m) =>
@@ -292,6 +368,33 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
+            // Tier 3: Knowledge Graph Entity Lookup (Person/Team entity with role metadata)
+            if (!appUserId && (ref.username || ref.id)) {
+                const searchTerm = (ref.username || ref.id || '').toLowerCase();
+                try {
+                    const kgEntities = await this.entityRepo.search(
+                        organizationId,
+                        searchTerm,
+                        'Person',
+                    );
+                    if (kgEntities.length > 0) {
+                        const matchedPerson = kgEntities[0];
+                        // Try matching Person entity name to app users
+                        const userMatch = allOrgUsers.find((u) =>
+                            `${u.firstName} ${u.lastName ?? ''}`
+                                .toLowerCase()
+                                .includes(matchedPerson.name.toLowerCase()),
+                        );
+                        if (userMatch) {
+                            appUserId = userMatch.id;
+                        }
+                    }
+                } catch {
+                    // non-fatal fallback
+                }
+            }
+
+            // Tier 4: Fuzzy match against PlatformUserMapping user names
             if (!appUserId && ref.username) {
                 const query = ref.username.toLowerCase();
                 let bestDistance = Infinity;
@@ -318,6 +421,49 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
                 if (bestDistance <= maxDistance && bestMatch) {
                     appUserId = bestMatch;
+                }
+            }
+
+            // Tier 5: Direct/fuzzy match against Organization Users
+            if (!appUserId && (ref.id || ref.username)) {
+                const query = (ref.username || ref.id || '').toLowerCase();
+
+                // Exact match by user.id, email, or email username
+                const exactUser = allOrgUsers.find(
+                    (u) =>
+                        u.id === ref.id ||
+                        u.email.toLowerCase() === query ||
+                        u.email.split('@')[0].toLowerCase() === query ||
+                        u.firstName.toLowerCase() === query ||
+                        (u.lastName && u.lastName.toLowerCase() === query),
+                );
+
+                if (exactUser) {
+                    appUserId = exactUser.id;
+                } else if (query) {
+                    let bestDistance = Infinity;
+                    let bestMatch: string | null = null;
+
+                    for (const u of allOrgUsers) {
+                        const firstName = u.firstName.toLowerCase();
+                        const lastName = (u.lastName ?? '').toLowerCase();
+                        const emailUser = u.email.split('@')[0].toLowerCase();
+
+                        const d = Math.min(
+                            distance(query, firstName),
+                            distance(query, lastName),
+                            distance(query, emailUser),
+                        );
+
+                        if (d < bestDistance) {
+                            bestDistance = d;
+                            bestMatch = u.id;
+                        }
+                    }
+
+                    if (bestDistance <= maxDistance && bestMatch) {
+                        appUserId = bestMatch;
+                    }
                 }
             }
 

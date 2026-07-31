@@ -79,6 +79,7 @@ enum ProviderType {
 
 model User {
   id                  String                @id @default(uuid()) @db.Uuid
+  organizationId      String?               @map("organization_id")
   firstName           String                @map("first_name")
   lastName            String?               @map("last_name")
   email               String
@@ -93,8 +94,10 @@ model User {
   passwordResetTokens PasswordResetToken[]
   chatMessages        ChatMessage[]
   teamMemberships     TeamMember[]
+  conversations       Conversation[]
 
   @@unique([email, providerType])
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -240,16 +243,33 @@ model Job {
   @@map("jobs")
 }
 
-model ChatMessage {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  role      ChatRole
-  content   String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+model Conversation {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  title     String        @default("New chat")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  conversationId String?      @map("conversation_id") @db.Uuid
+  role           ChatRole
+  content        String
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation  Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([conversationId, createdAt])
   @@map("chat_messages")
 }
 
@@ -311,6 +331,10 @@ enum SuggestionActionType {
   RECOMMENDATION
   RISK_MITIGATION
   NEXT_STEP
+  REASSIGN
+  ESCALATE
+  DELEGATE
+  DISMISS
 }
 
 enum SuggestionStatus {

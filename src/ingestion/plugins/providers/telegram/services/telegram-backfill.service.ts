@@ -82,21 +82,23 @@ export class TelegramBackfillService {
                 : chatId;
             const chatEntity = await client.getEntity(resolvedChatId);
 
+            const storedCursor = await context.getCursor(
+                'telegram',
+                userId,
+                chatId,
+            );
+
             let offsetId: number;
             if (isFirstN) {
-                const stored = await context.getCursor(
-                    'telegram',
-                    userId,
-                    chatId,
-                );
                 offsetId =
-                    stored ??
+                    storedCursor ??
                     configService.get<number>('telegram.backfillOffsetId', 1);
             } else {
                 offsetId = 0;
             }
 
             let totalFetched = 0;
+            let maxMsgId = storedCursor ?? 0;
             const maxLimit = limit < 0 ? Infinity : limit;
 
             while (totalFetched < maxLimit) {
@@ -108,22 +110,46 @@ export class TelegramBackfillService {
                     maxLimit - totalFetched,
                 );
                 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
-                const messages: any[] = await client.getMessages(chatEntity, {
+                const queryOpts: Record<string, any> = {
                     limit: batchSize,
                     offsetId,
                     reverse,
-                });
+                };
+                if (!isFirstN && storedCursor && storedCursor > 0) {
+                    queryOpts.minId = storedCursor;
+                }
 
-                if (messages.length === 0) break;
+                const messages: any[] = await client.getMessages(
+                    chatEntity,
+                    queryOpts,
+                );
+
+                if (!messages || messages.length === 0) break;
 
                 const chunk: TelegramMessageRaw[] = [];
+                let stopGapFill = false;
                 for (const msg of messages) {
+                    const msgId = Number(msg.id);
+                    if (
+                        !isFirstN &&
+                        storedCursor &&
+                        storedCursor > 0 &&
+                        msgId <= storedCursor
+                    ) {
+                        stopGapFill = true;
+                        continue;
+                    }
+
+                    if (msgId > maxMsgId) {
+                        maxMsgId = msgId;
+                    }
+
                     const raw = JSON.parse(JSON.stringify(msg));
                     const topicId = resolveTopicId(msg, raw, messageToTopicMap);
-                    messageToTopicMap.set(msg.id as number, topicId);
+                    messageToTopicMap.set(msgId, topicId);
                     pendingTopicEntries.push({
                         chatId,
-                        messageId: msg.id as number,
+                        messageId: msgId,
                         topicId,
                     });
                     chunk.push(normalizeRawMessage(msg, raw, chatId, topicId));
@@ -138,6 +164,8 @@ export class TelegramBackfillService {
                     yield result;
                 }
 
+                if (stopGapFill) break;
+
                 totalFetched += messages.length;
                 offsetId = messages[messages.length - 1].id as number;
                 if (isFirstN) {
@@ -149,6 +177,10 @@ export class TelegramBackfillService {
                     );
                 }
                 if (messages.length < batchSize) break;
+            }
+
+            if (maxMsgId > (storedCursor ?? 0)) {
+                await context.saveCursor('telegram', userId, chatId, maxMsgId);
             }
             /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 

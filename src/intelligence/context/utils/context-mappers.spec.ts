@@ -138,6 +138,7 @@ describe('toEnvelopeWithPayload', () => {
             type: 'message',
             hasAttachment: false,
             authorId: 'u1',
+            organizationId: 'org-1',
             occurredAt,
         });
         expect(result.payload).toEqual({

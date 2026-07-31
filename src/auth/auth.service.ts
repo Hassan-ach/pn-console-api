@@ -81,6 +81,7 @@ export class AuthService {
                 email: normalizedEmail,
                 passwordHash,
                 providerType: 'EMAIL',
+                organizationId: 'org-1',
             },
         });
 
@@ -89,6 +90,7 @@ export class AuthService {
             email: user.email,
             tokenVersion: user.tokenVersion,
             role: user.role,
+            organizationId: user.organizationId ?? 'org-1',
         });
 
         this.eventEmitter.emit(
@@ -106,6 +108,7 @@ export class AuthService {
             is_new_user: true,
             user: {
                 id: user.id,
+                organizationId: user.organizationId ?? 'org-1',
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
@@ -147,7 +150,11 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+<<<<<<< HEAD
             role: user.role,
+=======
+            organizationId: user.organizationId ?? 'org-1',
+>>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
         });
 
         return {
@@ -155,6 +162,7 @@ export class AuthService {
             is_new_user: false,
             user: {
                 id: user.id,
+                organizationId: user.organizationId ?? 'org-1',
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
@@ -321,13 +329,18 @@ export class AuthService {
                 sub: existing.id,
                 email: existing.email,
                 tokenVersion: existing.tokenVersion,
+<<<<<<< HEAD
                 role: existing.role,
+=======
+                organizationId: existing.organizationId ?? 'org-1',
+>>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
             });
             return {
                 access_token: token,
                 is_new_user: false,
                 user: {
                     id: existing.id,
+                    organizationId: existing.organizationId ?? 'org-1',
                     firstName: existing.firstName,
                     lastName: existing.lastName,
                     email: existing.email,
@@ -346,6 +359,7 @@ export class AuthService {
                     email: normalizedEmail,
                     passwordHash: null,
                     providerType: provider,
+                    organizationId: 'org-1',
                 },
             });
         } catch (e) {
@@ -364,13 +378,19 @@ export class AuthService {
                         sub: raceCreated.id,
                         email: raceCreated.email,
                         tokenVersion: raceCreated.tokenVersion,
+<<<<<<< HEAD
                         role: raceCreated.role,
+=======
+                        organizationId: raceCreated.organizationId ?? 'org-1',
+>>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
                     });
                     return {
                         access_token: token,
                         is_new_user: false,
                         user: {
                             id: raceCreated.id,
+                            organizationId:
+                                raceCreated.organizationId ?? 'org-1',
                             firstName: raceCreated.firstName,
                             lastName: raceCreated.lastName,
                             email: raceCreated.email,
@@ -387,7 +407,11 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+<<<<<<< HEAD
             role: user.role,
+=======
+            organizationId: user.organizationId ?? 'org-1',
+>>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
         });
 
         this.eventEmitter.emit(
@@ -405,6 +429,7 @@ export class AuthService {
             is_new_user: true,
             user: {
                 id: user.id,
+                organizationId: user.organizationId ?? 'org-1',
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,

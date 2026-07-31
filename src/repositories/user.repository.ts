@@ -4,6 +4,7 @@ import { ProviderType } from 'generated/app-db-client';
 
 export interface UserRecord {
     id: string;
+    organizationId: string | null;
     firstName: string;
     lastName: string | null;
     email: string;
@@ -22,6 +23,12 @@ export class UserRepository {
     async findById(id: string): Promise<UserRecord | null> {
         return this.appDb.user.findUnique({
             where: { id },
+        });
+    }
+
+    async findByOrganization(organizationId: string): Promise<UserRecord[]> {
+        return this.appDb.user.findMany({
+            where: { organizationId },
         });
     }
 }
