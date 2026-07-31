@@ -28,9 +28,6 @@ model InsightVersion {
   owners           InsightVersionOwner[]
   unresolvedOwners UnresolvedOwner[]
   broadcasted      Boolean               @default(false)
-  broadcastLevel   InsightBroadcastLevel? @map("broadcast_level")
-  broadcastTargetId String?              @map("broadcast_target_id") @db.Uuid
-  broadcastTargetName String?            @map("broadcast_target_name")
   envolopsRef      String[]              @default([])
   sourcePlugin String?   @map("source_plugin")
   groupId      String?   @map("group_id")
@@ -46,7 +43,6 @@ model InsightVersion {
   @@index([insightId])
   @@index([sourcePlugin, channelId, topicId, createdAt])
   @@index([sourcePlugin, groupId, createdAt])
-  @@index([broadcastLevel])
   @@map("insight_versions")
 }
 
@@ -136,13 +132,6 @@ enum InsightType {
   INFO
   URGENCY
   DECISION
-}
-
-enum InsightBroadcastLevel {
-  DIRECT
-  ORG
-  TEAM
-  ROLE
 }
 
 enum InsightActionStatus {

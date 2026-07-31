@@ -14,7 +14,6 @@ import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
 import { EmbeddingRepository } from './embedding.repository';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
-import { OrgStructureRepository } from './org-structure.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -31,7 +30,6 @@ import { OrgStructureRepository } from './org-structure.repository';
         UserRepository,
         EmbeddingRepository,
         InsightSuggestionRepository,
-        OrgStructureRepository,
     ],
     exports: [
         InsightRepository,
@@ -46,7 +44,6 @@ import { OrgStructureRepository } from './org-structure.repository';
         UserRepository,
         EmbeddingRepository,
         InsightSuggestionRepository,
-        OrgStructureRepository,
     ],
 })
 export class RepositoriesModule {}

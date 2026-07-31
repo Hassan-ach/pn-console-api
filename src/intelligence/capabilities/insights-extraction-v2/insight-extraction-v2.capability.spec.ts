@@ -6,8 +6,7 @@ import { SearchToolsService } from '../../tools/search-tools.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { Neo4jService } from 'src/graph/neo4j.service';
-import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
-import { InsightBroadcastLevel, InsightType } from 'src/types/insight.types';
+import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
     let capability: InsightExtractionCapabilityV2;
@@ -75,17 +74,6 @@ describe('InsightExtractionCapabilityV2', () => {
                 },
                 { provide: UserRepository, useValue: mockUserRepo },
                 { provide: Neo4jService, useValue: mockNeo4jService },
-                {
-                    provide: OrgStructureRepository,
-                    useValue: {
-                        findTeamsByOrganization: jest
-                            .fn()
-                            .mockResolvedValue([]),
-                        findRolesByOrganization: jest
-                            .fn()
-                            .mockResolvedValue([]),
-                    },
-                },
             ],
         }).compile();
 
@@ -144,94 +132,5 @@ describe('InsightExtractionCapabilityV2', () => {
         expect(result.insights[0].owners).toEqual(['app-user-1']);
         expect(result.insights[0].priority).toBe(8);
         expect(result.insights[0].deadline).toBeDefined();
-    });
-
-    it('should assign the envelope author to an orphaned DIRECT insight', async () => {
-        const sampleEnvelopes: any[] = [
-            {
-                envelope: {
-                    id: 'env-300',
-                    sourcePlugin: 'slack',
-                    authorId: 'p-123',
-                    organizationId: 'org-1',
-                    occurredAt: new Date('2026-07-28'),
-                },
-                payload: {
-                    content: 'Backend implementation completed.',
-                },
-            },
-        ];
-
-        mockChain.invoke.mockResolvedValue(
-            JSON.stringify({
-                updatedInsights: [],
-                newInsights: [
-                    {
-                        type: 'INFO',
-                        content: 'Backend implementation completed',
-                        owners: [],
-                        envolopsRef: ['env-300'],
-                        broadcasted: false,
-                        priority: 2,
-                        deadline: null,
-                    },
-                ],
-            }),
-        );
-
-        const result = await capability.execute({
-            chunk: { envelopes: sampleEnvelopes } as never,
-            previousIntelligence: [],
-        });
-
-        expect(result.insights[0].broadcastLevel).toBe(
-            InsightBroadcastLevel.DIRECT,
-        );
-        expect(result.insights[0].owners).toEqual(['app-user-1']);
-    });
-
-    it('should promote an orphaned DIRECT insight to ORG when author is unmapped', async () => {
-        const sampleEnvelopes: any[] = [
-            {
-                envelope: {
-                    id: 'env-400',
-                    sourcePlugin: 'slack',
-                    authorId: 'p-999',
-                    organizationId: 'org-1',
-                    occurredAt: new Date('2026-07-28'),
-                },
-                payload: {
-                    content: 'New feature shipped.',
-                },
-            },
-        ];
-
-        mockChain.invoke.mockResolvedValue(
-            JSON.stringify({
-                updatedInsights: [],
-                newInsights: [
-                    {
-                        type: 'INFO',
-                        content: 'New feature shipped',
-                        owners: [],
-                        envolopsRef: ['env-400'],
-                        broadcasted: false,
-                        priority: 2,
-                        deadline: null,
-                    },
-                ],
-            }),
-        );
-
-        const result = await capability.execute({
-            chunk: { envelopes: sampleEnvelopes } as never,
-            previousIntelligence: [],
-        });
-
-        expect(result.insights[0].broadcastLevel).toBe(
-            InsightBroadcastLevel.ORG,
-        );
-        expect(result.insights[0].broadcasted).toBe(true);
-        expect(result.insights[0].owners).toEqual([]);
     });
 });

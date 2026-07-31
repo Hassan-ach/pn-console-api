@@ -85,7 +85,7 @@ export class DemoGenerationController {
 
         const result = await this.capabilityManager.executeByName(
             'insights-extractor',
-            { chunk, previousIntelligence, organizationId: dto.organizationId },
+            { chunk, previousIntelligence },
         );
 
         return { insights: result.insights };

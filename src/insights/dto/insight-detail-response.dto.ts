@@ -1,10 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import {
-    InsightActionStatus,
-    InsightBroadcastLevel,
-    InsightType,
-} from 'src/types/insight.types';
+import { InsightActionStatus, InsightType } from 'src/types/insight.types';
 
 export class InsightDetailResponseDto {
     @Expose()
@@ -30,28 +26,6 @@ export class InsightDetailResponseDto {
     @Expose()
     @ApiPropertyOptional()
     broadcasted: boolean;
-
-    @Expose()
-    @ApiPropertyOptional({
-        enum: InsightBroadcastLevel,
-        description:
-            'Audience level: DIRECT, ORG (all org members), TEAM (all team members), ROLE (all role holders)',
-    })
-    broadcastLevel?: InsightBroadcastLevel;
-
-    @Expose()
-    @ApiPropertyOptional({
-        description:
-            'ID of the resolved team/role target when broadcastLevel is TEAM or ROLE',
-    })
-    broadcastTargetId?: string;
-
-    @Expose()
-    @ApiPropertyOptional({
-        description:
-            'Name of the resolved team/role target when broadcastLevel is TEAM or ROLE',
-    })
-    broadcastTargetName?: string;
 
     @Expose()
     @ApiProperty({ description: 'Version number (1, 2, 3...)' })

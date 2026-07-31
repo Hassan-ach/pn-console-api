@@ -5,16 +5,12 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { AppDbService } from '../../prisma/app-db/app-db.service';
-import { OrgStructureRepository } from '../../repositories/org-structure.repository';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 
 @Injectable()
 export class TeamMembersService {
-    constructor(
-        private readonly db: AppDbService,
-        private readonly orgStructureRepository: OrgStructureRepository,
-    ) {}
+    constructor(private readonly db: AppDbService) {}
 
     private validateRolesBelongToTeam(
         roles: { teamId: string | null }[],
@@ -73,10 +69,6 @@ export class TeamMembersService {
             },
         });
 
-        await this.orgStructureRepository.assignBroadcastInsightsToUser(
-            dto.userId,
-        );
-
         return member;
     }
 
@@ -121,8 +113,6 @@ export class TeamMembersService {
             },
         });
 
-        await this.orgStructureRepository.assignBroadcastInsightsToUser(userId);
-
         return member;
     }
 
@@ -164,8 +154,6 @@ export class TeamMembersService {
                 roles: { include: { role: true } },
             },
         });
-
-        await this.orgStructureRepository.assignBroadcastInsightsToUser(userId);
 
         return updated;
     }

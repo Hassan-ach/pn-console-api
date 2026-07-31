@@ -160,7 +160,6 @@ export class IntelligenceEngineService {
                 const capabilityInput = {
                     chunk,
                     previousIntelligence: previousInsights,
-                    organizationId,
                 };
 
                 // 1. Execute Knowledge Graph Extraction by name

@@ -8,11 +8,7 @@ import {
 } from '../insights-extraction/insight-schema';
 import { SYSTEM_PROMPT } from './insight-extraction-v2-prompt';
 import { InputMessage } from '../insights-extraction/types';
-import {
-    Insight,
-    UnresolvedOwnerRef,
-    InsightBroadcastLevel,
-} from 'src/types/insight.types';
+import { Insight, UnresolvedOwnerRef } from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
 import { GraphToolsService } from '../../tools/graph-tools.service';
 import { SearchToolsService } from '../../tools/search-tools.service';
@@ -22,7 +18,6 @@ import {
 } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository, UserRecord } from 'src/repositories/user.repository';
 import { Neo4jService } from 'src/graph/neo4j.service';
-import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
 import {
     ICapability,
     CapabilityInput,
@@ -43,7 +38,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         private readonly searchToolsService: SearchToolsService,
         private readonly platformUserMappingRepo: PlatformUserMappingRepository,
         private readonly userRepo: UserRepository,
-        private readonly orgStructureRepository: OrgStructureRepository,
         @Optional() private readonly neo4jService?: Neo4jService,
     ) {}
 
@@ -110,12 +104,10 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             maxIterations,
         });
 
-        const orgContext = await this.buildOrgContext(input.organizationId);
-
         const chainInput = [
             new SystemMessage(SYSTEM_PROMPT),
             new HumanMessage(
-                `Current date: ${currentDate}\n\nCurrent insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}${orgContext}`,
+                `Current date: ${currentDate}\n\nCurrent insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
             ),
         ];
 
@@ -216,15 +208,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             return [...excluded];
         };
 
-        const resolveBroadcastLevel = (item: {
-            broadcasted: boolean;
-            broadcastLevel?: InsightBroadcastLevel;
-        }): InsightBroadcastLevel =>
-            item.broadcastLevel ??
-            (item.broadcasted
-                ? InsightBroadcastLevel.ORG
-                : InsightBroadcastLevel.DIRECT);
-
         const insights: Insight[] = [
             ...result.updatedInsights.map((u) => {
                 const { resolved, unresolved } = resolveOwners(u.owners);
@@ -234,14 +217,10 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
-                const broadcastLevel = resolveBroadcastLevel(u);
+
                 const isBroadcasted =
-                    broadcastLevel === InsightBroadcastLevel.ORG;
-                const broadcastTarget =
-                    broadcastLevel === InsightBroadcastLevel.TEAM ||
-                    broadcastLevel === InsightBroadcastLevel.ROLE
-                        ? u.broadcastTarget
-                        : undefined;
+                    u.broadcasted ||
+                    (u.owners.length === 0 && unresolved.length === 0);
 
                 return {
                     id: u.id,
@@ -251,8 +230,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: u.envolopsRef,
                     broadcasted: isBroadcasted,
-                    broadcastLevel,
-                    broadcastTarget,
                     excludedUserIds:
                         excludedUserIds.length > 0
                             ? excludedUserIds
@@ -273,14 +250,10 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
-                const broadcastLevel = resolveBroadcastLevel(n);
+
                 const isBroadcasted =
-                    broadcastLevel === InsightBroadcastLevel.ORG;
-                const broadcastTarget =
-                    broadcastLevel === InsightBroadcastLevel.TEAM ||
-                    broadcastLevel === InsightBroadcastLevel.ROLE
-                        ? n.broadcastTarget
-                        : undefined;
+                    n.broadcasted ||
+                    (n.owners.length === 0 && unresolved.length === 0);
 
                 return {
                     id: null,
@@ -290,8 +263,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: n.envolopsRef,
                     broadcasted: isBroadcasted,
-                    broadcastLevel,
-                    broadcastTarget,
                     excludedUserIds:
                         excludedUserIds.length > 0
                             ? excludedUserIds
@@ -306,70 +277,11 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             }),
         ];
 
-        const finalInsights = insights.map((insight) => {
-            if (
-                insight.broadcastLevel !== InsightBroadcastLevel.DIRECT ||
-                insight.owners.length > 0 ||
-                (insight.unresolvedOwnerRefs?.length ?? 0) > 0
-            ) {
-                return insight;
-            }
-
-            const authorAppId = (insight.envolopsRef ?? [])
-                .map((ref) => msgAuthors.get(ref))
-                .map((platformId) =>
-                    platformId ? platformToAppUser.get(platformId) : undefined,
-                )
-                .find(
-                    (id) =>
-                        id !== undefined &&
-                        !insight.excludedUserIds?.includes(id),
-                );
-
-            if (authorAppId) {
-                this.logger.debug(
-                    `[V2] Orphan insight assigned to author ${authorAppId}: "${insight.content.slice(0, 50)}"`,
-                );
-                return { ...insight, owners: [authorAppId] };
-            }
-
-            this.logger.debug(
-                `[V2] Orphan insight promoted to ORG broadcast: "${insight.content.slice(0, 50)}"`,
-            );
-            return {
-                ...insight,
-                broadcasted: true,
-                broadcastLevel: InsightBroadcastLevel.ORG,
-            };
-        });
-
         this.logger.log(
             `[V2] Extraction complete: ${insights.length} insights`,
         );
 
-        return { capabilityName: this.name, insights: finalInsights };
-    }
-
-    private async buildOrgContext(organizationId?: string): Promise<string> {
-        if (!organizationId) return '';
-
-        try {
-            const [teams, roles] = await Promise.all([
-                this.orgStructureRepository.findTeamsByOrganization(
-                    organizationId,
-                ),
-                this.orgStructureRepository.findRolesByOrganization(
-                    organizationId,
-                ),
-            ]);
-
-            return `\n\nOrganization teams:\n${JSON.stringify(teams.map((t) => t.name))}\nOrganization roles:\n${JSON.stringify(roles.map((r) => r.name))}`;
-        } catch (error) {
-            this.logger.warn(
-                `[V2] Failed to load org structure for context: ${(error as Error).message}`,
-            );
-            return '';
-        }
+        return { capabilityName: this.name, insights };
     }
 
     private async resolveOwnersBatch(
@@ -391,7 +303,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
 
             let appUserId: string | null = null;
 
-            // Tier 1: Check PlatformUserMapping by ID
             if (ref.id) {
                 const mapping = allMappings.find(
                     (m) => m.platformUserId === ref.id,
@@ -401,7 +312,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 2: Check PlatformUserMapping by username
             if (!appUserId && ref.username) {
                 const match = allMappings.find(
                     (m) =>
@@ -413,7 +323,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 3: Knowledge Graph Entity Lookup (Person/Team entity with role metadata)
             if (
                 !appUserId &&
                 (ref.username || ref.id) &&
@@ -432,7 +341,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     }>(cypher, { searchTerm });
                     if (kgEntities.length > 0) {
                         const matchedPerson = kgEntities[0];
-                        // Try matching Person entity name to app users
                         const userMatch = allOrgUsers.find((u) =>
                             `${u.firstName} ${u.lastName ?? ''}`
                                 .toLowerCase()
@@ -447,7 +355,6 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 4: Fuzzy match against PlatformUserMapping user names
             if (!appUserId && ref.username) {
                 const query = ref.username.toLowerCase();
                 let bestDistance = Infinity;
@@ -477,11 +384,9 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 }
             }
 
-            // Tier 5: Direct/fuzzy match against Organization Users
             if (!appUserId && (ref.id || ref.username)) {
                 const query = (ref.username || ref.id || '').toLowerCase();
 
-                // Exact match by user.id, email, or email username
                 const exactUser = allOrgUsers.find(
                     (u) =>
                         u.id === ref.id ||
