@@ -11,6 +11,7 @@ export interface UserRecord {
     passwordHash: string | null;
     providerType: ProviderType;
     tokenVersion: number;
+    role: string;
     createdAt: Date;
     updatedAt: Date;
 }

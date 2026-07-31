@@ -93,6 +93,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
             organizationId: user.organizationId ?? 'org-1',
         });
 
@@ -116,6 +117,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }
@@ -152,6 +154,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
             organizationId: user.organizationId ?? 'org-1',
         });
 
@@ -165,6 +168,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }
@@ -255,6 +259,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
         });
 
         return {
@@ -323,6 +328,7 @@ export class AuthService {
                 sub: existing.id,
                 email: existing.email,
                 tokenVersion: existing.tokenVersion,
+                role: existing.role,
                 organizationId: existing.organizationId ?? 'org-1',
             });
             return {
@@ -335,6 +341,7 @@ export class AuthService {
                     lastName: existing.lastName,
                     email: existing.email,
                     providerType: existing.providerType,
+                    role: existing.role,
                 },
             };
         }
@@ -366,6 +373,7 @@ export class AuthService {
                         sub: raceCreated.id,
                         email: raceCreated.email,
                         tokenVersion: raceCreated.tokenVersion,
+                        role: raceCreated.role,
                         organizationId: raceCreated.organizationId ?? 'org-1',
                     });
                     return {
@@ -379,6 +387,7 @@ export class AuthService {
                             lastName: raceCreated.lastName,
                             email: raceCreated.email,
                             providerType: raceCreated.providerType,
+                            role: raceCreated.role,
                         },
                     };
                 }
@@ -390,6 +399,7 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
+            role: user.role,
             organizationId: user.organizationId ?? 'org-1',
         });
 
@@ -413,6 +423,7 @@ export class AuthService {
                 lastName: user.lastName,
                 email: user.email,
                 providerType: user.providerType,
+                role: user.role,
             },
         };
     }

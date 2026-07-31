@@ -22,6 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         sub: string;
         email: string;
         tokenVersion: number;
+        role: string;
     }) {
         const user = await this.db.user.findUnique({
             where: { id: payload.sub },
@@ -33,6 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 lastName: true,
                 providerType: true,
                 tokenVersion: true,
+                role: true,
             },
         });
 
@@ -47,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             firstName: user.firstName,
             lastName: user.lastName,
             providerType: user.providerType,
+            role: user.role,
         };
     }
 }
