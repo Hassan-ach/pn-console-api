@@ -693,6 +693,194 @@ describe('ChatService', () => {
             );
             expect(tokens.join('')).not.toContain('functionCall');
         });
+
+        it('attaches reasoning_content to AIMessage additional_kwargs for thinking models', async () => {
+            const searchToolInvoke = jest.fn().mockResolvedValue('[]');
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_raw_messages', invoke: searchToolInvoke },
+            ]);
+
+            const mockThinkingToolStream = (async function* () {
+                yield {
+                    content: '',
+                    response_metadata: {
+                        reasoning_content: 'Let me search messages to find the user info.',
+                    },
+                    tool_calls: [
+                        {
+                            name: 'search_raw_messages',
+                            args: { query: 'hassan' },
+                            id: 'call_01',
+                        },
+                    ],
+                };
+            })();
+
+            const mockFinalStream = (async function* () {
+                yield { content: 'Found user info.' };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockThinkingToolStream)
+                .mockResolvedValueOnce(mockFinalStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse('user-1', 'conv-1', 'search hassan');
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(streamFn).toHaveBeenCalledTimes(2);
+            // Verify second call to streamFn received AIMessage with reasoning_content in additional_kwargs
+            const secondCallMessages = streamFn.mock.calls[1][0] as Array<{
+                content: string;
+                tool_calls?: unknown[];
+                additional_kwargs?: { reasoning_content?: string };
+            }>;
+            const toolCallAiMessage = secondCallMessages.find(
+                (m) => m.tool_calls && m.tool_calls.length > 0,
+            );
+            expect(toolCallAiMessage).toBeDefined();
+            expect(toolCallAiMessage?.additional_kwargs?.reasoning_content).toBe(
+                'Let me search messages to find the user info.',
+            );
+        });
+
+        it('parses DSML tool calls from text content and executes them', async () => {
+            const retrieveToolInvoke = jest
+                .fn()
+                .mockResolvedValue('["stand-up notes"]');
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue('["user story 123"]');
+
+            mockSearchTools.getTools.mockReturnValue([
+                {
+                    name: 'retrieve_relevant_insights',
+                    invoke: retrieveToolInvoke,
+                },
+                { name: 'search_insights', invoke: searchToolInvoke },
+            ]);
+
+            const mockDsmlStream = (async function* () {
+                yield {
+                    content: `<｜｜DSML｜｜tool_calls>
+<｜｜DSML｜｜invoke name="retrieve_relevant_insights">
+<｜｜DSML｜｜parameter name="query" string="true">daily activities stand-up meeting user story tasks</｜｜DSML｜｜parameter>
+</｜｜DSML｜｜invoke>
+<｜｜DSML｜｜invoke name="search_insights">
+<｜｜DSML｜｜parameter name="query" string="true">stand-up user story meeting</｜｜DSML｜｜parameter>
+</｜｜DSML｜｜invoke>
+</｜｜DSML｜｜tool_calls>`,
+                };
+            })();
+
+            const mockFinalStream = (async function* () {
+                yield {
+                    content: 'Here is your daily summary: You attended stand-up and worked on user story 123.',
+                };
+            })();
+
+            const streamFn = jest
+                .fn()
+                .mockResolvedValueOnce(mockDsmlStream)
+                .mockResolvedValueOnce(mockFinalStream);
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'Summarize my day',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(retrieveToolInvoke).toHaveBeenCalledWith({
+                query: 'daily activities stand-up meeting user story tasks',
+            });
+            expect(searchToolInvoke).toHaveBeenCalledWith({
+                query: 'stand-up user story meeting',
+            });
+            expect(tokens.join('')).toBe(
+                'Here is your daily summary: You attended stand-up and worked on user story 123.',
+            );
+        });
+
+        it('detects duplicate tool call loop and forces final response synthesis', async () => {
+            const searchToolInvoke = jest
+                .fn()
+                .mockResolvedValue('["results"]');
+            mockSearchTools.getTools.mockReturnValue([
+                { name: 'search_insights', invoke: searchToolInvoke },
+            ]);
+
+            const createDuplicateToolCallStream = () =>
+                (async function* () {
+                    yield {
+                        content: '',
+                        tool_calls: [
+                            {
+                                name: 'search_insights',
+                                args: { query: 'same query' },
+                                id: 'call_01',
+                            },
+                        ],
+                    };
+                })();
+
+            const createSynthesisStream = () =>
+                (async function* () {
+                    yield {
+                        content: 'Synthesized response after duplicate loop.',
+                    };
+                })();
+
+            // 1st turn: LLM emits tool call. 2nd turn: LLM emits IDENTICAL tool call -> loop detected -> 3rd turn: synthesis stream called!
+            const streamFn = jest
+                .fn()
+                .mockImplementationOnce(() => createDuplicateToolCallStream())
+                .mockImplementationOnce(() => createDuplicateToolCallStream())
+                .mockImplementationOnce(() => createSynthesisStream());
+
+            const mockLlm = {
+                bindTools: jest.fn().mockReturnThis(),
+                stream: streamFn,
+            };
+
+            mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
+
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'Find insights',
+            );
+            const tokens: string[] = [];
+            for await (const token of gen) {
+                tokens.push(token);
+            }
+
+            expect(tokens.join('')).toBe(
+                'Synthesized response after duplicate loop.',
+            );
+            // Must have broken out early on 2nd turn rather than running up to maxIterations
+            expect(streamFn).toHaveBeenCalledTimes(3);
+        });
     });
 
     describe('retractLastMessages', () => {

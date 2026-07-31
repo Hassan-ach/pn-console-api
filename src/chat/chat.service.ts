@@ -3,6 +3,7 @@ import {
     Logger,
     NotFoundException,
     BadRequestException,
+    Optional,
 } from '@nestjs/common';
 import { AppDbService } from '../prisma/app-db/app-db.service';
 import { ChatRole } from 'generated/app-db-client';
@@ -20,6 +21,8 @@ import { ChatContextService } from './chat-context.service';
 import { SearchToolsService } from '../intelligence/tools/search-tools.service';
 import { GraphToolsService } from '../intelligence/tools/graph-tools.service';
 import { SYSTEM_PROMPT } from './chat.prompt';
+
+import { ConfigService } from '@nestjs/config';
 
 const CONVERSATION_TIMEOUT_MS = 30 * 60 * 1000;
 const TITLE_MAX_LENGTH = 80;
@@ -51,6 +54,7 @@ export class ChatService {
         private readonly chatContextService: ChatContextService,
         private readonly searchToolsService: SearchToolsService,
         private readonly graphToolsService: GraphToolsService,
+        @Optional() private readonly config?: ConfigService,
     ) {}
 
     async getConversations(
@@ -264,12 +268,10 @@ export class ChatService {
         signal?: AbortSignal,
     ): AsyncGenerator<string> {
         const history = await this.getRecentHistory(userId, conversationId, 20);
-
         const context = await this.chatContextService.buildContext(
             userId,
             userMessage,
         );
-
         const contextSection = context
             ? `\n\n${context}`
             : '\n\n## Relevant Insights\n\nNo relevant insights found for this query.';
@@ -285,230 +287,138 @@ export class ChatService {
         ];
 
         const orgId = 'org-1';
-        const searchTools = this.searchToolsService.getTools(orgId, userId);
-        const graphTools = this.graphToolsService.getTools(orgId);
-        const readOnlyGraphTools = graphTools.filter((t) =>
-            ['search_graph', 'get_entity', 'get_neighbors'].includes(t.name),
-        );
-        const tools: StructuredTool[] = [...searchTools, ...readOnlyGraphTools];
+        const tools: StructuredTool[] = [
+            ...this.searchToolsService.getTools(orgId, userId),
+            ...this.graphToolsService
+                .getTools(orgId)
+                .filter((t) =>
+                    ['search_graph', 'get_entity', 'get_neighbors'].includes(
+                        t.name,
+                    ),
+                ),
+        ];
         const toolMap = new Map(tools.map((t) => [t.name, t]));
 
         const rawLlm = await this.llmService.createStreamingLLM();
         const llm = rawLlm.bindTools ? rawLlm.bindTools(tools) : rawLlm;
+        const maxIterations =
+            this.config?.get<number>('chat.maxIterations') ?? 10;
 
         let fullResponse = '';
-        const maxIterations = 5;
+        let lastSignature = '';
 
         try {
             for (let iter = 0; iter < maxIterations; iter++) {
-                const stream = await llm.stream(messages, { signal });
-                let fullChunk: AIMessageChunk | null = null;
-                let turnContent = '';
-                const detectedToolCalls: Array<{
-                    id: string;
-                    name: string;
-                    args: Record<string, unknown>;
-                }> = [];
-                const bufferedTokens: string[] = [];
-                const additionalKwargs: Record<string, unknown> = {};
-
-                for await (const chunk of stream) {
-                    let textToken = '';
-                    if (typeof chunk.content === 'string') {
-                        const trimmed = chunk.content.trim();
-                        if (
-                            !trimmed.startsWith('[{"type":"functionCall"') &&
-                            !trimmed.startsWith('{"type":"functionCall"')
-                        ) {
-                            textToken = chunk.content;
-                        }
-                    } else if (Array.isArray(chunk.content)) {
-                        const contentArr = chunk.content as unknown[];
-                        for (const item of contentArr) {
-                            if (typeof item === 'string') {
-                                textToken += item;
-                            } else if (
-                                typeof item === 'object' &&
-                                item !== null
-                            ) {
-                                const itemObj = item as Record<string, unknown>;
-                                if (
-                                    itemObj.type === 'text' &&
-                                    typeof itemObj.text === 'string'
-                                ) {
-                                    textToken += itemObj.text;
-                                }
-                            }
-                        }
-                    }
-
-                    if (textToken) {
-                        turnContent += textToken;
-                        bufferedTokens.push(textToken);
-                    }
-
-                    const chunkCalls = this.extractToolCalls(chunk);
-                    for (const tc of chunkCalls) {
-                        if (
-                            !detectedToolCalls.some(
-                                (d) =>
-                                    d.id === tc.id ||
-                                    (d.name === tc.name &&
-                                        JSON.stringify(d.args) ===
-                                            JSON.stringify(tc.args)),
-                            )
-                        ) {
-                            detectedToolCalls.push(tc);
-                        }
-                    }
-
-                    if (chunk.additional_kwargs) {
-                        for (const [k, v] of Object.entries(
-                            chunk.additional_kwargs,
-                        )) {
-                            if (typeof v === 'string') {
-                                additionalKwargs[k] =
-                                    ((additionalKwargs[k] as string) ?? '') + v;
-                            } else {
-                                additionalKwargs[k] = v;
-                            }
-                        }
-                    }
-
-                    if (chunk.response_metadata) {
-                        const meta = chunk.response_metadata as Record<
-                            string,
-                            unknown
-                        >;
-                        if (
-                            meta.reasoning_content &&
-                            typeof meta.reasoning_content === 'string'
-                        ) {
-                            additionalKwargs.reasoning_content =
-                                ((additionalKwargs.reasoning_content as string) ??
-                                    '') + meta.reasoning_content;
-                        }
-                        if (
-                            meta.reasoning &&
-                            typeof meta.reasoning === 'string'
-                        ) {
-                            additionalKwargs.reasoning_content =
-                                ((additionalKwargs.reasoning_content as string) ??
-                                    '') + meta.reasoning;
-                        }
-                    }
-
-                    const chunkObj = chunk as unknown as {
-                        concat?: (other: AIMessageChunk) => AIMessageChunk;
-                    };
-                    if (typeof chunkObj.concat === 'function') {
-                        fullChunk = fullChunk ? chunkObj.concat(chunk) : chunk;
-                    }
+                // Buffer the whole turn before deciding anything.
+                let turnText = '';
+                let finalChunk: AIMessageChunk | null = null;
+                for await (const chunk of await llm.stream(messages, {
+                    signal,
+                })) {
+                    turnText += this.chunkText(chunk);
+                    finalChunk = finalChunk
+                        ? (finalChunk as any).concat(chunk)
+                        : chunk;
                 }
 
-                if (fullChunk) {
-                    const fullCalls = this.extractToolCalls(fullChunk);
-                    for (const tc of fullCalls) {
-                        if (
-                            !detectedToolCalls.some(
-                                (d) =>
-                                    d.id === tc.id ||
-                                    (d.name === tc.name &&
-                                        JSON.stringify(d.args) ===
-                                            JSON.stringify(tc.args)),
-                            )
-                        ) {
-                            detectedToolCalls.push(tc);
-                        }
-                    }
+                const toolCalls = this.extractToolCalls(finalChunk, turnText);
+                const isLastIter = iter === maxIterations - 1;
+                const signature = JSON.stringify(
+                    toolCalls.map((c) => [c.name, c.args]),
+                );
+                const isDuplicate =
+                    toolCalls.length > 0 && signature === lastSignature;
+
+                if (toolCalls.length === 0 || isLastIter || isDuplicate) {
+                    // Nothing to call, or we're forcing an end — stream this text to the user.
+                    const finalText =
+                        toolCalls.length === 0
+                            ? turnText
+                            : await this.forceFinalAnswer(
+                                  rawLlm,
+                                  messages,
+                                  signal,
+                              );
+                    fullResponse = finalText;
+                    yield finalText;
+                    break;
                 }
 
-                if (detectedToolCalls.length > 0) {
-                    const normalizedToolCalls = detectedToolCalls.map(
-                        (tc, idx) => ({
-                            name: String(tc.name),
-                            args: tc.args ?? {},
-                            id:
-                                typeof tc.id === 'string' && tc.id.trim() !== ''
-                                    ? tc.id
-                                    : `call_${idx}_${Date.now()}`,
-                            type: 'tool_call' as const,
+                lastSignature = signature;
+                messages.push(
+                    new AIMessage({ content: turnText, tool_calls: toolCalls }),
+                );
+
+                for (const call of toolCalls) {
+                    const tool = toolMap.get(call.name);
+                    let output: string;
+                    try {
+                        output = tool
+                            ? JSON.stringify(await tool.invoke(call.args))
+                            : JSON.stringify({
+                                  error: `Unknown tool: ${call.name}`,
+                              });
+                    } catch (err) {
+                        output = JSON.stringify({
+                            error: (err as Error).message,
+                        });
+                    }
+                    messages.push(
+                        new ToolMessage({
+                            content: output,
+                            tool_call_id: call.id,
                         }),
                     );
-
-                    const aiMessageToPush =
-                        fullChunk ??
-                        new AIMessage({
-                            content: turnContent,
-                            tool_calls: normalizedToolCalls,
-                            additional_kwargs: additionalKwargs,
-                        });
-
-                    aiMessageToPush.tool_calls = normalizedToolCalls;
-
-                    if (additionalKwargs.reasoning_content) {
-                        aiMessageToPush.additional_kwargs.reasoning_content =
-                            additionalKwargs.reasoning_content;
-                    }
-
-                    const callSummaries = normalizedToolCalls
-                        .map((t) => `${t.name}:${t.id}`)
-                        .join(', ');
-
-                    this.logger.debug(
-                        `[Chat Tool Call] Iteration ${iter + 1}: Executing ${normalizedToolCalls.length} tool calls (${callSummaries})`,
-                    );
-
-                    messages.push(aiMessageToPush);
-
-                    for (const call of normalizedToolCalls) {
-                        const tool = toolMap.get(call.name);
-                        let toolOutput = '';
-                        if (tool) {
-                            try {
-                                const res: unknown = await tool.invoke(
-                                    call.args,
-                                );
-                                toolOutput =
-                                    typeof res === 'string'
-                                        ? res
-                                        : JSON.stringify(res);
-                            } catch (err) {
-                                toolOutput = JSON.stringify({
-                                    error: (err as Error).message,
-                                });
-                            }
-                        } else {
-                            toolOutput = JSON.stringify({
-                                error: `Unknown tool: ${call.name}`,
-                            });
-                        }
-
-                        messages.push(
-                            new ToolMessage({
-                                content: toolOutput,
-                                tool_call_id: call.id,
-                            }),
-                        );
-                    }
-                    continue;
                 }
-
-                for (const token of bufferedTokens) {
-                    fullResponse += token;
-                    yield token;
-                }
-                break;
             }
         } catch (error) {
             if ((error as Error).name === 'AbortError') return;
             this.logger.error(`Stream failed: ${(error as Error).message}`);
-            const errorMsg =
+            fullResponse =
                 'Sorry, an error occurred while processing your request.';
-            fullResponse = errorMsg;
-            yield errorMsg;
+            yield fullResponse;
         }
 
+        await this.persistTurn(
+            userId,
+            conversationId,
+            userMessage,
+            fullResponse,
+        );
+    }
+
+    private chunkText(chunk: AIMessageChunk): string {
+        if (typeof chunk.content === 'string') return chunk.content;
+        if (!Array.isArray(chunk.content)) return '';
+        return chunk.content
+            .map((item) =>
+                typeof item === 'string'
+                    ? item
+                    : (item as any)?.type === 'text'
+                      ? ((item as any).text ?? '')
+                      : '',
+            )
+            .join('');
+    }
+
+    private async forceFinalAnswer(
+        rawLlm: any,
+        messages: BaseMessage[],
+        signal?: AbortSignal,
+    ) {
+        let text = '';
+        for await (const chunk of await rawLlm.stream(messages, { signal })) {
+            text += this.chunkText(chunk);
+        }
+        return text;
+    }
+
+    private async persistTurn(
+        userId: string,
+        conversationId: string,
+        userMessage: string,
+        fullResponse: string,
+    ) {
         await this.appDb.$transaction(async (tx) => {
             await tx.chatMessage.create({
                 data: {
@@ -516,12 +426,6 @@ export class ChatService {
                     conversationId,
                     role: 'USER',
                     content: userMessage,
-                },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
                 },
             });
             await tx.chatMessage.create({
@@ -531,14 +435,7 @@ export class ChatService {
                     role: 'ASSISTANT',
                     content: fullResponse,
                 },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
-                },
             });
-
             const count = await tx.chatMessage.count({
                 where: { userId, conversationId },
             });
@@ -555,142 +452,78 @@ export class ChatService {
         });
     }
 
-    private extractToolCalls(chunk: AIMessageChunk): Array<{
+    private extractToolCalls(
+        chunk: AIMessageChunk | null,
+        fullText: string,
+    ): Array<{ id: string; name: string; args: Record<string, unknown> }> {
+        if (chunk?.tool_calls?.length) {
+            return chunk.tool_calls
+                .filter((tc) => tc.name)
+                .map((tc) => ({
+                    id: tc.id?.trim() || `call_${tc.name}_${Date.now()}`,
+                    name: String(tc.name),
+                    args: (tc.args as Record<string, unknown>) ?? {},
+                }));
+        }
+        if (fullText.includes('DSML') && fullText.includes('tool_calls')) {
+            return this.parseDsmlToolCalls(fullText);
+        }
+        return [];
+    }
+
+    private parseDsmlToolCalls(text: string): Array<{
         id: string;
         name: string;
         args: Record<string, unknown>;
     }> {
-        const extracted: Array<{
+        const results: Array<{
             id: string;
             name: string;
             args: Record<string, unknown>;
         }> = [];
 
-        if (chunk.tool_calls && chunk.tool_calls.length > 0) {
-            for (const tc of chunk.tool_calls) {
-                if (tc.name) {
-                    extracted.push({
-                        id:
-                            typeof tc.id === 'string' && tc.id.trim() !== ''
-                                ? tc.id
-                                : `call_${tc.name}_${Date.now()}`,
-                        name: String(tc.name),
-                        args: (tc.args as Record<string, unknown>) ?? {},
-                    });
-                }
-            }
-        }
+        const blockRegex =
+            /<(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*tool_calls>([\s\S]*?)(?:<\/(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*tool_calls>|$)/gi;
+        let blockMatch: RegExpExecArray | null;
 
-        if (chunk.invalid_tool_calls && chunk.invalid_tool_calls.length > 0) {
-            for (const tc of chunk.invalid_tool_calls) {
-                if (tc.name) {
-                    let parsedArgs: Record<string, unknown> = {};
-                    if (typeof tc.args === 'string') {
+        while ((blockMatch = blockRegex.exec(text)) !== null) {
+            const blockContent = blockMatch[1];
+            const invokeRegex =
+                /<(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*invoke\s+name=["']([^"']+)["']>([\s\S]*?)(?:<\/(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*invoke>|$)/gi;
+            let invokeMatch: RegExpExecArray | null;
+
+            while ((invokeMatch = invokeRegex.exec(blockContent)) !== null) {
+                const toolName = invokeMatch[1];
+                const invokeContent = invokeMatch[2];
+
+                const paramRegex =
+                    /<(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*parameter\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)(?:<\/(?:[|\uFF5C]|\s)*DSML(?:[|\uFF5C]|\s)*parameter>|$)/gi;
+                let paramMatch: RegExpExecArray | null;
+                const args: Record<string, unknown> = {};
+
+                while ((paramMatch = paramRegex.exec(invokeContent)) !== null) {
+                    const paramName = paramMatch[1];
+                    let paramValue: unknown = paramMatch[2].trim();
+                    if (typeof paramValue === 'string') {
                         try {
-                            parsedArgs = JSON.parse(tc.args) as Record<
-                                string,
-                                unknown
-                            >;
+                            paramValue = JSON.parse(paramValue);
                         } catch {
                             void 0;
                         }
-                    } else if (
-                        typeof tc.args === 'object' &&
-                        tc.args !== null
-                    ) {
-                        parsedArgs = tc.args;
                     }
-                    extracted.push({
-                        id:
-                            typeof tc.id === 'string' && tc.id.trim() !== ''
-                                ? tc.id
-                                : `call_${tc.name}_${Date.now()}`,
-                        name: String(tc.name),
-                        args: parsedArgs,
-                    });
+                    args[paramName] = paramValue;
                 }
-            }
-        }
 
-        if (Array.isArray(chunk.content)) {
-            for (const item of chunk.content) {
-                if (typeof item === 'object' && item !== null) {
-                    const itemObj = item as Record<string, unknown>;
-                    if (
-                        itemObj.type === 'functionCall' &&
-                        itemObj.functionCall
-                    ) {
-                        const fc = itemObj.functionCall as Record<
-                            string,
-                            unknown
-                        >;
-                        const fcName =
-                            typeof fc.name === 'string' ? fc.name : '';
-                        if (fcName) {
-                            const fcId =
-                                typeof fc.id === 'string'
-                                    ? fc.id
-                                    : typeof itemObj.id === 'string'
-                                      ? itemObj.id
-                                      : `call_${fcName}_${Date.now()}`;
-                            extracted.push({
-                                id: fcId,
-                                name: fcName,
-                                args:
-                                    (fc.args as Record<string, unknown>) ?? {},
-                            });
-                        }
-                    } else if (
-                        itemObj.type === 'tool_use' &&
-                        typeof itemObj.name === 'string'
-                    ) {
-                        const toolName = itemObj.name;
-                        const toolId =
-                            typeof itemObj.id === 'string'
-                                ? itemObj.id
-                                : `call_${toolName}_${Date.now()}`;
-                        extracted.push({
-                            id: toolId,
-                            name: toolName,
-                            args: (itemObj.input ??
-                                itemObj.args ??
-                                {}) as Record<string, unknown>,
-                        });
-                    }
-                }
-            }
-        }
-
-        const kwargs = chunk.additional_kwargs as
-            Record<string, unknown> | undefined;
-        if (kwargs?.function_call && typeof kwargs.function_call === 'object') {
-            const fc = kwargs.function_call as Record<string, unknown>;
-            const fcName = typeof fc.name === 'string' ? fc.name : '';
-            if (fcName) {
-                let parsedArgs: Record<string, unknown> = {};
-                if (typeof fc.arguments === 'string') {
-                    try {
-                        parsedArgs = JSON.parse(fc.arguments) as Record<
-                            string,
-                            unknown
-                        >;
-                    } catch {
-                        void 0;
-                    }
-                } else if (
-                    typeof fc.arguments === 'object' &&
-                    fc.arguments !== null
-                ) {
-                    parsedArgs = fc.arguments as Record<string, unknown>;
-                }
-                extracted.push({
-                    id: `call_${fcName}_${Date.now()}`,
-                    name: fcName,
-                    args: parsedArgs,
+                results.push({
+                    id: `call_${toolName}_${Date.now()}_${Math.random()
+                        .toString(36)
+                        .substring(2, 7)}`,
+                    name: toolName,
+                    args,
                 });
             }
         }
 
-        return extracted;
+        return results;
     }
 }
