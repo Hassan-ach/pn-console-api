@@ -8,7 +8,11 @@ import {
 } from '../insights-extraction/insight-schema';
 import { SYSTEM_PROMPT } from './insight-extraction-v2-prompt';
 import { InputMessage } from '../insights-extraction/types';
-import { Insight, UnresolvedOwnerRef } from 'src/types/insight.types';
+import {
+    Insight,
+    UnresolvedOwnerRef,
+    InsightBroadcastLevel,
+} from 'src/types/insight.types';
 import { LlmService } from '../../llm/llm.service';
 import { GraphToolsService } from '../../tools/graph-tools.service';
 import { SearchToolsService } from '../../tools/search-tools.service';
@@ -18,6 +22,7 @@ import {
 } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository, UserRecord } from 'src/repositories/user.repository';
 import { EntityRepository } from 'src/repositories/entity.repository';
+import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
 import {
     ICapability,
     CapabilityInput,
@@ -80,6 +85,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         private readonly platformUserMappingRepo: PlatformUserMappingRepository,
         private readonly userRepo: UserRepository,
         private readonly entityRepo: EntityRepository,
+        private readonly orgStructureRepository: OrgStructureRepository,
     ) {}
 
     async execute(input: CapabilityInput): Promise<CapabilityResult> {
@@ -145,10 +151,12 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             maxIterations,
         });
 
+        const orgContext = await this.buildOrgContext(input.organizationId);
+
         const chainInput = [
             new SystemMessage(SYSTEM_PROMPT),
             new HumanMessage(
-                `Current date: ${currentDate}\n\nCurrent insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}`,
+                `Current date: ${currentDate}\n\nCurrent insights:\n${JSON.stringify(history)}\nNew messages:\n${JSON.stringify(messages)}${orgContext}`,
             ),
         ];
 
@@ -249,6 +257,15 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             return [...excluded];
         };
 
+        const resolveBroadcastLevel = (item: {
+            broadcasted: boolean;
+            broadcastLevel?: InsightBroadcastLevel;
+        }): InsightBroadcastLevel =>
+            item.broadcastLevel ??
+            (item.broadcasted
+                ? InsightBroadcastLevel.ORG
+                : InsightBroadcastLevel.DIRECT);
+
         const insights: Insight[] = [
             ...result.updatedInsights.map((u) => {
                 const { resolved, unresolved } = resolveOwners(u.owners);
@@ -258,11 +275,14 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
-
-                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
+                const broadcastLevel = resolveBroadcastLevel(u);
                 const isBroadcasted =
-                    u.broadcasted ||
-                    (u.owners.length === 0 && unresolved.length === 0);
+                    broadcastLevel === InsightBroadcastLevel.ORG;
+                const broadcastTarget =
+                    broadcastLevel === InsightBroadcastLevel.TEAM ||
+                    broadcastLevel === InsightBroadcastLevel.ROLE
+                        ? u.broadcastTarget
+                        : undefined;
 
                 return {
                     id: u.id,
@@ -272,6 +292,8 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: u.envolopsRef,
                     broadcasted: isBroadcasted,
+                    broadcastLevel,
+                    broadcastTarget,
                     excludedUserIds:
                         excludedUserIds.length > 0
                             ? excludedUserIds
@@ -292,11 +314,14 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                 const filteredOwners = resolved.filter(
                     (id) => !excludedUserIds.includes(id),
                 );
-
-                // ACCURACY FIX: broadcasted is true ONLY if explicitly set by LLM or if no owners were specified at all
+                const broadcastLevel = resolveBroadcastLevel(n);
                 const isBroadcasted =
-                    n.broadcasted ||
-                    (n.owners.length === 0 && unresolved.length === 0);
+                    broadcastLevel === InsightBroadcastLevel.ORG;
+                const broadcastTarget =
+                    broadcastLevel === InsightBroadcastLevel.TEAM ||
+                    broadcastLevel === InsightBroadcastLevel.ROLE
+                        ? n.broadcastTarget
+                        : undefined;
 
                 return {
                     id: null,
@@ -306,6 +331,8 @@ export class InsightExtractionCapabilityV2 implements ICapability {
                     unresolvedOwnerRefs: unresolved,
                     envolopsRef: n.envolopsRef,
                     broadcasted: isBroadcasted,
+                    broadcastLevel,
+                    broadcastTarget,
                     excludedUserIds:
                         excludedUserIds.length > 0
                             ? excludedUserIds
@@ -325,6 +352,28 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         );
 
         return { capabilityName: this.name, insights };
+    }
+
+    private async buildOrgContext(organizationId?: string): Promise<string> {
+        if (!organizationId) return '';
+
+        try {
+            const [teams, roles] = await Promise.all([
+                this.orgStructureRepository.findTeamsByOrganization(
+                    organizationId,
+                ),
+                this.orgStructureRepository.findRolesByOrganization(
+                    organizationId,
+                ),
+            ]);
+
+            return `\n\nOrganization teams:\n${JSON.stringify(teams.map((t) => t.name))}\nOrganization roles:\n${JSON.stringify(roles.map((r) => r.name))}`;
+        } catch (error) {
+            this.logger.warn(
+                `[V2] Failed to load org structure for context: ${(error as Error).message}`,
+            );
+            return '';
+        }
     }
 
     private async resolveOwnersBatch(

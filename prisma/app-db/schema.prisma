@@ -28,6 +28,9 @@ model InsightVersion {
   owners           InsightVersionOwner[]
   unresolvedOwners UnresolvedOwner[]
   broadcasted      Boolean               @default(false)
+  broadcastLevel   InsightBroadcastLevel? @map("broadcast_level")
+  broadcastTargetId String?              @map("broadcast_target_id") @db.Uuid
+  broadcastTargetName String?            @map("broadcast_target_name")
   envolopsRef      String[]              @default([])
 
   sourcePlugin String?                      @map("source_plugin")
@@ -44,6 +47,7 @@ model InsightVersion {
   @@index([insightId])
   @@index([sourcePlugin, channelId, topicId, createdAt])
   @@index([sourcePlugin, groupId, createdAt])
+  @@index([broadcastLevel])
   @@map("insight_versions")
 }
 
@@ -133,6 +137,13 @@ enum InsightType {
   INFO
   URGENCY
   DECISION
+}
+
+enum InsightBroadcastLevel {
+  DIRECT
+  ORG
+  TEAM
+  ROLE
 }
 
 enum InsightActionStatus {
@@ -281,6 +292,7 @@ model Team {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
   members        TeamMember[]
+  roles          Role[]
 
   @@map("teams")
 }
@@ -289,10 +301,13 @@ model Role {
   id          String           @id @default(uuid()) @db.Uuid
   name        String
   description String?
+  teamId      String?          @map("team_id") @db.Uuid
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   members     TeamMemberRole[]
+  team        Team?            @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  @@index([teamId])
   @@map("roles")
 }
 

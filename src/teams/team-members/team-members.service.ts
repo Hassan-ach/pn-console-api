@@ -1,27 +1,48 @@
 import {
+    BadRequestException,
     ConflictException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
 import { AppDbService } from '../../prisma/app-db/app-db.service';
+import { OrgStructureRepository } from '../../repositories/org-structure.repository';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 
 @Injectable()
 export class TeamMembersService {
-    constructor(private readonly db: AppDbService) {}
+    constructor(
+        private readonly db: AppDbService,
+        private readonly orgStructureRepository: OrgStructureRepository,
+    ) {}
+
+    private validateRolesBelongToTeam(
+        roles: { teamId: string | null }[],
+        teamId: string,
+    ) {
+        if (roles.some((r) => r.teamId !== teamId)) {
+            throw new BadRequestException(
+                'One or more roles are not mapped to this team',
+            );
+        }
+    }
 
     async addMember(teamId: string, dto: AddMemberDto) {
         const team = await this.db.team.findUnique({ where: { id: teamId } });
         if (!team) throw new NotFoundException('Team not found');
 
-        const user = await this.db.user.findUnique({ where: { id: dto.userId } });
+        const user = await this.db.user.findUnique({
+            where: { id: dto.userId },
+        });
         if (!user) throw new NotFoundException('User not found');
 
         const existing = await this.db.teamMember.findUnique({
             where: { userId_teamId: { userId: dto.userId, teamId } },
         });
-        if (existing) throw new ConflictException('User is already a member of this team');
+        if (existing)
+            throw new ConflictException(
+                'User is already a member of this team',
+            );
 
         const roles = await this.db.role.findMany({
             where: { id: { in: dto.roleIds } },
@@ -29,8 +50,9 @@ export class TeamMembersService {
         if (roles.length !== dto.roleIds.length) {
             throw new NotFoundException('One or more roles not found');
         }
+        this.validateRolesBelongToTeam(roles, teamId);
 
-        return this.db.teamMember.create({
+        const member = await this.db.teamMember.create({
             data: {
                 userId: dto.userId,
                 teamId,
@@ -39,17 +61,77 @@ export class TeamMembersService {
                 },
             },
             include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
                 roles: { include: { role: true } },
             },
         });
+
+        await this.orgStructureRepository.assignBroadcastInsightsToUser(
+            dto.userId,
+        );
+
+        return member;
+    }
+
+    async joinTeam(teamId: string, userId: string, roleIds: string[] = []) {
+        const team = await this.db.team.findUnique({ where: { id: teamId } });
+        if (!team) throw new NotFoundException('Team not found');
+
+        const existing = await this.db.teamMember.findUnique({
+            where: { userId_teamId: { userId, teamId } },
+        });
+        if (existing)
+            throw new ConflictException(
+                'User is already a member of this team',
+            );
+
+        const roles = await this.db.role.findMany({
+            where: { id: { in: roleIds } },
+        });
+        if (roles.length !== roleIds.length) {
+            throw new NotFoundException('One or more roles not found');
+        }
+        this.validateRolesBelongToTeam(roles, teamId);
+
+        const member = await this.db.teamMember.create({
+            data: {
+                userId,
+                teamId,
+                roles: {
+                    create: roleIds.map((roleId) => ({ roleId })),
+                },
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                roles: { include: { role: true } },
+            },
+        });
+
+        await this.orgStructureRepository.assignBroadcastInsightsToUser(userId);
+
+        return member;
     }
 
     async updateMember(teamId: string, userId: string, dto: UpdateMemberDto) {
         const member = await this.db.teamMember.findUnique({
             where: { userId_teamId: { userId, teamId } },
         });
-        if (!member) throw new NotFoundException('Member not found in this team');
+        if (!member)
+            throw new NotFoundException('Member not found in this team');
 
         const roles = await this.db.role.findMany({
             where: { id: { in: dto.roleIds } },
@@ -57,12 +139,13 @@ export class TeamMembersService {
         if (roles.length !== dto.roleIds.length) {
             throw new NotFoundException('One or more roles not found');
         }
+        this.validateRolesBelongToTeam(roles, teamId);
 
         await this.db.teamMemberRole.deleteMany({
             where: { teamMemberId: member.id },
         });
 
-        return this.db.teamMember.update({
+        const updated = await this.db.teamMember.update({
             where: { id: member.id },
             data: {
                 roles: {
@@ -70,17 +153,29 @@ export class TeamMembersService {
                 },
             },
             include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
                 roles: { include: { role: true } },
             },
         });
+
+        await this.orgStructureRepository.assignBroadcastInsightsToUser(userId);
+
+        return updated;
     }
 
     async removeMember(teamId: string, userId: string) {
         const member = await this.db.teamMember.findUnique({
             where: { userId_teamId: { userId, teamId } },
         });
-        if (!member) throw new NotFoundException('Member not found in this team');
+        if (!member)
+            throw new NotFoundException('Member not found in this team');
         await this.db.teamMember.delete({ where: { id: member.id } });
     }
 

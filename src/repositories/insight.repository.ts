@@ -1,27 +1,146 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import {
     Insight,
     InsightActionStatus,
+    InsightBroadcastLevel,
     InsightType,
     UnresolvedOwnerRef,
 } from 'src/types/insight.types';
 import { EnvelopeRepository } from './envelope.repository';
+import { OrgStructureRepository } from './org-structure.repository';
 
 @Injectable()
 export class InsightRepository {
     private readonly deadlineWarningDays: number;
+    private readonly logger = new Logger(InsightRepository.name);
 
     constructor(
         private readonly prisma: AppDbService,
         private readonly envelopeRepository: EnvelopeRepository,
+        private readonly orgStructureRepository: OrgStructureRepository,
         private readonly config: ConfigService,
     ) {
         this.deadlineWarningDays = this.config.get<number>(
             'engine.insightDeadlineWarningDays',
             3,
         );
+    }
+
+    private async resolveBroadcastAudience(data: {
+        organizationId?: string;
+        broadcastLevel?: InsightBroadcastLevel;
+        broadcastTarget?: string;
+        owners: string[];
+        excludedUserIds: string[];
+    }): Promise<{
+        ownerIds: string[];
+        storeAsBroadcasted: boolean;
+        broadcastLevel: InsightBroadcastLevel;
+        broadcastTargetId: string | null;
+        broadcastTargetName: string | null;
+    }> {
+        const level = data.broadcastLevel ?? InsightBroadcastLevel.DIRECT;
+        const excludedUserIds = data.excludedUserIds;
+        const orgId = data.organizationId ?? '';
+
+        if (level === InsightBroadcastLevel.ORG) {
+            const allUsers = await this.prisma.user.findMany({
+                select: { id: true },
+            });
+            const allUserIds = allUsers.map((u) => u.id);
+            if (excludedUserIds.length > 0) {
+                return {
+                    ownerIds: allUserIds.filter(
+                        (id) => !excludedUserIds.includes(id),
+                    ),
+                    storeAsBroadcasted: false,
+                    broadcastLevel: level,
+                    broadcastTargetId: null,
+                    broadcastTargetName: null,
+                };
+            }
+            return {
+                ownerIds: allUserIds,
+                storeAsBroadcasted: true,
+                broadcastLevel: level,
+                broadcastTargetId: null,
+                broadcastTargetName: null,
+            };
+        }
+
+        if (level === InsightBroadcastLevel.TEAM) {
+            const team = data.broadcastTarget
+                ? await this.orgStructureRepository.findTeamByName(
+                      orgId,
+                      data.broadcastTarget,
+                  )
+                : null;
+
+            if (!team) {
+                this.logger.warn(
+                    `TEAM broadcast target not resolved: "${data.broadcastTarget ?? '(none)'}" (org=${orgId})`,
+                );
+                return {
+                    ownerIds: [],
+                    storeAsBroadcasted: false,
+                    broadcastLevel: level,
+                    broadcastTargetId: null,
+                    broadcastTargetName: data.broadcastTarget ?? null,
+                };
+            }
+
+            return {
+                ownerIds: team.memberIds.filter(
+                    (id) => !excludedUserIds.includes(id),
+                ),
+                storeAsBroadcasted: false,
+                broadcastLevel: level,
+                broadcastTargetId: team.id,
+                broadcastTargetName: team.name,
+            };
+        }
+
+        if (level === InsightBroadcastLevel.ROLE) {
+            const role = data.broadcastTarget
+                ? await this.orgStructureRepository.findRoleByName(
+                      orgId,
+                      data.broadcastTarget,
+                  )
+                : null;
+
+            if (!role) {
+                this.logger.warn(
+                    `ROLE broadcast target not resolved: "${data.broadcastTarget ?? '(none)'}" (org=${orgId})`,
+                );
+                return {
+                    ownerIds: [],
+                    storeAsBroadcasted: false,
+                    broadcastLevel: level,
+                    broadcastTargetId: null,
+                    broadcastTargetName: data.broadcastTarget ?? null,
+                };
+            }
+
+            return {
+                ownerIds: role.holderIds.filter(
+                    (id) => !excludedUserIds.includes(id),
+                ),
+                storeAsBroadcasted: false,
+                broadcastLevel: level,
+                broadcastTargetId: role.id,
+                broadcastTargetName: role.name,
+            };
+        }
+
+        return {
+            ownerIds: data.owners,
+            storeAsBroadcasted: false,
+            broadcastLevel: level,
+            broadcastTargetId: null,
+            broadcastTargetName: null,
+        };
     }
 
     async create(data: {
@@ -32,6 +151,8 @@ export class InsightRepository {
         unresolvedOwners?: UnresolvedOwnerRef[];
         envolopsRef?: string[];
         broadcasted?: boolean;
+        broadcastLevel?: InsightBroadcastLevel;
+        broadcastTarget?: string;
         excludedUserIds?: string[];
         priority?: number;
         deadline?: Date;
@@ -40,29 +161,15 @@ export class InsightRepository {
         channelId?: string;
         topicId?: string;
     }): Promise<Insight> {
-        const isBroadcasted = data.broadcasted ?? false;
-        const excludedUserIds = data.excludedUserIds ?? [];
+        const resolved = await this.resolveBroadcastAudience({
+            organizationId: data.organizationId,
+            broadcastLevel: data.broadcastLevel,
+            broadcastTarget: data.broadcastTarget,
+            owners: data.owners,
+            excludedUserIds: data.excludedUserIds ?? [],
+        });
 
-        let ownerIds: string[];
-        let storeAsBroadcasted = isBroadcasted;
-
-        if (isBroadcasted && excludedUserIds.length > 0) {
-            const allUsers = await this.prisma.user.findMany({
-                select: { id: true },
-            });
-            ownerIds = allUsers
-                .map((u) => u.id)
-                .filter((id) => !excludedUserIds.includes(id));
-            storeAsBroadcasted = false;
-        } else if (isBroadcasted) {
-            const allUsers = await this.prisma.user.findMany({
-                select: { id: true },
-            });
-            ownerIds = allUsers.map((u) => u.id);
-        } else {
-            ownerIds = data.owners;
-        }
-
+        const ownerIds = resolved.ownerIds;
         const uniqueOwnerIds = [...new Set(ownerIds)];
         const uniqueUnresolvedOwners = [
             ...new Map(
@@ -95,7 +202,10 @@ export class InsightRepository {
                                 pluginName: u.pluginName,
                             })),
                         },
-                        broadcasted: storeAsBroadcasted,
+                        broadcasted: resolved.storeAsBroadcasted,
+                        broadcastLevel: resolved.broadcastLevel,
+                        broadcastTargetId: resolved.broadcastTargetId,
+                        broadcastTargetName: resolved.broadcastTargetName,
                         envolopsRef: data.envolopsRef ?? [],
                         sourcePlugin: data.sourcePlugin ?? null,
                         groupId: data.groupId ?? null,
@@ -123,12 +233,15 @@ export class InsightRepository {
     async update(
         id: string,
         data: {
+            organizationId?: string;
             type: InsightType;
             content: string;
             owners: string[];
             unresolvedOwners?: UnresolvedOwnerRef[];
             envolopsRef?: string[];
             broadcasted?: boolean;
+            broadcastLevel?: InsightBroadcastLevel;
+            broadcastTarget?: string;
             excludedUserIds?: string[];
             priority?: number;
             deadline?: Date;
@@ -149,28 +262,15 @@ export class InsightRepository {
 
             const maxVersion = latestVersions[0]?._max.version ?? 0;
 
-            const isBroadcasted = data.broadcasted ?? false;
-            const excludedUserIds = data.excludedUserIds ?? [];
+            const resolved = await this.resolveBroadcastAudience({
+                organizationId: data.organizationId,
+                broadcastLevel: data.broadcastLevel,
+                broadcastTarget: data.broadcastTarget,
+                owners: data.owners,
+                excludedUserIds: data.excludedUserIds ?? [],
+            });
 
-            let ownerIds: string[];
-            let storeAsBroadcasted = isBroadcasted;
-
-            if (isBroadcasted && excludedUserIds.length > 0) {
-                const allUsers = await tx.user.findMany({
-                    select: { id: true },
-                });
-                ownerIds = allUsers
-                    .map((u) => u.id)
-                    .filter((id) => !excludedUserIds.includes(id));
-                storeAsBroadcasted = false;
-            } else if (isBroadcasted) {
-                const allUsers = await tx.user.findMany({
-                    select: { id: true },
-                });
-                ownerIds = allUsers.map((u) => u.id);
-            } else {
-                ownerIds = data.owners;
-            }
+            const ownerIds = resolved.ownerIds;
 
             const uniqueOwnerIds = [...new Set(ownerIds)];
             const uniqueUnresolvedOwners = [
@@ -203,7 +303,10 @@ export class InsightRepository {
                             pluginName: u.pluginName,
                         })),
                     },
-                    broadcasted: storeAsBroadcasted,
+                    broadcasted: resolved.storeAsBroadcasted,
+                    broadcastLevel: resolved.broadcastLevel,
+                    broadcastTargetId: resolved.broadcastTargetId,
+                    broadcastTargetName: resolved.broadcastTargetName,
                     envolopsRef: data.envolopsRef ?? [],
                     sourcePlugin: data.sourcePlugin ?? null,
                     groupId: data.groupId ?? null,
@@ -309,6 +412,9 @@ export class InsightRepository {
             })),
             envolopsRef: [...v.envolopsRef],
             broadcasted: v.broadcasted,
+            broadcastLevel: v.broadcastLevel ?? undefined,
+            broadcastTargetId: v.broadcastTargetId ?? undefined,
+            broadcastTargetName: v.broadcastTargetName ?? undefined,
             version: v.version,
             createdAt: v.createdAt,
             sourcePlugin: v.sourcePlugin ?? undefined,
@@ -593,6 +699,9 @@ export class InsightRepository {
         content: string;
         envolopsRef: string[];
         broadcasted: boolean;
+        broadcastLevel?: InsightBroadcastLevel;
+        broadcastTargetId?: string;
+        broadcastTargetName?: string;
         version: number;
         latestVersionId?: string;
         createdAt: Date;
@@ -646,6 +755,9 @@ export class InsightRepository {
             content: version.content,
             envolopsRef: [...version.envolopsRef],
             broadcasted: version.broadcasted,
+            broadcastLevel: version.broadcastLevel ?? undefined,
+            broadcastTargetId: version.broadcastTargetId ?? undefined,
+            broadcastTargetName: version.broadcastTargetName ?? undefined,
             version: version.version,
             latestVersionId: latestVersionId ?? undefined,
             createdAt: version.createdAt,
@@ -744,6 +856,9 @@ export class InsightRepository {
             })),
             envolopsRef: [...v.envolopsRef],
             broadcasted: v.broadcasted,
+            broadcastLevel: v.broadcastLevel ?? undefined,
+            broadcastTargetId: v.broadcastTargetId ?? undefined,
+            broadcastTargetName: v.broadcastTargetName ?? undefined,
             version: v.version,
             createdAt: v.createdAt,
             sourcePlugin: v.sourcePlugin ?? undefined,
@@ -770,6 +885,9 @@ export class InsightRepository {
             }[];
             envolopsRef: string[];
             broadcasted: boolean;
+            broadcastLevel: string | null;
+            broadcastTargetId: string | null;
+            broadcastTargetName: string | null;
             createdAt: Date;
             sourcePlugin: string | null;
             groupId: string | null;
@@ -793,6 +911,11 @@ export class InsightRepository {
             })),
             envolopsRef: [...latest.envolopsRef],
             broadcasted: latest.broadcasted,
+            broadcastLevel:
+                (latest.broadcastLevel as InsightBroadcastLevel | null) ??
+                undefined,
+            broadcastTargetId: latest.broadcastTargetId ?? undefined,
+            broadcastTargetName: latest.broadcastTargetName ?? undefined,
             version: latest.version,
             createdAt: latest.createdAt,
             sourcePlugin: latest.sourcePlugin ?? undefined,

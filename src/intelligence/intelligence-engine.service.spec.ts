@@ -266,6 +266,7 @@ describe('IntelligenceEngineService', () => {
             {
                 chunk: baseChunk,
                 previousIntelligence: [prevInsight],
+                organizationId: 'org-1',
             },
         );
         expect(mockCapabilityManager.executeByName).toHaveBeenCalledWith(
@@ -273,6 +274,7 @@ describe('IntelligenceEngineService', () => {
             {
                 chunk: baseChunk,
                 previousIntelligence: [prevInsight],
+                organizationId: 'org-1',
             },
         );
     });

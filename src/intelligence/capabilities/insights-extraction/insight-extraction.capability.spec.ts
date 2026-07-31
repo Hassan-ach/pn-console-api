@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InsightExtractionCapability } from './insight-extraction.capability';
 import { LlmService } from '../../llm/llm.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
+import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
 import { CapabilityInput } from '../capability.interface';
 
 const sampleInput: CapabilityInput = {
@@ -106,6 +107,17 @@ describe('InsightExtractionCapability', () => {
                 {
                     provide: PlatformUserMappingRepository,
                     useValue: platformRepoMock,
+                },
+                {
+                    provide: OrgStructureRepository,
+                    useValue: {
+                        findTeamsByOrganization: jest
+                            .fn()
+                            .mockResolvedValue([]),
+                        findRolesByOrganization: jest
+                            .fn()
+                            .mockResolvedValue([]),
+                    },
                 },
             ],
         }).compile();

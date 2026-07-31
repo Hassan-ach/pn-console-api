@@ -26,6 +26,8 @@ export class DemoPersistenceController {
             owners: i.owners,
             envolopsRef: i.envolopsRef,
             broadcasted: i.broadcasted ?? false,
+            broadcastLevel: i.broadcastLevel,
+            broadcastTarget: i.broadcastTarget,
         }));
 
         await this.persistence.persistAll(insights, dto.organizationId);
@@ -57,6 +59,9 @@ export class DemoPersistenceController {
                 owners: latest.owners.map((o) => o.userId),
                 envolopsRef: [...latest.envolopsRef],
                 broadcasted: latest.broadcasted,
+                broadcastLevel: latest.broadcastLevel ?? undefined,
+                broadcastTargetId: latest.broadcastTargetId ?? undefined,
+                broadcastTargetName: latest.broadcastTargetName ?? undefined,
                 version: latest.version,
                 createdAt: latest.createdAt,
             };

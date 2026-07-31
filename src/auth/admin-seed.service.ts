@@ -1,4 +1,9 @@
-import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+    Inject,
+    Injectable,
+    Logger,
+    OnApplicationBootstrap,
+} from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { AppDbService } from '../prisma/app-db/app-db.service';
@@ -18,7 +23,9 @@ export class AdminSeedService implements OnApplicationBootstrap {
         const { email, password, firstName, lastName } = this.adminConf;
 
         if (!email || !password) {
-            this.logger.warn('ADMIN_EMAIL or ADMIN_PASSWORD not set — skipping admin seed');
+            this.logger.warn(
+                'ADMIN_EMAIL or ADMIN_PASSWORD not set — skipping admin seed',
+            );
             return;
         }
 
@@ -33,7 +40,9 @@ export class AdminSeedService implements OnApplicationBootstrap {
                     where: { id: existing.id },
                     data: { role: 'ADMIN' },
                 });
-                this.logger.log(`Upgraded existing user ${normalizedEmail} to ADMIN`);
+                this.logger.log(
+                    `Upgraded existing user ${normalizedEmail} to ADMIN`,
+                );
             } else {
                 this.logger.log(`Admin user ${normalizedEmail} already exists`);
             }

@@ -6,6 +6,7 @@ import { SearchToolsService } from '../../tools/search-tools.service';
 import { PlatformUserMappingRepository } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { EntityRepository } from 'src/repositories/entity.repository';
+import { OrgStructureRepository } from 'src/repositories/org-structure.repository';
 import { InsightType } from 'src/types/insight.types';
 
 describe('InsightExtractionCapabilityV2', () => {
@@ -73,6 +74,17 @@ describe('InsightExtractionCapabilityV2', () => {
                 },
                 { provide: UserRepository, useValue: mockUserRepo },
                 { provide: EntityRepository, useValue: mockEntityRepo },
+                {
+                    provide: OrgStructureRepository,
+                    useValue: {
+                        findTeamsByOrganization: jest
+                            .fn()
+                            .mockResolvedValue([]),
+                        findRolesByOrganization: jest
+                            .fn()
+                            .mockResolvedValue([]),
+                    },
+                },
             ],
         }).compile();
 

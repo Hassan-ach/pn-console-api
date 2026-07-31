@@ -15,6 +15,7 @@ import { EmbeddingRepository } from './embedding.repository';
 import { EntityRepository } from './entity.repository';
 import { RelationshipRepository } from './relationship.repository';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
+import { OrgStructureRepository } from './org-structure.repository';
 
 @Module({
     imports: [AppDbModule, RawDbModule],
@@ -33,6 +34,7 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         EntityRepository,
         RelationshipRepository,
         InsightSuggestionRepository,
+        OrgStructureRepository,
     ],
     exports: [
         InsightRepository,
@@ -49,6 +51,7 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         EntityRepository,
         RelationshipRepository,
         InsightSuggestionRepository,
+        OrgStructureRepository,
     ],
 })
 export class RepositoriesModule {}

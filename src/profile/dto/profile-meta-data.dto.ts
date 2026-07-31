@@ -38,6 +38,9 @@ export class ProfileMetaDataDto {
 
     @Expose()
     @Type(() => TeamInfoDto)
-    @ApiPropertyOptional({ description: 'User teams and roles', type: [TeamInfoDto] })
+    @ApiPropertyOptional({
+        description: 'User teams and roles',
+        type: [TeamInfoDto],
+    })
     teams?: TeamInfoDto[];
 }

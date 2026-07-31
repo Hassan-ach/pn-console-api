@@ -4,6 +4,7 @@ import { Insight } from '../../types/insight.types';
 export interface CapabilityInput {
     chunk: DataChunk;
     previousIntelligence: Insight[];
+    organizationId?: string;
 }
 
 export interface CapabilityResult {

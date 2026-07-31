@@ -1,7 +1,13 @@
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+    IsArray,
+    IsIn,
+    IsOptional,
+    IsString,
+    ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { InsightType } from 'src/types/insight.types';
+import { InsightBroadcastLevel, InsightType } from 'src/types/insight.types';
 
 class PersistInsightDto {
     @ApiPropertyOptional({ example: 'abc-123' })
@@ -29,6 +35,24 @@ class PersistInsightDto {
 
     @ApiProperty({ required: false, default: false })
     broadcasted?: boolean;
+
+    @ApiPropertyOptional({
+        enum: InsightBroadcastLevel,
+        description:
+            'Audience level: DIRECT, ORG, TEAM (requires broadcastTarget), ROLE (requires broadcastTarget)',
+    })
+    @IsOptional()
+    @IsIn(Object.values(InsightBroadcastLevel))
+    broadcastLevel?: InsightBroadcastLevel;
+
+    @ApiPropertyOptional({
+        example: 'Platform Team',
+        description:
+            'Exact team or role name from the organization, required when broadcastLevel is TEAM or ROLE',
+    })
+    @IsOptional()
+    @IsString()
+    broadcastTarget?: string;
 }
 
 export class PersistInsightsDto {

@@ -32,7 +32,12 @@ export class TeamsService {
                 members: {
                     include: {
                         user: {
-                            select: { id: true, firstName: true, lastName: true, email: true },
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                            },
                         },
                         roles: {
                             include: { role: true },
@@ -53,7 +58,9 @@ export class TeamsService {
             where: { id },
             data: {
                 ...(dto.name !== undefined && { name: dto.name }),
-                ...(dto.description !== undefined && { description: dto.description }),
+                ...(dto.description !== undefined && {
+                    description: dto.description,
+                }),
             },
         });
     }

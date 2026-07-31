@@ -49,7 +49,9 @@ For each insight, determine:
 - \`content\`: A clear, concise rephrasing of the actionable insight. NEVER copy raw message text verbatim.
 - \`envolopsRef\`: Array of exact \`envolopId\` string UUIDs from the input messages on which this insight is based.
 - \`owners\`: Array of user identifier objects for people directly assigned or requested to act, formatted as \`[{ "id": "platform_user_id" }, { "username": "platform_username_or_display_name" }]\`. Use display names or usernames from context if exact IDs are unknown. Do NOT include people mentioned merely in passing.
-- \`broadcasted\`: Set to \`true\` ONLY when no specific person is directly assigned or when the insight is a team-wide announcement. When \`broadcasted\` is true, \`owners\` MUST be an empty array \`[]\`. When someone is assigned, \`broadcasted\` MUST be \`false\`.
+- \`broadcasted\`: Set to \`true\` ONLY when the insight must reach everyone in the organization (ORG-wide broadcast). When \`broadcasted\` is true, \`owners\` MUST be an empty array \`[]\` and \`broadcastLevel\` should be \`"ORG"\`. When someone is assigned, \`broadcasted\` MUST be \`false\`.
+- \`broadcastLevel\`: Controls the audience of the insight. One of \`"DIRECT"\` (default, shown only to assigned owners), \`"ORG"\` (broadcast to everyone in the organization, \`owners\` must be empty), \`"TEAM"\` (broadcast to all members of a team — set \`broadcastTarget\` to the exact team name from the \`Organization teams\` list), or \`"ROLE"\` (broadcast to every user holding a role — set \`broadcastTarget\` to the exact role name from the \`Organization roles\` list). Only use team/role names present in the provided lists; if the target is not listed, fall back to \`"DIRECT"\` with owners or \`"ORG"\`.
+- \`broadcastTarget\`: The exact team name or role name from the provided lists. Required when \`broadcastLevel\` is \`"TEAM"\` or \`"ROLE"\`; ignore otherwise.
 - \`excludeAuthor\`: Set to \`true\` when the message author is delegating work to others (e.g. "Can someone check X?"). Set to \`false\` when author self-commits (e.g. "I will fix X") or for general info.
 - \`priority\`: Integer score from 1 to 10 (10 = highest priority). Guidelines: URGENCY (7-10), TASK/DECISION (4-9 based on deadline & impact), INFO (1-4).
 - \`deadline\`: ISO 8601 date string (YYYY-MM-DD) calculated using the message's \`occurredAt\` timestamp as the anchor date, or \`null\` if no deadline is specified.
@@ -67,6 +69,8 @@ When reasoning and tool usage are complete, return ONLY a valid JSON object form
       "owners": [{ "id": "user-id", "username": "username" }],
       "envolopsRef": ["550e8400-e29b-41d4-a716-446655440000"],
       "broadcasted": false,
+      "broadcastLevel": "DIRECT",
+      "broadcastTarget": "team-or-role-name",
       "excludeAuthor": false,
       "priority": 7,
       "deadline": "2026-08-01"
@@ -79,6 +83,8 @@ When reasoning and tool usage are complete, return ONLY a valid JSON object form
       "owners": [],
       "envolopsRef": ["550e8400-e29b-41d4-a716-446655440000"],
       "broadcasted": true,
+      "broadcastLevel": "ORG",
+      "broadcastTarget": "team-or-role-name",
       "excludeAuthor": false,
       "priority": 3,
       "deadline": null

@@ -69,6 +69,8 @@ export class InsightPersistenceService implements OnModuleInit {
                         unresolvedOwners: insight.unresolvedOwnerRefs ?? [],
                         envolopsRef: insight.envolopsRef,
                         broadcasted: insight.broadcasted,
+                        broadcastLevel: insight.broadcastLevel,
+                        broadcastTarget: insight.broadcastTarget,
                         excludedUserIds: insight.excludedUserIds,
                         priority: insight.priority,
                         deadline: insight.deadline,
@@ -80,12 +82,15 @@ export class InsightPersistenceService implements OnModuleInit {
                 }
 
                 return this.repo.update(insight.id, {
+                    organizationId,
                     type: insight.type,
                     content: insight.content,
                     owners: insight.owners,
                     unresolvedOwners: insight.unresolvedOwnerRefs ?? [],
                     envolopsRef: insight.envolopsRef,
                     broadcasted: insight.broadcasted,
+                    broadcastLevel: insight.broadcastLevel,
+                    broadcastTarget: insight.broadcastTarget,
                     excludedUserIds: insight.excludedUserIds,
                     priority: insight.priority,
                     deadline: insight.deadline,

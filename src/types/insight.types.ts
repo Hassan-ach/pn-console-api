@@ -7,6 +7,16 @@ export const InsightType = {
 
 export type InsightType = (typeof InsightType)[keyof typeof InsightType];
 
+export const InsightBroadcastLevel = {
+    DIRECT: 'DIRECT',
+    ORG: 'ORG',
+    TEAM: 'TEAM',
+    ROLE: 'ROLE',
+} as const;
+
+export type InsightBroadcastLevel =
+    (typeof InsightBroadcastLevel)[keyof typeof InsightBroadcastLevel];
+
 export interface UnresolvedOwnerRef {
     platformUserId: string | null;
     platformUsername: string | null;
@@ -53,6 +63,10 @@ export interface Insight {
     organizationId?: string;
     envolopsRef?: string[];
     broadcasted?: boolean;
+    broadcastLevel?: InsightBroadcastLevel;
+    broadcastTarget?: string;
+    broadcastTargetId?: string;
+    broadcastTargetName?: string;
     type: InsightType;
     content: string;
     owners: string[];
