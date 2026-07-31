@@ -316,9 +316,7 @@ export class ChatService {
                     signal,
                 })) {
                     turnText += this.chunkText(chunk);
-                    finalChunk = finalChunk
-                        ? (finalChunk as any).concat(chunk)
-                        : chunk;
+                    finalChunk = finalChunk ? finalChunk.concat(chunk) : chunk;
                 }
 
                 const toolCalls = this.extractToolCalls(finalChunk, turnText);
@@ -391,23 +389,32 @@ export class ChatService {
         if (typeof chunk.content === 'string') return chunk.content;
         if (!Array.isArray(chunk.content)) return '';
         return chunk.content
-            .map((item) =>
-                typeof item === 'string'
-                    ? item
-                    : (item as any)?.type === 'text'
-                      ? ((item as any).text ?? '')
-                      : '',
-            )
+            .map((item: unknown) => {
+                if (typeof item === 'string') return item;
+                if (typeof item === 'object' && item !== null) {
+                    const obj = item as Record<string, unknown>;
+                    if (obj.type === 'text' && typeof obj.text === 'string') {
+                        return obj.text;
+                    }
+                }
+                return '';
+            })
             .join('');
     }
 
     private async forceFinalAnswer(
-        rawLlm: any,
+        rawLlm: {
+            stream: (
+                messages: BaseMessage[],
+                options?: { signal?: AbortSignal },
+            ) => Promise<AsyncIterable<AIMessageChunk>>;
+        },
         messages: BaseMessage[],
         signal?: AbortSignal,
-    ) {
+    ): Promise<string> {
         let text = '';
-        for await (const chunk of await rawLlm.stream(messages, { signal })) {
+        const stream = await rawLlm.stream(messages, { signal });
+        for await (const chunk of stream) {
             text += this.chunkText(chunk);
         }
         return text;

@@ -704,7 +704,8 @@ describe('ChatService', () => {
                 yield {
                     content: '',
                     response_metadata: {
-                        reasoning_content: 'Let me search messages to find the user info.',
+                        reasoning_content:
+                            'Let me search messages to find the user info.',
                     },
                     tool_calls: [
                         {
@@ -732,15 +733,19 @@ describe('ChatService', () => {
 
             mockLlmService.createStreamingLLM.mockResolvedValue(mockLlm);
 
-            const gen = service.streamResponse('user-1', 'conv-1', 'search hassan');
+            const gen = service.streamResponse(
+                'user-1',
+                'conv-1',
+                'search hassan',
+            );
             const tokens: string[] = [];
             for await (const token of gen) {
                 tokens.push(token);
             }
 
             expect(streamFn).toHaveBeenCalledTimes(2);
-            // Verify second call to streamFn received AIMessage with reasoning_content in additional_kwargs
-            const secondCallMessages = streamFn.mock.calls[1][0] as Array<{
+            const calls = streamFn.mock.calls as unknown[][];
+            const secondCallMessages = (calls[1]?.[0] ?? []) as Array<{
                 content: string;
                 tool_calls?: unknown[];
                 additional_kwargs?: { reasoning_content?: string };
@@ -749,9 +754,9 @@ describe('ChatService', () => {
                 (m) => m.tool_calls && m.tool_calls.length > 0,
             );
             expect(toolCallAiMessage).toBeDefined();
-            expect(toolCallAiMessage?.additional_kwargs?.reasoning_content).toBe(
-                'Let me search messages to find the user info.',
-            );
+            expect(
+                toolCallAiMessage?.additional_kwargs?.reasoning_content,
+            ).toBe('Let me search messages to find the user info.');
         });
 
         it('parses DSML tool calls from text content and executes them', async () => {
@@ -785,7 +790,8 @@ describe('ChatService', () => {
 
             const mockFinalStream = (async function* () {
                 yield {
-                    content: 'Here is your daily summary: You attended stand-up and worked on user story 123.',
+                    content:
+                        'Here is your daily summary: You attended stand-up and worked on user story 123.',
                 };
             })();
 
@@ -823,9 +829,7 @@ describe('ChatService', () => {
         });
 
         it('detects duplicate tool call loop and forces final response synthesis', async () => {
-            const searchToolInvoke = jest
-                .fn()
-                .mockResolvedValue('["results"]');
+            const searchToolInvoke = jest.fn().mockResolvedValue('["results"]');
             mockSearchTools.getTools.mockReturnValue([
                 { name: 'search_insights', invoke: searchToolInvoke },
             ]);
