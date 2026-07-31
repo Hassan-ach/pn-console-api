@@ -150,11 +150,8 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
-<<<<<<< HEAD
             role: user.role,
-=======
             organizationId: user.organizationId ?? 'org-1',
->>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
         });
 
         return {
@@ -329,11 +326,8 @@ export class AuthService {
                 sub: existing.id,
                 email: existing.email,
                 tokenVersion: existing.tokenVersion,
-<<<<<<< HEAD
                 role: existing.role,
-=======
                 organizationId: existing.organizationId ?? 'org-1',
->>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
             });
             return {
                 access_token: token,
@@ -378,11 +372,8 @@ export class AuthService {
                         sub: raceCreated.id,
                         email: raceCreated.email,
                         tokenVersion: raceCreated.tokenVersion,
-<<<<<<< HEAD
                         role: raceCreated.role,
-=======
                         organizationId: raceCreated.organizationId ?? 'org-1',
->>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
                     });
                     return {
                         access_token: token,
@@ -407,11 +398,8 @@ export class AuthService {
             sub: user.id,
             email: user.email,
             tokenVersion: user.tokenVersion,
-<<<<<<< HEAD
             role: user.role,
-=======
             organizationId: user.organizationId ?? 'org-1',
->>>>>>> 94777783f4a8d0f8c8b9e1a3d68c1e7a8ec2a989
         });
 
         this.eventEmitter.emit(
