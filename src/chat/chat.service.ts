@@ -323,7 +323,8 @@ export class ChatService {
                             textToken = chunk.content;
                         }
                     } else if (Array.isArray(chunk.content)) {
-                        for (const item of chunk.content) {
+                        const contentArr = chunk.content as unknown[];
+                        for (const item of contentArr) {
                             if (typeof item === 'string') {
                                 textToken += item;
                             } else if (
@@ -590,12 +591,14 @@ export class ChatService {
                                 string,
                                 unknown
                             >;
-                        } catch {}
+                        } catch {
+                            void 0;
+                        }
                     } else if (
                         typeof tc.args === 'object' &&
                         tc.args !== null
                     ) {
-                        parsedArgs = tc.args as Record<string, unknown>;
+                        parsedArgs = tc.args;
                     }
                     extracted.push({
                         id:
@@ -621,25 +624,33 @@ export class ChatService {
                             string,
                             unknown
                         >;
-                        const fcName = String(fc.name ?? '');
+                        const fcName =
+                            typeof fc.name === 'string' ? fc.name : '';
                         if (fcName) {
+                            const fcId =
+                                typeof fc.id === 'string'
+                                    ? fc.id
+                                    : typeof itemObj.id === 'string'
+                                      ? itemObj.id
+                                      : `call_${fcName}_${Date.now()}`;
                             extracted.push({
-                                id: String(
-                                    fc.id ??
-                                        itemObj.id ??
-                                        `call_${fcName}_${Date.now()}`,
-                                ),
+                                id: fcId,
                                 name: fcName,
                                 args:
                                     (fc.args as Record<string, unknown>) ?? {},
                             });
                         }
-                    } else if (itemObj.type === 'tool_use' && itemObj.name) {
-                        const toolName = String(itemObj.name);
+                    } else if (
+                        itemObj.type === 'tool_use' &&
+                        typeof itemObj.name === 'string'
+                    ) {
+                        const toolName = itemObj.name;
+                        const toolId =
+                            typeof itemObj.id === 'string'
+                                ? itemObj.id
+                                : `call_${toolName}_${Date.now()}`;
                         extracted.push({
-                            id: String(
-                                itemObj.id ?? `call_${toolName}_${Date.now()}`,
-                            ),
+                            id: toolId,
                             name: toolName,
                             args: (itemObj.input ??
                                 itemObj.args ??
@@ -654,7 +665,7 @@ export class ChatService {
             Record<string, unknown> | undefined;
         if (kwargs?.function_call && typeof kwargs.function_call === 'object') {
             const fc = kwargs.function_call as Record<string, unknown>;
-            const fcName = String(fc.name ?? '');
+            const fcName = typeof fc.name === 'string' ? fc.name : '';
             if (fcName) {
                 let parsedArgs: Record<string, unknown> = {};
                 if (typeof fc.arguments === 'string') {
@@ -663,7 +674,9 @@ export class ChatService {
                             string,
                             unknown
                         >;
-                    } catch {}
+                    } catch {
+                        void 0;
+                    }
                 } else if (
                     typeof fc.arguments === 'object' &&
                     fc.arguments !== null
