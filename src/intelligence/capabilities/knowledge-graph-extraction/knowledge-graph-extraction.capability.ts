@@ -118,7 +118,8 @@ export class KnowledgeGraphExtractionCapability implements ICapability {
         for (const node of extractedData.nodes) {
             try {
                 const nodeId = randomUUID();
-                const label = node.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
+                const label =
+                    node.type.replace(/[^a-zA-Z0-9]/g, '') || 'Entity';
                 const roleStr = node.role ? String(node.role) : '';
 
                 if (this.neo4jService?.getDriver()) {

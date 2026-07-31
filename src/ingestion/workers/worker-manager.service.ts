@@ -20,7 +20,9 @@ import {
 import {
     EVENT_BUS_TOKEN,
     type IEventBus,
+    type UnsubscribeFn,
 } from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import {
     PluginActivatedEvent,
     PluginConfigUpdatedEvent,
@@ -41,6 +43,7 @@ export class WorkerManager
     private readonly logger = new Logger(WorkerManager.name);
     private readonly instanceId: string;
     private workers = new Map<string, IngestionWorker>();
+    private unsubs: UnsubscribeFn[] = [];
 
     constructor(
         private readonly activeChatRepo: ActiveChatListenerRepository,
@@ -70,7 +73,11 @@ export class WorkerManager
                     listener.ownerUserId,
                     listener.pluginName,
                 );
-                if (config) {
+                if (
+                    config &&
+                    config.status === PluginStatus.ACTIVE &&
+                    config.sessionString
+                ) {
                     await this.activeChatRepo.claim(
                         listener.id,
                         this.instanceId,
@@ -87,28 +94,28 @@ export class WorkerManager
             }
         }
 
-        this.eventBus.subscribe<PluginActivatedEvent>(
-            'plugin.activated',
-            (event) => {
-                this.start(event.config);
-            },
-        );
-
-        this.eventBus.subscribe<PluginDeactivatedEvent>(
-            'plugin.deactivated',
-            (event) => {
-                const chats = extractProviderChats(event.config.config);
-                for (const chat of chats) {
-                    this.stop(event.pluginName, chat.id);
-                }
-            },
-        );
-
-        this.eventBus.subscribe<PluginConfigUpdatedEvent>(
-            'plugin.config.updated',
-            (event) => {
-                this.syncWorkersForConfig(event.config);
-            },
+        this.unsubs.push(
+            this.eventBus.subscribe(
+                Events.PLUGIN_ACTIVATED,
+                (event) => {
+                    this.start(event.config);
+                },
+            ),
+            this.eventBus.subscribe(
+                Events.PLUGIN_DEACTIVATED,
+                (event) => {
+                    const chats = extractProviderChats(event.config.config);
+                    for (const chat of chats) {
+                        this.stop(event.pluginName, chat.id);
+                    }
+                },
+            ),
+            this.eventBus.subscribe(
+                Events.PLUGIN_CONFIG_UPDATED,
+                (event) => {
+                    this.syncWorkersForConfig(event.config);
+                },
+            ),
         );
     }
 
@@ -203,6 +210,10 @@ export class WorkerManager
     }
 
     async onApplicationShutdown(): Promise<void> {
+        for (const unsub of this.unsubs) {
+            unsub();
+        }
+        this.unsubs = [];
         for (const [key, worker] of this.workers) {
             worker.abort();
             await this.lockManager.release(key, this.instanceId);

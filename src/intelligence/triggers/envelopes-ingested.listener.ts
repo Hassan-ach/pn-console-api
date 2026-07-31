@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { EnvelopesIngestedEvent } from 'src/ingestion/events/ingestion.events';
 import { IntelligenceEngineService } from '../intelligence-engine.service';
 
@@ -9,7 +10,7 @@ export class EnvelopesIngestedListener {
 
     constructor(private readonly engine: IntelligenceEngineService) {}
 
-    @OnEvent('envelopes.ingested')
+    @OnEvent(Events.ENVELOPES_INGESTED)
     async handle(event: EnvelopesIngestedEvent) {
         const count = event.envelopeIds?.length ?? 0;
         if (count === 0) {
@@ -35,7 +36,8 @@ export class EnvelopesIngestedListener {
             );
         } catch (error) {
             this.logger.error(
-                `Intelligence engine failed for org=${event.organizationId}: ${error instanceof Error ? error.message : error}`,
+                `Intelligence engine failed for org=${event.organizationId}: ${(error as Error).message}`,
+                (error as Error).stack,
             );
         }
     }

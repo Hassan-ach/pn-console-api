@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import { KnowledgeGraphExtractionCapability } from './knowledge-graph-extraction.capability';
 import { LlmService } from '../../llm/llm.service';

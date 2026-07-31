@@ -1,4 +1,9 @@
-import { Injectable, Inject, Optional, NotFoundException } from '@nestjs/common';
+import {
+    Injectable,
+    Inject,
+    Optional,
+    NotFoundException,
+} from '@nestjs/common';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { Prisma, PluginStatus } from 'generated/app-db-client';
 import { CACHE_STORE_TOKEN } from 'src/common/providers/cache-store/cache-store.interface';
@@ -73,11 +78,7 @@ export class PluginConfigRepository {
 
         if (data && this.cacheStore) {
             try {
-                await this.cacheStore.set(
-                    cacheKey,
-                    data,
-                    this.DEFAULT_TTL_MS,
-                );
+                await this.cacheStore.set(cacheKey, data, this.DEFAULT_TTL_MS);
             } catch {
                 // Non-fatal cache write error
             }

@@ -13,7 +13,10 @@ import {
 } from 'src/repositories/insight-suggestion.repository';
 import { SuggestionActionType } from 'generated/app-db-client';
 import { SYSTEM_PROMPT } from './suggestions-prompt';
-import { SuggestionsResultSchema, SuggestionsResult } from './suggestions-schema';
+import {
+    SuggestionsResultSchema,
+    SuggestionsResult,
+} from './suggestions-schema';
 import { extractJsonString } from '../../utils/llm-response.utils';
 
 @Injectable()

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { distance } from 'fastest-levenshtein';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
 import { UnresolvedOwnerRepository } from 'src/repositories/unresolved-owner.repository';
 import { UserSignedUpEvent } from '../events/user-signed-up.event';
@@ -14,18 +15,27 @@ export class SignupListener {
         private readonly unresolvedOwnerRepo: UnresolvedOwnerRepository,
     ) {}
 
-    @OnEvent('user.signed.up')
+    @OnEvent(Events.USER_SIGNED_UP)
     async handle(event: UserSignedUpEvent) {
         this.logger.log(
             `Processing signup event for user ${event.userId} (${event.email})`,
         );
 
-        await Promise.all([
-            this.assignBroadcastedInsights(event.userId),
-            this.resolveUnresolvedOwners(event),
-        ]);
+        try {
+            await Promise.all([
+                this.assignBroadcastedInsights(event.userId),
+                this.resolveUnresolvedOwners(event),
+            ]);
 
-        this.logger.log(`Signup processing complete for user ${event.userId}`);
+            this.logger.log(
+                `Signup processing complete for user ${event.userId}`,
+            );
+        } catch (error) {
+            this.logger.error(
+                `Signup event processing failed for user ${event.userId}: ${(error as Error).message}`,
+                (error as Error).stack,
+            );
+        }
     }
 
     private async assignBroadcastedInsights(userId: string): Promise<void> {

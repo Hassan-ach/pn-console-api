@@ -20,5 +20,3 @@ export interface TelegramMessageRaw {
     resolved_entities: ResolvedEntity[] | null;
     raw: Record<string, unknown>;
 }
-
-

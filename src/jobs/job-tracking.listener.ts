@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { JobService } from './job.service';
 import {
     IntelligenceJobStartedEvent,
@@ -18,7 +19,7 @@ export class JobTrackingListener {
 
     constructor(private readonly jobService: JobService) {}
 
-    @OnEvent('job.intelligence.started')
+    @OnEvent(Events.JOB_INTELLIGENCE_STARTED)
     async handleStarted(
         event: IntelligenceJobStartedEvent,
     ): Promise<{ jobId: string }> {
@@ -41,17 +42,17 @@ export class JobTrackingListener {
         return { jobId: job.id };
     }
 
-    @OnEvent('job.intelligence.setTitle')
+    @OnEvent(Events.JOB_INTELLIGENCE_SET_TITLE)
     async handleSetTitle(event: IntelligenceJobSetTitleEvent) {
         await this.jobService.updateTitle(event.jobId, event.title);
     }
 
-    @OnEvent('job.intelligence.setDescription')
+    @OnEvent(Events.JOB_INTELLIGENCE_SET_DESCRIPTION)
     async handleSetDescription(event: IntelligenceJobSetDescriptionEvent) {
         await this.jobService.updateDescription(event.jobId, event.description);
     }
 
-    @OnEvent('job.intelligence.setProgressable')
+    @OnEvent(Events.JOB_INTELLIGENCE_SET_PROGRESSABLE)
     async handleSetProgressable(event: IntelligenceJobSetProgressableEvent) {
         await this.jobService.updateProgressable(
             event.jobId,
@@ -59,23 +60,23 @@ export class JobTrackingListener {
         );
     }
 
-    @OnEvent('job.intelligence.setProgress')
+    @OnEvent(Events.JOB_INTELLIGENCE_SET_PROGRESS)
     async handleSetProgress(event: IntelligenceJobSetProgressEvent) {
         await this.jobService.updateProgress(event.jobId, event.progress);
     }
 
-    @OnEvent('job.intelligence.message')
+    @OnEvent(Events.JOB_INTELLIGENCE_MESSAGE)
     async handleMessage(event: IntelligenceJobMessageEvent) {
         await this.jobService.updateMessage(event.jobId, event.message);
     }
 
-    @OnEvent('job.intelligence.completed')
+    @OnEvent(Events.JOB_INTELLIGENCE_COMPLETED)
     async handleCompleted(event: IntelligenceJobCompletedEvent) {
         this.logger.log(`Intelligence job ${event.jobId} completed`);
         await this.jobService.completeJob(event.jobId, event.message);
     }
 
-    @OnEvent('job.intelligence.failed')
+    @OnEvent(Events.JOB_INTELLIGENCE_FAILED)
     async handleFailed(event: IntelligenceJobFailedEvent) {
         this.logger.error(
             `Intelligence job ${event.jobId} failed: ${event.message}`,

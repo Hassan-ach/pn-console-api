@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PluginConfigRepository } from './plugin-config.repository';
 import { AppDbService } from 'src/prisma/app-db/app-db.service';
-import { CACHE_STORE_TOKEN, ICacheStore } from 'src/common/providers/cache-store/cache-store.interface';
+import {
+    CACHE_STORE_TOKEN,
+    ICacheStore,
+} from 'src/common/providers/cache-store/cache-store.interface';
 import { PluginStatus } from 'generated/app-db-client';
 
 describe('PluginConfigRepository', () => {
@@ -81,7 +84,9 @@ describe('PluginConfigRepository', () => {
 
         const result = await repository.findUnique('user-1', 'telegram');
 
-        expect(mockCacheStore.get).toHaveBeenCalledWith('plugin_config:user-1:telegram');
+        expect(mockCacheStore.get).toHaveBeenCalledWith(
+            'plugin_config:user-1:telegram',
+        );
         expect(mockAppDb.pluginConfig.findUnique).not.toHaveBeenCalled();
         expect(result).toBeDefined();
         expect(result?.pluginName).toBe('telegram');
@@ -93,9 +98,13 @@ describe('PluginConfigRepository', () => {
 
         const result = await repository.findUnique('user-1', 'telegram');
 
-        expect(mockCacheStore.get).toHaveBeenCalledWith('plugin_config:user-1:telegram');
+        expect(mockCacheStore.get).toHaveBeenCalledWith(
+            'plugin_config:user-1:telegram',
+        );
         expect(mockAppDb.pluginConfig.findUnique).toHaveBeenCalledWith({
-            where: { userId_pluginName: { userId: 'user-1', pluginName: 'telegram' } },
+            where: {
+                userId_pluginName: { userId: 'user-1', pluginName: 'telegram' },
+            },
         });
         expect(mockCacheStore.set).toHaveBeenCalledWith(
             'plugin_config:user-1:telegram',
@@ -109,9 +118,13 @@ describe('PluginConfigRepository', () => {
         mockAppDb.pluginConfig.findUnique.mockResolvedValue(sampleRow);
         mockAppDb.pluginConfig.update.mockResolvedValue(sampleRow);
 
-        await repository.update('user-1', 'telegram', { status: PluginStatus.CONFIGURED });
+        await repository.update('user-1', 'telegram', {
+            status: PluginStatus.CONFIGURED,
+        });
 
-        expect(mockCacheStore.delete).toHaveBeenCalledWith('plugin_config:user-1:telegram');
+        expect(mockCacheStore.delete).toHaveBeenCalledWith(
+            'plugin_config:user-1:telegram',
+        );
     });
 
     it('should invalidate cache when removing config', async () => {
@@ -119,6 +132,8 @@ describe('PluginConfigRepository', () => {
 
         await repository.remove('user-1', 'telegram');
 
-        expect(mockCacheStore.delete).toHaveBeenCalledWith('plugin_config:user-1:telegram');
+        expect(mockCacheStore.delete).toHaveBeenCalledWith(
+            'plugin_config:user-1:telegram',
+        );
     });
 });

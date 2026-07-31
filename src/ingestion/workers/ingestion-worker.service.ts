@@ -6,6 +6,7 @@ import type { IntelligenceEngineService } from 'src/intelligence/intelligence-en
 import { BatchBuffer } from './batch-buffer.service';
 import { EnvelopeWithPayload } from 'src/types/envelope.types';
 import { IEventBus } from 'src/common/providers/event-bus/event-bus.interface';
+import { Events } from 'src/common/providers/event-bus/events.registry';
 import { EnvelopesIngestedEvent } from '../events/ingestion.events';
 import { extractProviderChats } from '../plugins/interfaces/provider-config.interface';
 
@@ -60,7 +61,7 @@ export class IngestionWorker {
                 if (result.inserted > 0) {
                     if (this.eventBus) {
                         this.eventBus.publish(
-                            'envelopes.ingested',
+                            Events.ENVELOPES_INGESTED,
                             new EnvelopesIngestedEvent(
                                 orgId,
                                 this.config.userId,
@@ -92,7 +93,7 @@ export class IngestionWorker {
             const orgId = context.resolveOrgId(this.config.userId);
             if (this.eventBus) {
                 this.eventBus.publish(
-                    'envelopes.ingested',
+                    Events.ENVELOPES_INGESTED,
                     new EnvelopesIngestedEvent(
                         orgId,
                         this.config.userId,
