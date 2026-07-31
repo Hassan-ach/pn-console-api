@@ -12,8 +12,6 @@ import { ActiveChatListenerRepository } from './active-chat-listener.repository'
 import { JobRepository } from './job.repository';
 import { UserRepository } from './user.repository';
 import { EmbeddingRepository } from './embedding.repository';
-import { EntityRepository } from './entity.repository';
-import { RelationshipRepository } from './relationship.repository';
 import { InsightSuggestionRepository } from './insight-suggestion.repository';
 
 @Module({
@@ -30,8 +28,6 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         JobRepository,
         UserRepository,
         EmbeddingRepository,
-        EntityRepository,
-        RelationshipRepository,
         InsightSuggestionRepository,
     ],
     exports: [
@@ -46,8 +42,6 @@ import { InsightSuggestionRepository } from './insight-suggestion.repository';
         JobRepository,
         UserRepository,
         EmbeddingRepository,
-        EntityRepository,
-        RelationshipRepository,
         InsightSuggestionRepository,
     ],
 })

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { distance } from 'fastest-levenshtein';
 import {
@@ -17,7 +17,7 @@ import {
     PlatformUserMappingWithUser,
 } from 'src/repositories/platform-user-mapping.repository';
 import { UserRepository, UserRecord } from 'src/repositories/user.repository';
-import { EntityRepository } from 'src/repositories/entity.repository';
+import { Neo4jService } from 'src/graph/neo4j.service';
 import {
     ICapability,
     CapabilityInput,
@@ -79,7 +79,7 @@ export class InsightExtractionCapabilityV2 implements ICapability {
         private readonly searchToolsService: SearchToolsService,
         private readonly platformUserMappingRepo: PlatformUserMappingRepository,
         private readonly userRepo: UserRepository,
-        private readonly entityRepo: EntityRepository,
+        @Optional() private readonly neo4jService?: Neo4jService,
     ) {}
 
     async execute(input: CapabilityInput): Promise<CapabilityResult> {
@@ -369,14 +369,22 @@ export class InsightExtractionCapabilityV2 implements ICapability {
             }
 
             // Tier 3: Knowledge Graph Entity Lookup (Person/Team entity with role metadata)
-            if (!appUserId && (ref.username || ref.id)) {
+            if (
+                !appUserId &&
+                (ref.username || ref.id) &&
+                this.neo4jService?.getDriver()
+            ) {
                 const searchTerm = (ref.username || ref.id || '').toLowerCase();
                 try {
-                    const kgEntities = await this.entityRepo.search(
-                        organizationId,
-                        searchTerm,
-                        'Person',
-                    );
+                    const cypher = `
+                        MATCH (e:Person)
+                        WHERE toLower(e.name) CONTAINS toLower($searchTerm)
+                        RETURN e.name AS name
+                        LIMIT 5
+                    `;
+                    const kgEntities = await this.neo4jService.executeRead<{
+                        name: string;
+                    }>(cypher, { searchTerm });
                     if (kgEntities.length > 0) {
                         const matchedPerson = kgEntities[0];
                         // Try matching Person entity name to app users
