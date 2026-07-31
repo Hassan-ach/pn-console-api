@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppDbModule } from '../prisma/app-db/app-db.module';
 import { MailModule } from '../mail/mail.module';
 import { RepositoriesModule } from '../repositories/repositories.module';
+import adminConfig from '../config/admin.config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AdminSeedService } from './admin-seed.service';
 import { SignupListener } from './listeners/signup.listener';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -20,6 +22,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
         PassportModule,
         MailModule,
         RepositoriesModule,
+        ConfigModule.forFeature(adminConfig),
         JwtModule.registerAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService): JwtModuleOptions => ({
@@ -40,6 +43,7 @@ import { SsoStrategy } from './strategies/sso.strategy';
     controllers: [AuthController],
     providers: [
         AuthService,
+        AdminSeedService,
         SignupListener,
         JwtStrategy,
         JwtLogoutStrategy,

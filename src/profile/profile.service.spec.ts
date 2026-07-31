@@ -3,10 +3,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { UserRepository } from '../repositories/user.repository';
+import { AppDbService } from '../prisma/app-db/app-db.service';
 
 describe('ProfileService', () => {
     let service: ProfileService;
     let repository: jest.Mocked<UserRepository>;
+    let mockDb: { teamMember: { findMany: jest.Mock } };
 
     const mockUser = {
         id: 'user-1',
@@ -16,11 +18,16 @@ describe('ProfileService', () => {
         passwordHash: 'hashed-password',
         providerType: 'EMAIL' as const,
         tokenVersion: 0,
+        role: 'USER',
         createdAt: new Date('2026-01-01'),
         updatedAt: new Date('2026-01-01'),
     };
 
     beforeEach(async () => {
+        mockDb = {
+            teamMember: { findMany: jest.fn().mockResolvedValue([]) },
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ProfileService,
@@ -29,6 +36,10 @@ describe('ProfileService', () => {
                     useValue: {
                         findById: jest.fn(),
                     },
+                },
+                {
+                    provide: AppDbService,
+                    useValue: mockDb,
                 },
             ],
         }).compile();
@@ -47,7 +58,7 @@ describe('ProfileService', () => {
 
             const result = await service.getMetaData('user-1');
 
-            expect(result).toEqual(mockUser);
+            expect(result).toEqual({ ...mockUser, teams: [] });
         });
 
         it('calls repository with the correct userId', async () => {
