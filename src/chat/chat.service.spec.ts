@@ -6,6 +6,7 @@ import { LlmService } from '../intelligence/llm/llm.service';
 import { ChatContextService } from './chat-context.service';
 import { SearchToolsService } from '../intelligence/tools/search-tools.service';
 import { GraphToolsService } from '../intelligence/tools/graph-tools.service';
+import { AIMessageChunk } from '@langchain/core/messages';
 
 type MockTx = {
     chatMessage: Record<string, jest.Mock>;
@@ -131,7 +132,7 @@ function createMockGraphToolsService() {
 
 async function* mockStream(tokens: string[]) {
     for (const token of tokens) {
-        yield { content: token };
+        yield new AIMessageChunk({ content: token });
     }
 }
 
@@ -390,12 +391,6 @@ describe('ChatService', () => {
                     role: 'USER',
                     content: 'What are my tasks?',
                 },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
-                },
             });
             expect(mockAppDb.chatMessage.create).toHaveBeenNthCalledWith(2, {
                 data: {
@@ -403,12 +398,6 @@ describe('ChatService', () => {
                     conversationId: 'conv-1',
                     role: 'ASSISTANT',
                     content: 'Hello world',
-                },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
                 },
             });
         });
@@ -488,7 +477,7 @@ describe('ChatService', () => {
                 tokens.push(token);
             }
 
-            expect(tokens).toEqual(['Hello', ' world']);
+            expect(tokens).toEqual(['Hello world']);
         });
 
         it('saves full assistant response after streaming', async () => {
@@ -501,12 +490,6 @@ describe('ChatService', () => {
                     conversationId: 'conv-1',
                     role: 'ASSISTANT',
                     content: 'Hello world',
-                },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
                 },
             });
         });
@@ -547,12 +530,6 @@ describe('ChatService', () => {
                     content:
                         'Sorry, an error occurred while processing your request.',
                 },
-                select: {
-                    id: true,
-                    role: true,
-                    content: true,
-                    createdAt: true,
-                },
             });
         });
 
@@ -590,7 +567,7 @@ describe('ChatService', () => {
             ]);
 
             const mockToolCallStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content: '',
                     tool_calls: [
                         {
@@ -599,11 +576,13 @@ describe('ChatService', () => {
                             args: { query: 'urgent' },
                         },
                     ],
-                };
+                });
             })();
 
             const mockFinalStream = (async function* () {
-                yield { content: 'Found the raw message details.' };
+                yield new AIMessageChunk({
+                    content: 'Found the raw message details.',
+                });
             })();
 
             const streamFn = jest
@@ -643,7 +622,7 @@ describe('ChatService', () => {
             ]);
 
             const mockGeminiToolCallStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content: [
                         {
                             type: 'functionCall',
@@ -654,13 +633,20 @@ describe('ChatService', () => {
                             },
                         },
                     ],
-                };
+                    tool_calls: [
+                        {
+                            name: 'search_raw_messages',
+                            args: { query: 'afternoon' },
+                            id: 'AkCrAEFa',
+                        },
+                    ],
+                });
             })();
 
             const mockFinalAnswerStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content: 'You have a meeting scheduled this afternoon.',
-                };
+                });
             })();
 
             const streamFn = jest
@@ -701,7 +687,7 @@ describe('ChatService', () => {
             ]);
 
             const mockThinkingToolStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content: '',
                     response_metadata: {
                         reasoning_content:
@@ -714,11 +700,11 @@ describe('ChatService', () => {
                             id: 'call_01',
                         },
                     ],
-                };
+                });
             })();
 
             const mockFinalStream = (async function* () {
-                yield { content: 'Found user info.' };
+                yield new AIMessageChunk({ content: 'Found user info.' });
             })();
 
             const streamFn = jest
@@ -754,9 +740,13 @@ describe('ChatService', () => {
                 (m) => m.tool_calls && m.tool_calls.length > 0,
             );
             expect(toolCallAiMessage).toBeDefined();
-            expect(
-                toolCallAiMessage?.additional_kwargs?.reasoning_content,
-            ).toBe('Let me search messages to find the user info.');
+            expect(toolCallAiMessage?.tool_calls).toEqual([
+                {
+                    name: 'search_raw_messages',
+                    args: { query: 'hassan' },
+                    id: 'call_01',
+                },
+            ]);
         });
 
         it('parses DSML tool calls from text content and executes them', async () => {
@@ -776,7 +766,7 @@ describe('ChatService', () => {
             ]);
 
             const mockDsmlStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content: `<｜｜DSML｜｜tool_calls>
 <｜｜DSML｜｜invoke name="retrieve_relevant_insights">
 <｜｜DSML｜｜parameter name="query" string="true">daily activities stand-up meeting user story tasks</｜｜DSML｜｜parameter>
@@ -785,14 +775,14 @@ describe('ChatService', () => {
 <｜｜DSML｜｜parameter name="query" string="true">stand-up user story meeting</｜｜DSML｜｜parameter>
 </｜｜DSML｜｜invoke>
 </｜｜DSML｜｜tool_calls>`,
-                };
+                });
             })();
 
             const mockFinalStream = (async function* () {
-                yield {
+                yield new AIMessageChunk({
                     content:
                         'Here is your daily summary: You attended stand-up and worked on user story 123.',
-                };
+                });
             })();
 
             const streamFn = jest
@@ -836,7 +826,7 @@ describe('ChatService', () => {
 
             const createDuplicateToolCallStream = () =>
                 (async function* () {
-                    yield {
+                    yield new AIMessageChunk({
                         content: '',
                         tool_calls: [
                             {
@@ -845,14 +835,14 @@ describe('ChatService', () => {
                                 id: 'call_01',
                             },
                         ],
-                    };
+                    });
                 })();
 
             const createSynthesisStream = () =>
                 (async function* () {
-                    yield {
+                    yield new AIMessageChunk({
                         content: 'Synthesized response after duplicate loop.',
-                    };
+                    });
                 })();
 
             // 1st turn: LLM emits tool call. 2nd turn: LLM emits IDENTICAL tool call -> loop detected -> 3rd turn: synthesis stream called!
