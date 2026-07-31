@@ -31,6 +31,7 @@ You have access to tools:
 - \`search_raw_messages\`: Search historical raw DB messages by text keyword.
 - \`search_insights\`: Search existing app DB insights by keyword.
 - \`retrieve_relevant_insights\`: RAG vector search tool to retrieve semantically similar prior insights.
+- \`resolve_user_by_platform_id\`: Resolve platform user account IDs (e.g. Telegram ID, Slack ID) to app user names and details from the user mapping table.
 
 When messages mention ambiguous codenames, internal services, or names, use these tools to gather context before finalizing insights.
 
